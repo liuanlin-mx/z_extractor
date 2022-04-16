@@ -2284,6 +2284,11 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                 float dist = (i - begin);
                 printf("dist:%f last_v:%f\n", dist, last_v);
                 float td = dist * 1000000 / last_v;
+                
+                if (td < 0.001)
+                {
+                    sr = 0;
+                }
             #if 0
                 if (td >= 0.001)
                 {
@@ -2334,6 +2339,12 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         float dist = (i - begin);
         printf("dist:%f last_v:%f\n", dist, last_v);
         float td = dist * 1000000 / last_v;
+        
+        if (td < 0.001)
+        {
+            sr = 0;
+        }
+        
     #if 0
         if (td > 0.001)
         {
