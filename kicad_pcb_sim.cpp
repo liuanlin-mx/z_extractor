@@ -15,8 +15,8 @@
 kicad_pcb_sim::kicad_pcb_sim()
 {
     _Z0_setup = 0.5;
-    _Z0_w_ratio = 10;
-    _Z0_h_ratio = 10;
+    _Z0_w_ratio = 8;
+    _Z0_h_ratio = 1.5;
     
     _coupled_max_d = 5;
     _coupled_min_len = 0.5;
@@ -249,14 +249,11 @@ bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<
     
     for (auto& p: pads)
     {
-        float angle = p.at_angle * M_PI / 180;
-        float x = p.at.x;
-        float y = p.at.y;
-                
-        float x1 = cosf(angle) * x - sinf(angle) * y;
-        float y1 = cosf(angle) * y - sinf(angle) * x;
-        
-        sprintf(buf, "%s ", _pos2net(p.ref_at.x + x1, p.ref_at.y + y1, p.layers.front()).c_str());
+        float x;
+        float y;
+        _get_pad_pos(p, x, y);
+        sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+
         ckt += buf;
         call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
         call += " ";
@@ -364,14 +361,11 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
         
         for (auto& p: pads)
         {
-            float angle = p.at_angle * M_PI / 180;
-            float x = p.at.x;
-            float y = p.at.y;
-                    
-            float x1 = cosf(angle) * x - sinf(angle) * y;
-            float y1 = cosf(angle) * y - sinf(angle) * x;
-            
-            sprintf(buf, "%s ", _pos2net(p.ref_at.x + x1, p.ref_at.y + y1, p.layers.front()).c_str());
+            float x;
+            float y;
+            _get_pad_pos(p, x, y);
+            sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+
             ckt += buf;
             call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
             call += " ";
@@ -544,14 +538,11 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     
     for (auto& p: pads)
     {
-        float angle = p.at_angle * M_PI / 180;
-        float x = p.at.x;
-        float y = p.at.y;
-                
-        float x1 = cosf(angle) * x - sinf(angle) * y;
-        float y1 = cosf(angle) * y - sinf(angle) * x;
-        
-        sprintf(buf, "%s ", _pos2net(p.ref_at.x + x1, p.ref_at.y + y1, p.layers.front()).c_str());
+        float x;
+        float y;
+        _get_pad_pos(p, x, y);
+        sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+
         ckt += buf;
         call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
         call += " ";
@@ -571,7 +562,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         {
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
-            henry.add_via((_get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end)).c_str(),
+            std::string name = _get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end);
+            henry.add_via(name.c_str(),
                             fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(start)),
                             fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(end)),
                             v.drill, v.size);
@@ -761,14 +753,11 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         
         for (auto& p: pads)
         {
-            float angle = p.at_angle * M_PI / 180;
-            float x = p.at.x;
-            float y = p.at.y;
-                    
-            float x1 = cosf(angle) * x - sinf(angle) * y;
-            float y1 = cosf(angle) * y - sinf(angle) * x;
-            
-            sprintf(buf, "%s ", _pos2net(p.ref_at.x + x1, p.ref_at.y + y1, p.layers.front()).c_str());
+            float x;
+            float y;
+            _get_pad_pos(p, x, y);
+            sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+
             ckt += buf;
             call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
             call += " ";
@@ -1725,6 +1714,19 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
 }
 
 
+void kicad_pcb_sim::_get_pad_pos(pad& p, float& x, float& y)
+{
+    float angle = p.ref_at_angle * M_PI / 180;
+    float at_x = p.at.x;
+    float at_y = -p.at.y;
+                
+    float x1 = cosf(angle) * at_x - sinf(angle) * at_y;
+    float y1 = sinf(angle) * at_x + cosf(angle) * at_y;
+    
+    x = p.ref_at.x + x1;
+    y = p.ref_at.y - y1;
+}
+
 std::string kicad_pcb_sim::_get_tstamp_short(const std::string& tstamp)
 {
     size_t pos = tstamp.find('-');
@@ -1750,20 +1752,18 @@ std::string kicad_pcb_sim::_format_net_name(const std::string& net_name)
 {
     std::string tmp = net_name;
     std::size_t pos = tmp.find('-');
-    pos = tmp.find('(');
-    if (pos != tmp.npos)
+    
+    if ((pos = tmp.find('(')) != tmp.npos)
     {
         tmp.replace(pos, 1, "_");
     }
     
-    pos = tmp.find(')');
-    if (pos != tmp.npos)
+    if ((pos = tmp.find(')')) != tmp.npos)
     {
         tmp.replace(pos, 1, "_");
     }
     
-    pos = tmp.find('/');
-    if (pos != tmp.npos)
+    while ((pos = tmp.find('/')) != tmp.npos)
     {
         tmp.replace(pos, 1, "_");
     }
@@ -2834,4 +2834,3 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
         }
     }
 }
-

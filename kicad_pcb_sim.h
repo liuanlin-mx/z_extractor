@@ -160,7 +160,7 @@ private:
     const char *_parse_edge(const char *str);
     
     
-    
+    void _get_pad_pos(pad& p, float& x, float& y);
     std::string _get_tstamp_short(const std::string& tstamp);
     std::string _pos2net(float x, float y, const std::string& layer);
     static std::string _format_net_name(const std::string& net_name);
