@@ -15,18 +15,17 @@
 kicad_pcb_sim::kicad_pcb_sim()
 {
     _Z0_setup = 0.5;
-    _Z0_w_ratio = 8;
-    _Z0_h_ratio = 1.5;
+    _Z0_w_ratio = 15;
+    _Z0_h_ratio = 100;
     
     _coupled_max_d = 5;
     _coupled_min_len = 0.5;
     
-    _img_ratio = 15;
+    _img_ratio = 100;
     _pcb_top = 10000.;
     _pcb_bottom = 0;
     _pcb_left = 10000.;
     _pcb_right = 0;
-    _atlc_pix_unit = 0.035 / 4;
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -1926,6 +1925,22 @@ float kicad_pcb_sim::_get_board_thickness()
 }
 
 
+float kicad_pcb_sim::_get_cu_min_thickness()
+{
+    float thickness = 1;
+    for (const auto& l: _layers)
+    {
+        if (l.type == "copper")
+        {
+            if (l.thickness < thickness)
+            {
+                thickness = l.thickness;
+            }
+        }
+    }
+    return thickness;
+}
+
 bool kicad_pcb_sim::_float_equal(float a, float b)
 {
     return fabs(a - b) < 0.00001;
@@ -2224,8 +2239,14 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
 #endif
     std::vector<std::string> layers = _get_all_dielectric_layer();
     float box_w = s.width * _Z0_w_ratio;
-    float box_h = _get_board_thickness() * _Z0_h_ratio;
-    float box_y_offset = _get_board_thickness() * - 0.5;
+    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
+    float box_y_offset = _get_board_thickness() * -0.5;
+    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    if (box_h < _get_board_thickness() * 1.5)
+    {
+        box_h = _get_board_thickness() * 1.5;
+    }
+    
     
     float sl = 0;
     float sr = 0;
@@ -2250,7 +2271,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         
         
         _atlc.clean();
-        _atlc.set_pix_unit(_atlc_pix_unit);
+        _atlc.set_pix_unit(atlc_pix_unit);
         _atlc.set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
@@ -2412,8 +2433,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     
     std::vector<std::string> layers = _get_all_dielectric_layer();
     float box_w = ss_dist * _Z0_w_ratio;
-    float box_h = _get_board_thickness() * _Z0_h_ratio;
+    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * - 0.5;
+    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    if (box_h < _get_board_thickness() * 1.5)
+    {
+        box_h = _get_board_thickness() * 1.5;
+    }
     
     float tmp_l = 0;
     float s0_r = 0;
@@ -2457,15 +2483,15 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         
         
         _atlc.clean();
-        _atlc.set_pix_unit(_atlc_pix_unit);
+        _atlc.set_pix_unit(atlc_pix_unit);
         _atlc.set_box_size(box_w, box_h);
         
         _atlc1.clean();
-        _atlc1.set_pix_unit(_atlc_pix_unit);
+        _atlc1.set_pix_unit(atlc_pix_unit);
         _atlc1.set_box_size(box_w, box_h);
         
         _atlc_coupled.clean();
-        _atlc_coupled.set_pix_unit(_atlc_pix_unit);
+        _atlc_coupled.set_pix_unit(atlc_pix_unit);
         _atlc_coupled.set_box_size(box_w, box_h);
         
         for (auto& l: layers)

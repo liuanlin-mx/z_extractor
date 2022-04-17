@@ -176,6 +176,7 @@ private:
     float _get_layer_z_axis(const std::string& layer_name);
     float _get_layer_epsilon_r(const std::string& layer_name);
     float _get_board_thickness();
+    float _get_cu_min_thickness();
     
     
     bool _float_equal(float a, float b);
@@ -262,7 +263,6 @@ private:
     atlc _atlc;
     atlc _atlc1;
     atlc _atlc_coupled;
-    float _atlc_pix_unit;
     const float _resistivity = 0.0172;
     
 };
