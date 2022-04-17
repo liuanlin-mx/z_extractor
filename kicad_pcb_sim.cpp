@@ -20,6 +20,8 @@ kicad_pcb_sim::kicad_pcb_sim()
     
     _coupled_max_d = 5;
     _coupled_min_len = 0.5;
+    _lossless_tl = true;
+    _ltra_model = true;
     
     _img_ratio = 100;
     _pcb_top = 10000.;
@@ -2251,7 +2253,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     float sl = 0;
     float sr = 0;
     (void)sl;
-    fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
+    if (_lossless_tl)
+    {
+        fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
+    }
     _atlc.clean_all();
     for (i = 0; i < s_len; i += _Z0_setup)
     {
@@ -2320,24 +2325,27 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                     sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
                 }
             #else
-                #if 1
-                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                if (!_ltra_model)
+                {
+                    sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                                 "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
                                 ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
                                 last_Z0, td,
                                 idx, pin, pin + 1, idx, dist * 0.001,
                                 idx, sr, last_l, last_c
                                 );
-                #else
+                }
+                else
+                {
                 
-                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                    sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                                 "O%d pin%d 0 pin%d 0 ltra%d\n"
                                 ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
                                 last_Z0, td,
                                 idx, pin, pin + 1, idx,
                                 idx, sr, last_l, last_c, dist * 0.001
                                 );
-                #endif
+                }
                 idx++;
             #endif
                 pin++;
@@ -2376,23 +2384,26 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
             sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
         }
     #else
-        #if 1
-        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+        if (!_ltra_model)
+        {
+            sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                         "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
                         ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
                         last_Z0, td,
                         idx, pin, pin + 1, idx, dist * 0.001,
                         idx, sr, last_l, last_c
                         );
-        #else
-        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+        }
+        else
+        {
+            sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                         "O%d pin%d 0 pin%d 0 ltra%d\n"
                         ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
                         last_Z0, td,
                         idx, pin, pin + 1, idx,
                         idx, sr, last_l, last_c, dist * 0.001
                         );
-        #endif
+        }
         idx++;
     #endif
         pin++;
@@ -2445,8 +2456,11 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     float s0_r = 0;
     float s1_r = 0;
     (void)tmp_l;
-    fasthenry::calc_wire_lr(s0.width, _get_layer_thickness(s0.layer_name), 1000, tmp_l, s0_r);
-    fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
+    if (_lossless_tl)
+    {
+        fasthenry::calc_wire_lr(s0.width, _get_layer_thickness(s0.layer_name), 1000, tmp_l, s0_r);
+        fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
+    }
     _atlc.clean_all();
     _atlc1.clean_all();
     _atlc_coupled.clean_all();

@@ -254,6 +254,8 @@ private:
     float _Z0_h_ratio;
     float _coupled_max_d;
     float _coupled_min_len;
+    bool _lossless_tl;
+    bool _ltra_model;
     
     float _img_ratio;
     float _pcb_top;
