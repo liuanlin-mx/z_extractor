@@ -12,6 +12,8 @@ public:
     ~atlc();
     
 public:
+    void set_bmp_name(const std::string& bmp_name) { _bmp_name = bmp_name; }
+    
     /* 1个像素代表的长度 */
     void set_pix_unit(float unit = 0.035);
     
@@ -32,7 +34,10 @@ private:
     void _draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
     float _read_value(const char *str, const char *key);
     bool _is_some(cv::Mat& img1, cv::Mat& img2);
+    std::string _get_bmp_name();
+    
 private:
+    std::string _bmp_name;
     float _pix_unit;
     float _pix_unit_r;
     float _box_w;

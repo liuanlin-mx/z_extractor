@@ -29,11 +29,11 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
     <Configuration Name="Debug" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-O0;-Wall" C_Options="-g;-O0;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-g;-O0;-fopenmp;-Wall" C_Options="-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="."/>
         <IncludePath Value="/usr/include/opencv4"/>
       </Compiler>
-      <Linker Options="" Required="yes">
+      <Linker Options="-fopenmp" Required="yes">
         <Library Value="opencv_highgui"/>
         <Library Value="opencv_imgcodecs"/>
         <Library Value="opencv_imgproc"/>

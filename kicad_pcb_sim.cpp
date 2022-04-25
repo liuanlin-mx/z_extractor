@@ -2,6 +2,7 @@
 #include <math.h>
 #include <opencv2/opencv.hpp>
 #include <fasthenry.h>
+#include <omp.h>
 
 #if 0
 #define log_debug(fmt, args...) printf(fmt, ##args)
@@ -2145,7 +2146,7 @@ void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::ma
 }
 
 
-std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(cv::Mat& img, float x1, float y1, float x2, float y2)
+std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2)
 {
     std::list<std::pair<float, float> > tmp;
     
@@ -2414,6 +2415,187 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     return  strbuf + cir;
 }
 
+
+std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat)
+{
+    std::string cir;
+    float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
+    float s_w = s.width;
+    float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+    float rad_left = angle + (float)M_PI_2;
+    float rad_right = angle - (float)M_PI_2;
+    
+    
+    
+    int pin = 1;
+    int idx = 1;
+    char strbuf[512];
+    
+#if DBG_IMG
+    cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
+    
+    cv::line(img, cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
+                    cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
+                    cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
+                    
+#endif
+    std::vector<std::string> layers = _get_all_dielectric_layer();
+    float box_w = s.width * _Z0_w_ratio;
+    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
+    float box_y_offset = _get_board_thickness() * -0.5;
+    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    if (box_h < _get_board_thickness() * 1.5)
+    {
+        box_h = _get_board_thickness() * 1.5;
+    }
+    
+    
+    float sl = 0;
+    float sr = 0;
+    (void)sl;
+    if (_lossless_tl)
+    {
+        fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
+    }
+    _atlc.clean_all();
+    
+    struct Z0_item
+    {
+        float Z0;
+        float v;
+        float c;
+        float l;
+        float pos;
+    };
+    
+    std::vector<Z0_item> Z0s;
+    
+    for (float i = 0; i < s_len; i += _Z0_setup)
+    {
+        Z0_item tmp;
+        tmp.pos = i;
+        Z0s.push_back(tmp);
+    }
+    
+    Z0_item tmp;
+    tmp.pos = s_len;
+    Z0s.push_back(tmp);
+    
+    std::int32_t thread_nums = 32;
+    atlc atlcs[thread_nums];
+    
+    #pragma omp parallel for
+    for (std::uint32_t i = 0; i < Z0s.size(); i++)
+    {
+        char name[32];
+        std::int32_t thread_num = omp_get_thread_num();
+        atlc& atlc = atlcs[thread_num];
+        sprintf(name, "%d.bmp", thread_num);
+        atlc.set_bmp_name(name);
+        
+        Z0_item& item = Z0s[i];
+        float pos = item.pos;
+        float x = s.start.x + pos * cos(angle);
+        float y = s.start.y + pos * sin(angle);
+        float x_left = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_left);
+        float y_left = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_left);
+        float x_right = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_right);
+        float y_right = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_right);
+        
+        
+        atlc.clean();
+        atlc.set_pix_unit(atlc_pix_unit);
+        atlc.set_box_size(box_w, box_h);
+        for (auto& l: layers)
+        {
+            float y = _get_layer_z_axis(l);
+            atlc.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+        }
+        
+        for (auto& refs: refs_mat)
+        {
+            std::list<std::pair<float, float> >  grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            
+            for (auto& g: grounds)
+            {
+                atlc.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+            }
+        }
+        
+        atlc.draw_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
+        
+        
+        float Z0;
+        float v;
+        float c;
+        float l;
+        
+        atlc.calc_zo(Z0, v, c, l);
+        log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
+        item.Z0 = Z0;
+        item.v = v;
+        item.c = c;
+        item.l = l;
+    }
+
+    Z0_item begin = Z0s[0];
+    Z0_item end;
+    for (std::uint32_t i = 1; i < Z0s.size(); i++)
+    {
+        end = Z0s[i];
+        if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
+        {
+            float dist = (end.pos - begin.pos);
+            printf("dist:%f Z0:%f\n", dist, begin.Z0);
+            float td = dist * 1000000 / begin.v;
+            
+            if (td < 0.001)
+            {
+                sr = 0;
+            }
+            
+        #if 0
+            if (td >= 0.001)
+            {
+                sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%f TD=%fNS\n", idx++, pin, pin + 1, begin.Z0, td);
+            }
+            else
+            {
+                sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
+            }
+        #else
+            if (!_ltra_model)
+            {
+                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                            "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
+                            ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
+                            begin.Z0, td,
+                            idx, pin, pin + 1, idx, dist * 0.001,
+                            idx, sr, begin.l, begin.c
+                            );
+            }
+            else
+            {
+            
+                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                            "O%d pin%d 0 pin%d 0 ltra%d\n"
+                            ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
+                            begin.Z0, td,
+                            idx, pin, pin + 1, idx,
+                            idx, sr, begin.l, begin.c, dist * 0.001
+                            );
+            }
+            idx++;
+        #endif
+            pin++;
+            cir += strbuf;
+        }
+    }
+    
+    cir += ".ends\n";
+    sprintf(strbuf, ".subckt %s pin1 pin%d\n", cir_name.c_str(), pin);
+    return  strbuf + cir;
+}
 
 std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat)
 {

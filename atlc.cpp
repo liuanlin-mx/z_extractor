@@ -2,7 +2,8 @@
 #include "atlc.h"
 
 atlc::atlc()
-    : _pix_unit(0.035)
+    : _bmp_name("atlc.bmp")
+    , _pix_unit(0.035)
     , _pix_unit_r(1.0 / _pix_unit)
     , _box_w(10)
     , _box_h(10)
@@ -90,9 +91,9 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
     cv::rectangle(_img, cv::Point(0, _img.rows - 1), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, 0), cv::Scalar(0, 255, 0), 1);
 
-    cv::imwrite("test.bmp", _img);
-    cv::imshow("img", _img);
-    cv::waitKey(10);
+    cv::imwrite(_get_bmp_name(), _img);
+    //cv::imshow(_get_bmp_name(), _img);
+    //cv::waitKey(10);
     
     if (_is_some(_last_img, _img))
     {
@@ -112,7 +113,7 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -r 1.6 -S -s test.bmp", er_str.c_str());
+    sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
     printf("%s\n", cmd);
     
     char buf[1024] = {0};
@@ -143,8 +144,8 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
 
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     
-    cv::imwrite("test.bmp", _img);
-    cv::imshow("img", _img);
+    cv::imwrite(_get_bmp_name(), _img);
+    cv::imshow(_get_bmp_name(), _img);
     cv::waitKey(10);
     
     if (_is_some(_last_img, _img))
@@ -170,7 +171,7 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -r 1.6 -S -s test.bmp", er_str.c_str());
+    sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
     printf("%s\n", cmd);
     
     char buf[1024] = {0};
@@ -244,4 +245,10 @@ bool atlc::_is_some(cv::Mat& img1, cv::Mat& img2)
     }
     
     return count > img1.cols * img1.rows  - _unit2pix(4 * 0.0254);
+}
+
+
+std::string atlc::_get_bmp_name()
+{
+    return _bmp_name;
 }

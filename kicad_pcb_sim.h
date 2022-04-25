@@ -198,8 +198,9 @@ private:
     void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat);
     
     /* 提取走线附近的参考平面横界面参数 */
-    std::list<std::pair<float, float> > _get_mat_line(cv::Mat& img, float x1, float y1, float x2, float y2);
+    std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
     std::string _gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
+    std::string _gen_segment_zo_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
     std::string _gen_segment_coupled_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat);
     
     /* 计算两点连线倾斜角 */
