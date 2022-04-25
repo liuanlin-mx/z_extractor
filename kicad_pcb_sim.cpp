@@ -2227,7 +2227,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     float last_v;
     float last_c;
     float last_l;
-    float i;
+    
     int pin = 1;
     int idx = 1;
     char strbuf[512];
@@ -2259,7 +2259,8 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
     }
     _atlc.clean_all();
-    for (i = 0; i < s_len; i += _Z0_setup)
+    
+    for (float i = 0; i < s_len + _Z0_setup; i += _Z0_setup)
     {
         float x = s.start.x + i * cos(angle);
         float y = s.start.y + i * sin(angle);
@@ -2303,12 +2304,17 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         float c;
         float l;
         
-        if (!_atlc.calc_zo(Zo, v, c, l) && fabs(last_Z0 - Zo) > 0.1)
+        if ((!_atlc.calc_zo(Zo, v, c, l) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
         {
-            log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
-            if (i - begin > 0.001)
+            float pos = i;
+            if (pos > s_len)
             {
-                float dist = (i - begin);
+                pos = s_len;
+            }
+            log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
+            if (pos - begin > 0.001)
+            {
+                float dist = (pos - begin);
                 printf("dist:%f last_v:%f\n", dist, last_v);
                 float td = dist * 1000000 / last_v;
                 
@@ -2352,64 +2358,14 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                 pin++;
                 cir += strbuf;
             }
-            begin = i;
+            begin = pos;
             last_Z0 = Zo;
             last_v = v;
             last_c = c;
             last_l = l;
         }
-        
-    }
-    if (i > s_len)
-    {
-        i = s_len;
-    }
-    if (i - begin >= 0.001)
-    {
-        float dist = (i - begin);
-        printf("dist:%f last_v:%f\n", dist, last_v);
-        float td = dist * 1000000 / last_v;
-        
-        if (td < 0.001)
-        {
-            sr = 0;
-        }
-        
-    #if 0
-        if (td > 0.001)
-        {
-            sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%f TD=%fNS\n", idx++, pin, pin + 1, last_Z0, dist * 1000000 / last_v);
-        }
-        else
-        {
-            sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
-        }
-    #else
-        if (!_ltra_model)
-        {
-            sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                        "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
-                        ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
-                        last_Z0, td,
-                        idx, pin, pin + 1, idx, dist * 0.001,
-                        idx, sr, last_l, last_c
-                        );
-        }
-        else
-        {
-            sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                        "O%d pin%d 0 pin%d 0 ltra%d\n"
-                        ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
-                        last_Z0, td,
-                        idx, pin, pin + 1, idx,
-                        idx, sr, last_l, last_c, dist * 0.001
-                        );
-        }
-        idx++;
-    #endif
-        pin++;
-        cir += strbuf;
-    }
+    };
+    
     cir += ".ends\n";
     sprintf(strbuf, ".subckt %s pin1 pin%d\n", cir_name.c_str(), pin);
     return  strbuf + cir;
