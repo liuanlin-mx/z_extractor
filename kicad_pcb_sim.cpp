@@ -234,9 +234,8 @@ std::uint32_t kicad_pcb_sim::get_net_id(std::string name)
 }
 
 
-bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value)
+bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
-    std::string call;
     std::string sub;
     char buf[512] = {0};
     
@@ -246,8 +245,8 @@ bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<
     
 
     /* 生成子电路参数和调用 */
-    ckt += ".subckt " + _format_net_name(_nets[net_id]) + " ";
-    call += "X" + _format_net_name(_nets[net_id]) + " ";
+    ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
+    call = "X" + _format_net_name(_nets[net_id]) + " ";
     
     for (auto& p: pads)
     {
@@ -337,17 +336,16 @@ bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<
 }
 
 bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
-            std::string& ckt, std::set<std::string>& reference_value)
+            std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
-    std::string call;
     std::string sub;
     std::string tmp;
     fasthenry henry;
     char buf[512] = {0};
     
     //生成子电路参数和调用代码
-    ckt += ".subckt ";
-    call += "X";
+    ckt = ".subckt ";
+    call = "X";
     for (auto& net_id: net_ids)
     {
         ckt += _format_net_name(_nets[net_id]);
@@ -523,9 +521,8 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 
 
 bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
-    std::string call;
     std::string sub;
     char buf[512] = {0};
     
@@ -535,8 +532,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     
 
     /* 生成子电路参数和调用 */
-    ckt += ".subckt " + _format_net_name(_nets[net_id]) + " ";
-    call += "X" + _format_net_name(_nets[net_id]) + " ";
+    ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
+    call = "X" + _format_net_name(_nets[net_id]) + " ";
     
     for (auto& p: pads)
     {
@@ -620,7 +617,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
 
 
 bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
     
     std::list<pad> pads0 = get_pads(net_id0);
@@ -728,7 +725,6 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     cv::waitKey(0);
 #endif
     
-    std::string call;
     std::string sub;
     std::string tmp;
     fasthenry henry;
@@ -736,8 +732,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     std::uint32_t net_ids[2] = {net_id0, net_id1};
     
     //生成子电路参数和调用代码
-    ckt += ".subckt ";
-    call += "X";
+    ckt = ".subckt ";
+    call = "X";
     
     for (auto& net_id: net_ids)
     {

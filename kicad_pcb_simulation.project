@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="kicad_pcb_simulation" Version="11000" InternalType="Console">
+  <VirtualDirectory Name="gui">
+    <File Name="gui/simulation_gui.h"/>
+    <File Name="gui/simulation_gui.cpp"/>
+  </VirtualDirectory>
   <Plugins>
     <Plugin Name="qmake">
       <![CDATA[00010001N0005Debug000000000000]]>
     </Plugin>
   </Plugins>
-  <Description/>
-  <Dependencies/>
-  <VirtualDirectory Name="src">
-    <File Name="kicad_pcb_sim.cpp"/>
-    <File Name="kicad_pcb_sim.h"/>
-    <File Name="atlc.h"/>
-    <File Name="atlc.cpp"/>
+  <VirtualDirectory Name="kicad_pcb_simulation">
     <File Name="fasthenry.h"/>
-    <File Name="fasthenry.cpp"/>
+    <File Name="kicad_pcb_sim.h"/>
     <File Name="make_cir.h"/>
+    <File Name="atlc.cpp"/>
+    <File Name="fasthenry.cpp"/>
+    <File Name="atlc.h"/>
+    <File Name="kicad_pcb_sim.cpp"/>
     <File Name="make_cir.cpp"/>
     <File Name="main.cpp"/>
   </VirtualDirectory>
+  <Description/>
+  <Dependencies/>
   <Settings Type="Executable">
     <GlobalSettings>
       <Compiler Options="" C_Options="" Assembler="">
@@ -29,11 +33,11 @@
       <ResourceCompiler Options=""/>
     </GlobalSettings>
     <Configuration Name="Debug" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-O0;-fopenmp;-Wall" C_Options="-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-g;-O0;-fopenmp;-Wall;$(shell wx-config --cxxflags)" C_Options="-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="."/>
         <IncludePath Value="/usr/include/opencv4"/>
       </Compiler>
-      <Linker Options="-fopenmp" Required="yes">
+      <Linker Options="-fopenmp;$(shell  wx-config --libs)" Required="yes">
         <Library Value="opencv_highgui"/>
         <Library Value="opencv_imgcodecs"/>
         <Library Value="opencv_imgproc"/>
@@ -114,4 +118,6 @@
       </Completion>
     </Configuration>
   </Settings>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
 </CodeLite_Project>

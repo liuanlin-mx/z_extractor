@@ -115,16 +115,16 @@ public:
     std::vector<std::list<kicad_pcb_sim::segment> > get_segments_sort(std::uint32_t net_id);
     std::string get_net_name(std::uint32_t net_id);
     std::uint32_t get_net_id(std::string name);
-    bool gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value);
+    bool gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call);
     
     bool gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
-            std::string& ckt, std::set<std::string>& reference_value);
+            std::string& ckt, std::set<std::string>& reference_value, std::string& call);
     
     bool gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value);
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call);
                         
     bool gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value);
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call);
                         
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
     void dump();
