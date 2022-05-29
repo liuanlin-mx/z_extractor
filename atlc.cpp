@@ -114,13 +114,13 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
         er_str += buf;
     }
     sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-    printf("%s\n", cmd);
+    //printf("%s\n", cmd);
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
     if (fgets(buf, sizeof(buf), fp))
     {
-        printf("%s\n", buf);
+        //printf("%s\n", buf);
         Zo = _read_value(buf, "Zo");
         c = _read_value(buf, "C");
         l = _read_value(buf, "L");
@@ -172,13 +172,13 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
         er_str += buf;
     }
     sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-    printf("%s\n", cmd);
+    //printf("%s\n", cmd);
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
     if (fgets(buf, sizeof(buf), fp))
     {
-        printf("%s\n", buf);
+        //printf("%s\n", buf);
         Zodd = _read_value(buf, "Zodd");
         Zeven = _read_value(buf, "Zeven");
         Zdiff = _read_value(buf, "Zdiff");

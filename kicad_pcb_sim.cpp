@@ -521,7 +521,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 
 
 bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum)
 {
     std::string sub;
     char buf[512] = {0};
@@ -550,7 +550,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
     call += "\n";
-    ckt = call + ckt;
+    //ckt = call + ckt;
     
     /* 构建fasthenry */
     fasthenry henry;
@@ -568,7 +568,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
                             v.drill, v.size);
         }
     }
-    henry.dump();
+    //henry.dump();
     
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
@@ -579,9 +579,9 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         for (auto& s: s_list)
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
-            
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat);
-            
+            float td = 0;
+            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            td_sum += td;
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -816,8 +816,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         for (auto& s: s_list)
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
-            
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat);
+            float td = 0;
+            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
             
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -835,8 +835,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         for (auto& s: s_list)
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
-            
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat);
+            float td = 0;
+            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
             
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -2208,7 +2208,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
     std::string cir;
     float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2311,13 +2311,14 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
             if (pos - begin > 0.001)
             {
                 float dist = (pos - begin);
-                printf("dist:%f last_v:%f\n", dist, last_v);
+                //printf("dist:%f last_v:%f\n", dist, last_v);
                 float td = dist * 1000000 / last_v;
                 
                 if (td < 0.001)
                 {
                     sr = 0;
                 }
+                td_sum += td;
             #if 0
                 if (td >= 0.001)
                 {
@@ -2498,7 +2499,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
         {
             float dist = (end.pos - begin.pos);
-            printf("dist:%f Z0:%f\n", dist, begin.Z0);
+            //printf("dist:%f Z0:%f\n", dist, begin.Z0);
             float td = dist * 1000000 / begin.v;
             
             if (td < 0.001)

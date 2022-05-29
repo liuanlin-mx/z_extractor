@@ -104,7 +104,7 @@ void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r)
         {
             if(fgets(buf, sizeof(buf), fp))
             {
-                printf("%s\n", buf);
+                //printf("%s\n", buf);
             }
             else
             {
@@ -164,7 +164,7 @@ void fasthenry::_call_fasthenry(std::list<std::string> wire_name)
         {
             if(fgets(buf, sizeof(buf), fp))
             {
-                printf("%s\n", buf);
+                //printf("%s\n", buf);
             }
             else
             {
