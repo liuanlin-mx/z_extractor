@@ -23,15 +23,19 @@ public:
     void clean_all();
     /* 坐标是盒子的中心点 */
     void draw_ground(float x, float y, float w, float thickness);
+    void draw_ring_ground(float x, float y, float r, float thickness);
     void draw_wire(float x, float y, float w, float thickness);
+    void draw_ring_wire(float x, float y, float r, float thickness);
     void draw_coupler(float x, float y, float w, float thickness);
     void draw_elec(float x, float y, float w, float thickness, float er = 4.6);
+    void draw_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
     bool calc_zo(float& Zo, float& v, float& c, float& l);
     bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
                         float& Lodd, float& Leven, float& Codd, float& Ceven);
 private:
     std::int32_t _unit2pix(float v) { return round(v * _pix_unit_r);}
     void _draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
+    void _draw_ring(float x, float y, float radius, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
     float _read_value(const char *str, const char *key);
     bool _is_some(cv::Mat& img1, cv::Mat& img2);
     std::string _get_bmp_name();

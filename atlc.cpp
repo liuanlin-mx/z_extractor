@@ -60,6 +60,11 @@ void atlc::clean_all()
     _Ceven = 0;
 }
 
+void atlc::draw_ring_ground(float x, float y, float r, float thickness)
+{
+    _draw_ring(x, y, r, thickness, 0, 255, 0);
+}
+
 void atlc::draw_ground(float x, float y, float w, float thickness)
 {
     _draw(x, y, w, thickness, 0, 255, 0);
@@ -68,6 +73,11 @@ void atlc::draw_ground(float x, float y, float w, float thickness)
 void atlc::draw_wire(float x, float y, float w, float thickness)
 {
     _draw(x, y, w, thickness, 255, 0, 0);
+}
+
+void atlc::draw_ring_wire(float x, float y, float r, float thickness)
+{
+    _draw_ring(x, y, r, thickness, 255, 0, 0);
 }
 
 void atlc::draw_coupler(float x, float y, float w, float thickness)
@@ -80,6 +90,14 @@ void atlc::draw_elec(float x, float y, float w, float thickness, float er)
     _ers.insert(er);
     std::uint16_t uer =  er * 1000;
     _draw(x, y, w, thickness, 0x0f, (uer >> 8) & 0xff, uer & 0xff);
+}
+
+
+void atlc::draw_ring_elec(float x, float y, float r, float thickness, float er)
+{
+    _ers.insert(er);
+    std::uint16_t uer =  er * 1000;
+    _draw_ring(x, y, r, thickness, 0x0f, (uer >> 8) & 0xff, uer & 0xff);
 }
 
 
@@ -211,6 +229,13 @@ void atlc::_draw(float x, float y, float w, float thick, std::uint8_t r, std::ui
     std::int32_t pix_x2 = _unit2pix(x + _c_x - w / 2 + w);
     std::int32_t pix_y2 = _unit2pix(y + _c_y + thick);;
     cv::rectangle(_img, cv::Point(pix_x1, pix_y1), cv::Point(pix_x2 - 1, pix_y2 - 1), cv::Scalar(b, g, r), -1);
+}
+
+void atlc::_draw_ring(float x, float y, float radius, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b)
+{
+    std::int32_t pix_y = _unit2pix(y + _c_y);
+    std::int32_t pix_x = _unit2pix(x + _c_x);
+    cv::circle(_img, cv::Point(pix_x, pix_y), _unit2pix(radius + thick * 0.5), cv::Scalar(b, g, r), _unit2pix(thick));
 }
 
 float atlc::_read_value(const char *str, const char *key)
