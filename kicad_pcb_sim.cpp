@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include <fasthenry.h>
 #include <omp.h>
+#include "atlc.h"
+#include "Z0_calc.h"
 
 #if 0
 #define log_debug(fmt, args...) printf(fmt, ##args)
@@ -29,6 +31,11 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_bottom = 0;
     _pcb_left = 10000.;
     _pcb_right = 0;
+    
+    
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    _Z0_calc1 = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    _Z0_calc_coupled = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -2267,7 +2274,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     {
         fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
     }
-    _atlc.clean_all();
+    _Z0_calc->clean_all();
     
     for (float i = 0; i < s_len + _Z0_setup; i += _Z0_setup)
     {
@@ -2286,13 +2293,13 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     #endif
         
         
-        _atlc.clean();
-        _atlc.set_pix_unit(atlc_pix_unit);
-        _atlc.set_box_size(box_w, box_h);
+        _Z0_calc->clean();
+        _Z0_calc->_Z0_calc(atlc_pix_unit);
+        _Z0_calc->set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
-            _atlc.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
         for (auto& refs: refs_mat)
@@ -2301,11 +2308,11 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
             
             for (auto& g: grounds)
             {
-                _atlc.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
-        _atlc.draw_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
+        _Z0_calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
         
         
         float Zo;
@@ -2313,7 +2320,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         float c;
         float l;
         
-        if ((!_atlc.calc_zo(Zo, v, c, l) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
+        if ((!_Z0_calc->calc_zo(Zo, v, c, l) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
         {
             float pos = i;
             if (pos > s_len)
@@ -2423,7 +2430,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
     {
         fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
     }
-    _atlc.clean_all();
+    _Z0_calc->clean_all();
     
     struct Z0_item
     {
@@ -2457,7 +2464,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         std::int32_t thread_num = omp_get_thread_num();
         atlc& atlc = atlcs[thread_num];
         sprintf(name, "%d.bmp", thread_num);
-        atlc.set_bmp_name(name);
+        atlc.set_tmp_name(name);
         
         Z0_item& item = Z0s[i];
         float pos = item.pos;
@@ -2470,12 +2477,12 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         
         
         atlc.clean();
-        atlc.set_pix_unit(atlc_pix_unit);
+        atlc._Z0_calc(atlc_pix_unit);
         atlc.set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
-            atlc.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            atlc.add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
         for (auto& refs: refs_mat)
@@ -2484,11 +2491,11 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
             
             for (auto& g: grounds)
             {
-                atlc.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                atlc.add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
-        atlc.draw_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
+        atlc.add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
         
         
         float Z0;
@@ -2609,9 +2616,9 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         fasthenry::calc_wire_lr(s0.width, _get_layer_thickness(s0.layer_name), 1000, tmp_l, s0_r);
         fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
     }
-    _atlc.clean_all();
-    _atlc1.clean_all();
-    _atlc_coupled.clean_all();
+    _Z0_calc->clean_all();
+    _Z0_calc1->clean_all();
+    _Z0_calc_coupled->clean_all();
     
     
     struct Z0_item
@@ -2644,24 +2651,24 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         float y_right = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_right);
         
         
-        _atlc.clean();
-        _atlc.set_pix_unit(atlc_pix_unit);
-        _atlc.set_box_size(box_w, box_h);
+        _Z0_calc->clean();
+        _Z0_calc->_Z0_calc(atlc_pix_unit);
+        _Z0_calc->set_box_size(box_w, box_h);
         
-        _atlc1.clean();
-        _atlc1.set_pix_unit(atlc_pix_unit);
-        _atlc1.set_box_size(box_w, box_h);
+        _Z0_calc1->clean();
+        _Z0_calc1->_Z0_calc(atlc_pix_unit);
+        _Z0_calc1->set_box_size(box_w, box_h);
         
-        _atlc_coupled.clean();
-        _atlc_coupled.set_pix_unit(atlc_pix_unit);
-        _atlc_coupled.set_box_size(box_w, box_h);
+        _Z0_calc_coupled->clean();
+        _Z0_calc_coupled->_Z0_calc(atlc_pix_unit);
+        _Z0_calc_coupled->set_box_size(box_w, box_h);
         
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
-            _atlc.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
-            _atlc1.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
-            _atlc_coupled.draw_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            _Z0_calc1->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            _Z0_calc_coupled->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
         for (auto& refs: refs_mat)
@@ -2670,27 +2677,27 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
             
             for (auto& g: grounds)
             {
-                _atlc.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
-                _atlc1.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
-                _atlc_coupled.draw_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                _Z0_calc1->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                _Z0_calc_coupled->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
         if (s0_is_left)
         {
-            _atlc.draw_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _atlc1.draw_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
+            _Z0_calc1->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
             
-            _atlc_coupled.draw_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _atlc_coupled.draw_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc_coupled->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
+            _Z0_calc_coupled->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
         }
         else
         {
-            _atlc.draw_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _atlc1.draw_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
+            _Z0_calc1->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
             
-            _atlc_coupled.draw_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _atlc_coupled.draw_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc_coupled->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
+            _Z0_calc_coupled->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
         }
         
         
@@ -2699,10 +2706,10 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         Z0_item ss_item;
         
         
-        _atlc.calc_zo(s0_item.Z0, s0_item.v, s0_item.c, s0_item.l);
-        _atlc1.calc_zo(s1_item.Z0, s1_item.v, s1_item.c, s1_item.l);
+        _Z0_calc->calc_zo(s0_item.Z0, s0_item.v, s0_item.c, s0_item.l);
+        _Z0_calc1->calc_zo(s1_item.Z0, s1_item.v, s1_item.c, s1_item.l);
         
-        _atlc_coupled.calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.Zdiff, ss_item.Zcomm, ss_item.Lodd, ss_item.Leven, ss_item.Codd, ss_item.Ceven);
+        _Z0_calc_coupled->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.Zdiff, ss_item.Zcomm, ss_item.Lodd, ss_item.Leven, ss_item.Codd, ss_item.Ceven);
         s0_Z0s.push_back(s0_item);
         s1_Z0s.push_back(s1_item);
         ss_Z0s.push_back(ss_item);
@@ -2816,18 +2823,18 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     float sr = 0.;
     
     //atlc_pix_unit = 0.0254;
-    _atlc.clean_all();
-    _atlc.set_pix_unit(atlc_pix_unit);
-    _atlc.set_box_size(box_w, box_h);
+    _Z0_calc->clean_all();
+    _Z0_calc->_Z0_calc(atlc_pix_unit);
+    _Z0_calc->set_box_size(box_w, box_h);
     
     
     float anti_pad = 0.7;
     float er = _get_layer_epsilon_r(start, end);
-    _atlc.draw_ring_elec(0, 0, r, r * 10, er);
-    _atlc.draw_ring_wire(0, 0, r - thickness, thickness);
-    _atlc.draw_ring_ground(0, 0, anti_pad, thickness * 10);
+    _Z0_calc->add_ring_elec(0, 0, r, r * 10, er);
+    _Z0_calc->add_ring_wire(0, 0, r - thickness, thickness);
+    _Z0_calc->add_ring_ground(0, 0, anti_pad, thickness * 10);
         
-    _atlc.calc_zo(Zo, v_, c, l);
+    _Z0_calc->calc_zo(Zo, v_, c, l);
     float dist = _get_layer_distance(start, end);
     printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v_ / 1000000, c, l);
         

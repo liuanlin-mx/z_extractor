@@ -8,7 +8,7 @@
 #include <set>
 #include <math.h>
 #include <opencv2/opencv.hpp>
-#include "atlc.h"
+#include "Z0_calc.h"
 
 class kicad_pcb_sim
 {
@@ -266,9 +266,9 @@ private:
     float _pcb_bottom;
     float _pcb_left;
     float _pcb_right;
-    atlc _atlc;
-    atlc _atlc1;
-    atlc _atlc_coupled;
+    std::shared_ptr<Z0_calc> _Z0_calc;
+    std::shared_ptr<Z0_calc> _Z0_calc1;
+    std::shared_ptr<Z0_calc> _Z0_calc_coupled;
     const float _resistivity = 0.0172;
     
 };

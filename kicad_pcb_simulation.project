@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="kicad_pcb_simulation" Version="11000" InternalType="Console">
-  <VirtualDirectory Name="gui">
-    <File Name="gui/simulation_gui.h"/>
-    <File Name="gui/simulation_gui.cpp"/>
-  </VirtualDirectory>
   <Plugins>
     <Plugin Name="qmake">
       <![CDATA[00010001N0005Debug000000000000]]>
     </Plugin>
   </Plugins>
+  <VirtualDirectory Name="gui">
+    <File Name="gui/simulation_gui.h"/>
+    <File Name="gui/simulation_gui.cpp"/>
+  </VirtualDirectory>
   <VirtualDirectory Name="kicad_pcb_simulation">
+    <File Name="Z0_calc.cpp"/>
+    <File Name="Z0_calc.h"/>
     <File Name="fasthenry.h"/>
     <File Name="kicad_pcb_sim.h"/>
     <File Name="make_cir.h"/>

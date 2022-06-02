@@ -5,32 +5,33 @@
 #include <opencv2/opencv.hpp>
 #include <set>
 
-class atlc
+#include "Z0_calc.h"
+class atlc: public Z0_calc
 {
 public:
     atlc();
     ~atlc();
     
 public:
-    void set_bmp_name(const std::string& bmp_name) { _bmp_name = bmp_name; }
+    virtual void set_tmp_name(const std::string& tmp_name) { _bmp_name = tmp_name; }
     
     /* 1个像素代表的长度 */
-    void set_pix_unit(float unit = 0.035);
+    virtual void set_precision(float unit = 0.035);
     
-    void set_box_size(float w, float h);
+    virtual void set_box_size(float w, float h);
     
-    void clean();
-    void clean_all();
+    virtual void clean();
+    virtual void clean_all();
     /* 坐标是盒子的中心点 */
-    void draw_ground(float x, float y, float w, float thickness);
-    void draw_ring_ground(float x, float y, float r, float thickness);
-    void draw_wire(float x, float y, float w, float thickness);
-    void draw_ring_wire(float x, float y, float r, float thickness);
-    void draw_coupler(float x, float y, float w, float thickness);
-    void draw_elec(float x, float y, float w, float thickness, float er = 4.6);
-    void draw_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
-    bool calc_zo(float& Zo, float& v, float& c, float& l);
-    bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
+    virtual void add_ground(float x, float y, float w, float thickness);
+    virtual void add_ring_ground(float x, float y, float r, float thickness);
+    virtual void add_wire(float x, float y, float w, float thickness);
+    virtual void add_ring_wire(float x, float y, float r, float thickness);
+    virtual void add_coupler(float x, float y, float w, float thickness);
+    virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
+    virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
+    virtual bool calc_zo(float& Zo, float& v, float& c, float& l);
+    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
                         float& Lodd, float& Leven, float& Codd, float& Ceven);
 private:
     std::int32_t _unit2pix(float v) { return round(v * _pix_unit_r);}

@@ -18,7 +18,7 @@ atlc::~atlc()
 {
 }
 
-void atlc::set_pix_unit(float unit)
+void atlc::set_precision(float unit)
 {
     _pix_unit = unit;
     _pix_unit_r = 1.0 / _pix_unit;
@@ -60,32 +60,32 @@ void atlc::clean_all()
     _Ceven = 0;
 }
 
-void atlc::draw_ring_ground(float x, float y, float r, float thickness)
+void atlc::add_ring_ground(float x, float y, float r, float thickness)
 {
     _draw_ring(x, y, r, thickness, 0, 255, 0);
 }
 
-void atlc::draw_ground(float x, float y, float w, float thickness)
+void atlc::add_ground(float x, float y, float w, float thickness)
 {
     _draw(x, y, w, thickness, 0, 255, 0);
 }
 
-void atlc::draw_wire(float x, float y, float w, float thickness)
+void atlc::add_wire(float x, float y, float w, float thickness)
 {
     _draw(x, y, w, thickness, 255, 0, 0);
 }
 
-void atlc::draw_ring_wire(float x, float y, float r, float thickness)
+void atlc::add_ring_wire(float x, float y, float r, float thickness)
 {
     _draw_ring(x, y, r, thickness, 255, 0, 0);
 }
 
-void atlc::draw_coupler(float x, float y, float w, float thickness)
+void atlc::add_coupler(float x, float y, float w, float thickness)
 {
     _draw(x, y, w, thickness, 0, 0, 255);
 }
 
-void atlc::draw_elec(float x, float y, float w, float thickness, float er)
+void atlc::add_elec(float x, float y, float w, float thickness, float er)
 {
     _ers.insert(er);
     std::uint16_t uer =  er * 1000;
@@ -93,7 +93,7 @@ void atlc::draw_elec(float x, float y, float w, float thickness, float er)
 }
 
 
-void atlc::draw_ring_elec(float x, float y, float r, float thickness, float er)
+void atlc::add_ring_elec(float x, float y, float r, float thickness, float er)
 {
     _ers.insert(er);
     std::uint16_t uer =  er * 1000;
