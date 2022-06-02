@@ -550,26 +550,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
     call += "\n";
-    //ckt = call + ckt;
     
-    /* 构建fasthenry */
-    fasthenry henry;
-    for (auto& v: vias)
-    {
-        std::vector<std::string> layers = _get_via_layers(v);
-        for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
-        {
-            const std::string& start = layers[i];
-            const std::string& end = layers[i + 1];
-            std::string name = _get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end);
-            henry.add_via(name.c_str(),
-                            fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(start)),
-                            fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(end)),
-                            v.drill, v.size);
-        }
-    }
-    //henry.dump();
-    
+
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
@@ -601,8 +583,12 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
             std::string name = _get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end);
-            sub += henry.gen_ckt(name.c_str(), ("RL" + name).c_str());
-            sprintf(buf, "X%s %s %s RL%s\n", name.c_str(),
+            
+            float td = 0;
+            sub += _gen_segment_zo_ckt("VIAZ0" + name, v, start, end, refs_mat, td);
+            td_sum += td;
+            
+            sprintf(buf, "X%s %s %s VIAZ0%s\n", name.c_str(),
                                     _pos2net(v.at.x, v.at.y, start).c_str(),
                                     _pos2net(v.at.x, v.at.y, end).c_str(),
                                     name.c_str());
@@ -1913,6 +1899,33 @@ float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_name)
     return 1;
 }
 
+float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
+{
+    float epsilon_r = 0;
+    bool flag = false;
+    
+    for (auto& l: _layers)
+    {
+        if (l.name == layer_start || l.name == layer_end)
+        {
+            if (!flag)
+            {
+                flag = true;
+                continue;
+            }
+            else
+            {
+                return epsilon_r;
+            }
+        }
+        if (flag)
+        {
+            epsilon_r = l.epsilon_r;
+        }
+    }
+    return 1;
+}
+
 float kicad_pcb_sim::_get_board_thickness()
 {
     float dist = 0;
@@ -2783,6 +2796,67 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     sprintf(strbuf, ".subckt %s pin1 pin2  pin3 pin4\n", cir_name.c_str());
     return  strbuf + cir;
 }
+
+
+std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::via& v, const std::string& start, const std::string& end, std::map<std::string, cv::Mat>& refs_mat, float& td)
+{
+    std::string cir;
+    
+    char strbuf[512];
+    float r = v.drill * 0.5;
+    float box_w = v.drill * 10;
+    float box_h = v.drill * 10;
+    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    float thickness = 0.0254 * 1;
+    
+    float Zo;
+    float v_;
+    float c;
+    float l;
+    float sr = 0.;
+    
+    //atlc_pix_unit = 0.0254;
+    _atlc.clean_all();
+    _atlc.set_pix_unit(atlc_pix_unit);
+    _atlc.set_box_size(box_w, box_h);
+    
+    
+    float anti_pad = 0.7;
+    float er = _get_layer_epsilon_r(start, end);
+    _atlc.draw_ring_elec(0, 0, r, r * 10, er);
+    _atlc.draw_ring_wire(0, 0, r - thickness, thickness);
+    _atlc.draw_ring_ground(0, 0, anti_pad, thickness * 10);
+        
+    _atlc.calc_zo(Zo, v_, c, l);
+    float dist = _get_layer_distance(start, end);
+    printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v_ / 1000000, c, l);
+        
+    td = dist * 1000000 / v_;
+    printf("dist:%f v:%f td:%fNS\n", dist, v_, td);
+    
+    cv::waitKey();
+    if (!_ltra_model)
+    {
+        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                    "Y1 pin1 0 pin2 0 ymod1 LEN=%f\n"
+                    ".MODEL ymod1 txl R=%f L=%fnH G=0 C=%fpF length=1\n",
+                    Zo, td,
+                    dist * 0.001,
+                    sr, l, c
+                    );
+    }
+    else
+    {
+        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                    "O1 pin1 0 pin2 0 ltra1\n"
+                    ".MODEL ltra1 LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
+                    Zo, td,
+                    sr, l, c, dist * 0.001
+                    );
+    }
+    return ".subckt " + cir_name + " pin1 pin2\n" + strbuf + ".ends\n";
+}
+
 
 float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
 {

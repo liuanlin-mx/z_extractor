@@ -175,6 +175,7 @@ private:
     float _get_layer_thickness(const std::string& layer_name);
     float _get_layer_z_axis(const std::string& layer_name);
     float _get_layer_epsilon_r(const std::string& layer_name);
+    float _get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end);
     float _get_board_thickness();
     float _get_cu_min_thickness();
     
@@ -202,6 +203,8 @@ private:
     std::string _gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td);
     std::string _gen_segment_zo_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
     std::string _gen_segment_coupled_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat);
+    
+    std::string _gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::via& v, const std::string& start, const std::string& end, std::map<std::string, cv::Mat>& refs_mat, float& td);
     
     /* 计算两点连线倾斜角 */
     float _calc_angle(float x1, float y1, float x2, float y2)
