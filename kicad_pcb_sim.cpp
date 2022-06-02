@@ -2841,7 +2841,6 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     td = dist * 1000000 / v_;
     printf("dist:%f v:%f td:%fNS\n", dist, v_, td);
     
-    cv::waitKey();
     if (!_ltra_model)
     {
         sprintf(strbuf, "***Z0:%f TD:%fNS***\n"

@@ -10,6 +10,8 @@
     <File Name="gui/simulation_gui.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="kicad_pcb_simulation">
+    <File Name="mmtl.h"/>
+    <File Name="mmtl.cpp"/>
     <File Name="Z0_calc.cpp"/>
     <File Name="Z0_calc.h"/>
     <File Name="fasthenry.h"/>
