@@ -10,7 +10,7 @@ class atlc: public Z0_calc
 {
 public:
     atlc();
-    ~atlc();
+    virtual ~atlc();
     
 public:
     virtual void set_tmp_name(const std::string& tmp_name) { _bmp_name = tmp_name; }
@@ -19,6 +19,8 @@ public:
     virtual void set_precision(float unit = 0.035);
     
     virtual void set_box_size(float w, float h);
+    
+    virtual std::uint32_t get_type() { return Z0_calc::Z0_CALC_ATLC; }
     
     virtual void clean();
     virtual void clean_all();
@@ -30,7 +32,7 @@ public:
     virtual void add_coupler(float x, float y, float w, float thickness);
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
     virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
-    virtual bool calc_zo(float& Zo, float& v, float& c, float& l);
+    virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
     virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
                         float& Lodd, float& Leven, float& Codd, float& Ceven);
 private:

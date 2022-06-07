@@ -101,8 +101,9 @@ void atlc::add_ring_elec(float x, float y, float r, float thickness, float er)
 }
 
 
-bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
+bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
 {
+    r = g = 0;
     //cv::namedWindow("img", cv::WINDOW_NORMAL);
     //cv::rectangle(_img, cv::Point(0, 0), cv::Point(_unit2pix(_box_w) - 1, _unit2pix(_box_h) - 1), cv::Scalar(0, 255, 0), 1);
 
@@ -132,7 +133,7 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
         er_str += buf;
     }
     sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-    //printf("%s\n", cmd);
+   // printf("%s\n", cmd);
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
@@ -149,6 +150,7 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l)
         _l = l;
         _v = v;
     
+        //printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
     }
     pclose(fp);
     return false;

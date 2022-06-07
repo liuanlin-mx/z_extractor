@@ -18,7 +18,7 @@
 kicad_pcb_sim::kicad_pcb_sim()
 {
     _Z0_setup = 0.5;
-    _Z0_w_ratio = 15;
+    _Z0_w_ratio = 10;
     _Z0_h_ratio = 100;
     
     _coupled_max_d = 5;
@@ -33,7 +33,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_right = 0;
     
     
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
     _Z0_calc1 = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
     _Z0_calc_coupled = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
@@ -2294,7 +2294,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         
         
         _Z0_calc->clean();
-        _Z0_calc->_Z0_calc(atlc_pix_unit);
+        _Z0_calc->set_precision(atlc_pix_unit);
         _Z0_calc->set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
@@ -2319,8 +2319,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         float v;
         float c;
         float l;
+        float r;
+        float g;
         
-        if ((!_Z0_calc->calc_zo(Zo, v, c, l) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
+        if ((!_Z0_calc->calc_zo(Zo, v, c, l, r, g) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
         {
             float pos = i;
             if (pos > s_len)
@@ -2477,7 +2479,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         
         
         atlc.clean();
-        atlc._Z0_calc(atlc_pix_unit);
+        atlc.set_precision(atlc_pix_unit);
         atlc.set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
@@ -2502,8 +2504,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         float v;
         float c;
         float l;
+        float r;
+        float g;
         
-        atlc.calc_zo(Z0, v, c, l);
+        atlc.calc_zo(Z0, v, c, l, r, g);
         log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
         item.Z0 = Z0;
         item.v = v;
@@ -2636,6 +2640,8 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         float v;
         float c;
         float l;
+        float r;
+        float g;
     };
     std::vector<Z0_item> s0_Z0s;
     std::vector<Z0_item> s1_Z0s;
@@ -2652,15 +2658,15 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         
         
         _Z0_calc->clean();
-        _Z0_calc->_Z0_calc(atlc_pix_unit);
+        _Z0_calc->set_precision(atlc_pix_unit);
         _Z0_calc->set_box_size(box_w, box_h);
         
         _Z0_calc1->clean();
-        _Z0_calc1->_Z0_calc(atlc_pix_unit);
+        _Z0_calc1->set_precision(atlc_pix_unit);
         _Z0_calc1->set_box_size(box_w, box_h);
         
         _Z0_calc_coupled->clean();
-        _Z0_calc_coupled->_Z0_calc(atlc_pix_unit);
+        _Z0_calc_coupled->set_precision(atlc_pix_unit);
         _Z0_calc_coupled->set_box_size(box_w, box_h);
         
         for (auto& l: layers)
@@ -2706,8 +2712,8 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         Z0_item ss_item;
         
         
-        _Z0_calc->calc_zo(s0_item.Z0, s0_item.v, s0_item.c, s0_item.l);
-        _Z0_calc1->calc_zo(s1_item.Z0, s1_item.v, s1_item.c, s1_item.l);
+        _Z0_calc->calc_zo(s0_item.Z0, s0_item.v, s0_item.c, s0_item.l, s0_item.r, s0_item.g);
+        _Z0_calc1->calc_zo(s1_item.Z0, s1_item.v, s1_item.c, s1_item.l, s1_item.r, s1_item.g);
         
         _Z0_calc_coupled->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.Zdiff, ss_item.Zcomm, ss_item.Lodd, ss_item.Leven, ss_item.Codd, ss_item.Ceven);
         s0_Z0s.push_back(s0_item);
@@ -2810,7 +2816,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     std::string cir;
     
     char strbuf[512];
-    float r = v.drill * 0.5;
+    float radius = v.drill * 0.5;
     float box_w = v.drill * 10;
     float box_h = v.drill * 10;
     float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
@@ -2820,21 +2826,24 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     float v_;
     float c;
     float l;
-    float sr = 0.;
+    float r = 0.;
+    float g = 0.;
     
     //atlc_pix_unit = 0.0254;
-    _Z0_calc->clean_all();
-    _Z0_calc->_Z0_calc(atlc_pix_unit);
-    _Z0_calc->set_box_size(box_w, box_h);
+    
+    atlc atlc_;
+    atlc_.clean_all();
+    atlc_.set_precision(atlc_pix_unit);
+    atlc_.set_box_size(box_w, box_h);
     
     
     float anti_pad = 0.7;
     float er = _get_layer_epsilon_r(start, end);
-    _Z0_calc->add_ring_elec(0, 0, r, r * 10, er);
-    _Z0_calc->add_ring_wire(0, 0, r - thickness, thickness);
-    _Z0_calc->add_ring_ground(0, 0, anti_pad, thickness * 10);
+    atlc_.add_ring_elec(0, 0, radius, radius * 10, er);
+    atlc_.add_ring_wire(0, 0, radius - thickness, thickness);
+    atlc_.add_ring_ground(0, 0, anti_pad, thickness * 10);
         
-    _Z0_calc->calc_zo(Zo, v_, c, l);
+    atlc_.calc_zo(Zo, v_, c, l, r, g);
     float dist = _get_layer_distance(start, end);
     printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v_ / 1000000, c, l);
         
@@ -2848,7 +2857,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                     ".MODEL ymod1 txl R=%f L=%fnH G=0 C=%fpF length=1\n",
                     Zo, td,
                     dist * 0.001,
-                    sr, l, c
+                    r, l, c
                     );
     }
     else
@@ -2857,7 +2866,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                     "O1 pin1 0 pin2 0 ltra1\n"
                     ".MODEL ltra1 LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
                     Zo, td,
-                    sr, l, c, dist * 0.001
+                    r, l, c, dist * 0.001
                     );
     }
     return ".subckt " + cir_name + " pin1 pin2\n" + strbuf + ".ends\n";

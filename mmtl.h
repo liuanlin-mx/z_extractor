@@ -1,39 +1,74 @@
-#ifndef __ATLC_H__
-#define __ATLC_H__
+#ifndef __MMTL_H__
+#define __MMTL_H__
 
 #include <cstdint>
+#include <map>
 #include "Z0_calc.h"
 
 class mmtl: public Z0_calc
 {
+private:
+
+    enum
+    {
+        ITEM_TYPE_ELEC = 0,
+        ITEM_TYPE_COND,
+        ITEM_TYPE_GND,
+    };
+    
+    struct item
+    {
+        float type;
+        float x;
+        float y;
+        float w;
+        float h;
+        
+        float er;
+        float conductivity;
+    };
+    
 public:
     mmtl();
-    ~mmtl();
+    virtual ~mmtl();
     
 public:
-    virtual void set_tmp_name(const std::string& tmp_name) {}
+    virtual void set_tmp_name(const std::string& tmp_name) { _tmp_name = tmp_name; }
     
-    /* 1个像素代表的长度 */
     virtual void set_precision(float unit = 0.035);
     
     virtual void set_box_size(float w, float h);
     
+    virtual std::uint32_t get_type() { return Z0_calc::Z0_CALC_MMTL; }
+    
     virtual void clean();
     virtual void clean_all();
-    /* 坐标是盒子的中心点 */
+    
     virtual void add_ground(float x, float y, float w, float thickness);
-    virtual void add_ring_ground(float x, float y, float r, float thickness);
     virtual void add_wire(float x, float y, float w, float thickness);
-    virtual void add_ring_wire(float x, float y, float r, float thickness);
     virtual void add_coupler(float x, float y, float w, float thickness);
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
-    virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
-    virtual bool calc_zo(float& Zo, float& v, float& c, float& l);
+    virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
     virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
                         float& Lodd, float& Leven, float& Codd, float& Ceven);
                         
 private:
+    
+    void _add_ground(float x, float y, float w, float thickness);
+    void _add_wire(float x, float y, float w, float thickness);
+    void _add_elec(float x, float y, float w, float thickness, float er = 4.6);
+    
+    void _build();
+    void _read_value(float & Z0, float & v, float & c, float & l, float& r, float& g);
+    
+private:
+
+    std::string _tmp_name;
     std::string _xsctn;
+    std::uint32_t _cond_id;
+    std::uint32_t _gnd_id;
+    std::uint32_t _elec_id;
+    std::multimap<float, item> _map;
 };
 
 #endif
