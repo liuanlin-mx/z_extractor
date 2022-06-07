@@ -33,7 +33,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_right = 0;
     
     
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
     _Z0_calc1 = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
     _Z0_calc_coupled = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }

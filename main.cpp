@@ -9,25 +9,9 @@
 #include "gui/simulation_gui.h"
 #include <wx/image.h>
 
-class MainApp : public wxApp
-{
-public:
-    MainApp() {}
-    virtual ~MainApp() {}
 
-    virtual bool OnInit() {
-        // Add the common image handlers
-        wxImage::AddHandler( new wxPNGHandler );
-        wxImage::AddHandler( new wxJPEGHandler );
 
-        simulation_gui *main_frame = new simulation_gui(NULL);
-        SetTopWindow(main_frame);
-        return GetTopWindow()->Show();
-    }
-};
 
-//DECLARE_APP(MainApp)
-//IMPLEMENT_APP(MainApp)
 
 
 static void _parse_net(const char *str, std::list<std::string>& nets)
@@ -43,15 +27,34 @@ static void _parse_net(const char *str, std::list<std::string>& nets)
     }
 }
 
+static void _parse_coupled_net(const char *str, std::list<std::pair<std::string, std::string> >& coupled_nets)
+{
+    std::list<std::string> nets;
+    _parse_net(str, nets);
+    std::string tmp;
+    for (auto& net: nets)
+    {
+        size_t pos = net.find(":");
+        if (pos != net.npos)
+        {
+            std::string s1 = net.substr(0, pos);
+            std::string s2 = net.substr(pos + 1);
+            coupled_nets.push_back(std::pair<std::string, std::string>(s1, s2));
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     kicad_pcb_sim pcb;
     static char buf[16 * 1024 * 1024];
     std::list<std::string> nets;
+    std::list<std::pair<std::string, std::string> > coupled_nets;
     std::list<std::string> refs;
     const char *pcb_file = NULL;
     bool tl = false;
     const char *oname = NULL;
+    float v_ratio = 0.7;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -68,6 +71,10 @@ int main(int argc, char **argv)
         {
             _parse_net(arg_next, refs);
         }
+        else if (std::string(arg) == "-coupled" && i < argc)
+        {
+            _parse_coupled_net(arg_next, coupled_nets);
+        }
         else if (std::string(arg) == "-pcb" && i < argc)
         {
             pcb_file = arg_next;
@@ -80,6 +87,10 @@ int main(int argc, char **argv)
         {
             tl = true;
         }
+        else if (std::string(arg) == "-v_ratio" && i < argc)
+        {
+            v_ratio = atof(arg_next);
+        }
     }
     
     for (auto& net: nets)
@@ -87,7 +98,7 @@ int main(int argc, char **argv)
         printf("%s\n", net.c_str());
     }
     
-    if (pcb_file == NULL || nets.empty() || (tl == true && refs.empty()))
+    if (pcb_file == NULL || (nets.empty() && coupled_nets.empty()) || (tl == true && refs.empty()))
     {
         return 0;
     }
@@ -141,11 +152,33 @@ int main(int argc, char **argv)
             printf("ckt:%s\n", ckt.c_str());
             fwrite(ckt.c_str(), 1, ckt.length(), spice_lib_fp);
             char str[4096] = {0};
-            float c = 299792458000;
+            float c = 299792458000 * v_ratio;
             float len = c * (td / 1000000000.);
             sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", net.c_str(), td, len, len / 0.0254);
             fwrite(str, 1, strlen(str), info_fp);
         }
+        
+        for (const auto& coupled: coupled_nets)
+        {
+            printf("-------------%s %s\n", coupled.first.c_str(), coupled.second.c_str());
+            std::string ckt;
+            std::string call;
+            std::set<std::string> reference_value;
+            //float td = 0;
+            
+            pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()), v_refs, ckt, reference_value, call);
+    
+            printf("ckt:%s\n", ckt.c_str());
+            fwrite(ckt.c_str(), 1, ckt.length(), spice_lib_fp);
+            
+            //char str[4096] = {0};
+            //float c = 299792458000 * v_ratio;
+            //float len = c * (td / 1000000000.);
+            //sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", coupled.first.c_str(), td, len, len / 0.0254);
+            //sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", coupled.second.c_str(), td, len, len / 0.0254);
+            //fwrite(str, 1, strlen(str), info_fp);
+        }
+        
     }
     
     fclose(spice_lib_fp);
