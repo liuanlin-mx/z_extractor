@@ -267,8 +267,8 @@ private:
     float _pcb_left;
     float _pcb_right;
     std::shared_ptr<Z0_calc> _Z0_calc;
-    std::shared_ptr<Z0_calc> _Z0_calc1;
-    std::shared_ptr<Z0_calc> _Z0_calc_coupled;
+    //std::shared_ptr<Z0_calc> _Z0_calc1;
+    //std::shared_ptr<Z0_calc> _Z0_calc_coupled;
     const float _resistivity = 0.0172;
     
 };

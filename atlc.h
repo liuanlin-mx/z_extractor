@@ -33,8 +33,8 @@ public:
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
     virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
     virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
-    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
-                        float& Lodd, float& Leven, float& Codd, float& Ceven);
+    
+    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
 private:
     std::int32_t _unit2pix(float v) { return round(v * _pix_unit_r);}
     void _draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
@@ -43,6 +43,8 @@ private:
     bool _is_some(cv::Mat& img1, cv::Mat& img2);
     std::string _get_bmp_name();
     
+    
+    void _calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g);
 private:
     std::string _bmp_name;
     float _pix_unit;
@@ -63,13 +65,9 @@ private:
     
     float _Zodd;
     float _Zeven;
-    float _Zdiff;
-    float _Zcomm;
     
-    float _Lodd;
-    float _Leven;
-    float _Codd;
-    float _Ceven;
+    float _c_matrix[2][2];
+    float _l_matrix[2][2];
 };
 
 #endif

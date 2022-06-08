@@ -51,13 +51,7 @@ void atlc::clean_all()
     
     _Zodd = 0;
     _Zeven = 0;
-    _Zdiff = 0;
-    _Zcomm = 0;
     
-    _Lodd = 0;
-    _Leven = 0;
-    _Codd = 0;
-    _Ceven = 0;
 }
 
 void atlc::add_ring_ground(float x, float y, float r, float thickness)
@@ -110,7 +104,6 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
     cv::rectangle(_img, cv::Point(0, _img.rows - 1), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, 0), cv::Scalar(0, 255, 0), 1);
 
-    cv::imwrite(_get_bmp_name(), _img);
     //cv::imshow(_get_bmp_name(), _img);
     //cv::waitKey(10);
     
@@ -122,66 +115,105 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
         v = _v;
         return true;
     }
+    cv::imwrite(_get_bmp_name(), _img);
     _last_img = _img;
-    char cmd[512] = {0};
-    std::string er_str;
-    for (auto er: _ers)
-    {
-        char buf[32] = {0};
-        std::uint16_t uer = er * 1000;
-        sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
-        er_str += buf;
-    }
-    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-    //printf("%s\n", cmd);
     
-    char buf[1024] = {0};
-    FILE *fp = popen(cmd, "r");
-    if (fgets(buf, sizeof(buf), fp))
-    {
-        //printf("%s\n", buf);
-        Zo = _read_value(buf, "Zo");
-        c = _read_value(buf, "C");
-        l = _read_value(buf, "L");
-        v = _read_value(buf, "v");
-    
-        _Zo = Zo;
-        _c = c;
-        _l = l;
-        _v = v;
-    
-        //printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
-    }
-    pclose(fp);
+    _calc_zo(_img, Zo, v, c, l, r, g);
     return false;
 }
 
-bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm,
-                        float& Lodd, float& Leven, float& Codd, float& Ceven)
+bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
 {
-    //cv::rectangle(_img, cv::Point(0, _img.rows - 1), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
-    //cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, 0), cv::Scalar(0, 255, 0), 1);
-
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     
-    cv::imwrite(_get_bmp_name(), _img);
-    //cv::imshow(_get_bmp_name(), _img);
-    //cv::waitKey(10);
+    
+    float z1;
+    float v1;
+    float c1;
+    float l1;
+    float r1;
+    float g1;
+    
+    float z2;
+    float v2;
+    float c2;
+    float l2;
+    float r2;
+    float g2;
+    
+    float Lodd;
+    float Leven;
+    float Codd;
+    float Ceven;
     
     if (_is_some(_last_img, _img))
     {
         Zodd = _Zodd;
         Zeven = _Zeven;
-        Zdiff = _Zdiff;
-        Zcomm = _Zcomm;
         
-        Lodd = _Lodd;
-        Leven = _Leven;
-        Codd = _Codd;
-        Ceven = _Ceven;
+        memcpy(c_matrix, _c_matrix, sizeof(_c_matrix));
+        memcpy(l_matrix, _l_matrix, sizeof(_l_matrix));
         return true;
     }
+    
     _last_img = _img;
+    cv::Mat img = _img.clone();
+    for (std::int32_t i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
+            if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
+            {
+                pix[0] = pix[1] = pix[2] = 255;
+            }
+        }
+    }
+    
+    
+    cv::imwrite(_get_bmp_name(), img);
+    //cv::imshow(_get_bmp_name(), img);
+    _calc_zo(img, z1, v1, c1, l1, r1, g1);
+    
+    //printf("z1:%f, v1:%f, c1:%f, l1:%f, r1:%f, g1:%f\n", z1, v1, c1, l1, r1, g1);
+    //cv::waitKey();
+    
+    
+    img = _img.clone();
+    for (std::int32_t i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
+            if (pix[0] == 0 && pix[1] == 0 && pix[2] == 255)
+            {
+                pix[0] = pix[1] = pix[2] = 255;
+            }
+            else if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
+            {
+                pix[0] = 0;
+                pix[1] = 0;
+                pix[2] = 255;
+            }
+        }
+    }
+    
+    
+    cv::imwrite(_get_bmp_name(), img);
+    //cv::imshow(_get_bmp_name(), img);
+    _calc_zo(img, z2, v2, c2, l2, r2, g2);
+    
+    //printf("z2:%f, v2:%f, c2:%f, l2:%f, r2:%f, g2:%f\n", z2, v2, c2, l2, r2, g2);
+    
+    
+    
+    //cv::waitKey();
+    
+    
+    
+    cv::imwrite(_get_bmp_name(), _img);
+    //cv::imshow(_get_bmp_name(), _img);
+    
     char cmd[512] = {0};
     std::string er_str;
     for (auto er: _ers)
@@ -198,11 +230,8 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
     FILE *fp = popen(cmd, "r");
     if (fgets(buf, sizeof(buf), fp))
     {
-        //printf("%s\n", buf);
         Zodd = _read_value(buf, "Zodd");
         Zeven = _read_value(buf, "Zeven");
-        Zdiff = _read_value(buf, "Zdiff");
-        Zcomm = _read_value(buf, "Zcomm");
         
         Lodd = _read_value(buf, "Lodd");
         Leven = _read_value(buf, "Leven");
@@ -211,16 +240,27 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
     
         _Zodd = Zodd;
         _Zeven = Zeven;
-        _Zdiff = Zdiff;
-        _Zcomm = Zcomm;
         
-        _Lodd = Lodd;
-        _Leven = Leven;
-        _Codd = Codd;
-        _Ceven = Ceven;
-    
     }
     pclose(fp);
+    
+    c_matrix[0][0] = c1;
+    c_matrix[0][1] = (Ceven - Codd) * 0.5;
+    c_matrix[1][0] = (Ceven - Codd) * 0.5;
+    c_matrix[1][1] = c2;
+    
+    l_matrix[0][0] = l1;
+    l_matrix[0][1] = (Leven - Lodd) * 0.5;
+    l_matrix[1][0] = (Leven - Lodd) * 0.5;
+    l_matrix[1][1] = l2;
+    
+    memcpy(_c_matrix, c_matrix, sizeof(_c_matrix));
+    memcpy(_l_matrix, l_matrix, sizeof(_l_matrix));
+    
+    //printf("Zodd:%f Zeven:%f %f \n", Zodd, Zeven, sqrt(l1/c1));
+    
+    //cv::waitKey();
+    
     return false;
 }
 
@@ -278,4 +318,43 @@ bool atlc::_is_some(cv::Mat& img1, cv::Mat& img2)
 std::string atlc::_get_bmp_name()
 {
     return _bmp_name;
+}
+
+
+
+void atlc::_calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g)
+{
+    
+    cv::imwrite(_get_bmp_name(), img);
+    
+    char cmd[512] = {0};
+    std::string er_str;
+    for (auto er: _ers)
+    {
+        char buf[32] = {0};
+        std::uint16_t uer = er * 1000;
+        sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
+        er_str += buf;
+    }
+    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
+    printf("%s\n", cmd);
+    
+    char buf[1024] = {0};
+    FILE *fp = popen(cmd, "r");
+    if (fgets(buf, sizeof(buf), fp))
+    {
+        //printf("%s\n", buf);
+        Zo = _read_value(buf, "Zo");
+        c = _read_value(buf, "C");
+        l = _read_value(buf, "L");
+        v = _read_value(buf, "v");
+    
+        _Zo = Zo;
+        _c = c;
+        _l = l;
+        _v = v;
+    
+        printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
+    }
+    pclose(fp);
 }

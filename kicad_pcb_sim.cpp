@@ -34,8 +34,6 @@ kicad_pcb_sim::kicad_pcb_sim()
     
     
     _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
-    _Z0_calc1 = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
-    _Z0_calc_coupled = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -2621,30 +2619,19 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
     }
     _Z0_calc->clean_all();
-    _Z0_calc1->clean_all();
-    _Z0_calc_coupled->clean_all();
     
     
     struct Z0_item
     {
-        float Lodd;
-        float Leven;
-        float Codd;
-        float Ceven;
+        float c_matrix[2][2];
+        float l_matrix[2][2];
+        float r_matrix[2][2];
+        float g_matrix[2][2];
     
         float Zodd;
         float Zeven;
-        float Zdiff;
-        float Zcomm;
-        float Z0;
-        float v;
-        float c;
-        float l;
-        float r;
-        float g;
     };
-    std::vector<Z0_item> s0_Z0s;
-    std::vector<Z0_item> s1_Z0s;
+    
     std::vector<Z0_item> ss_Z0s;
     
     for (float i = 0; i < ss_len; i += _Z0_setup)
@@ -2661,20 +2648,11 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         _Z0_calc->set_precision(atlc_pix_unit);
         _Z0_calc->set_box_size(box_w, box_h);
         
-        _Z0_calc1->clean();
-        _Z0_calc1->set_precision(atlc_pix_unit);
-        _Z0_calc1->set_box_size(box_w, box_h);
-        
-        _Z0_calc_coupled->clean();
-        _Z0_calc_coupled->set_precision(atlc_pix_unit);
-        _Z0_calc_coupled->set_box_size(box_w, box_h);
         
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
             _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
-            _Z0_calc1->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
-            _Z0_calc_coupled->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
         for (auto& refs: refs_mat)
@@ -2684,112 +2662,67 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
             for (auto& g: grounds)
             {
                 _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
-                _Z0_calc1->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
-                _Z0_calc_coupled->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
         if (s0_is_left)
         {
             _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc1->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
-            
-            _Z0_calc_coupled->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc_coupled->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
         }
         else
         {
             _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc1->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
-            
-            _Z0_calc_coupled->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc_coupled->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
         }
         
         
-        Z0_item s0_item;
-        Z0_item s1_item;
         Z0_item ss_item;
         
-        
-        _Z0_calc->calc_zo(s0_item.Z0, s0_item.v, s0_item.c, s0_item.l, s0_item.r, s0_item.g);
-        _Z0_calc1->calc_zo(s1_item.Z0, s1_item.v, s1_item.c, s1_item.l, s1_item.r, s1_item.g);
-        
-        _Z0_calc_coupled->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.Zdiff, ss_item.Zcomm, ss_item.Lodd, ss_item.Leven, ss_item.Codd, ss_item.Ceven);
-        s0_Z0s.push_back(s0_item);
-        s1_Z0s.push_back(s1_item);
+        _Z0_calc->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.c_matrix, ss_item.l_matrix, ss_item.r_matrix, ss_item.g_matrix);
         ss_Z0s.push_back(ss_item);
     }
     
-    float ss_Zodd = 0;
-    float ss_Zeven = 0;
-    float ss_Zdiff = 0;
-    float ss_Zcomm = 0;
-    float ss_Lodd = 0;
-    float ss_Leven = 0;
-    float ss_Codd = 0;
-    float ss_Ceven = 0;
+    
+    float c_matrix[2][2] = {0, 0, 0, 0};
+    float l_matrix[2][2] = {0, 0, 0, 0};
+    float r_matrix[2][2] = {0, 0, 0, 0};
+    float g_matrix[2][2] = {0, 0, 0, 0};
+        
     
     for (auto& item: ss_Z0s)
     {
-        ss_Zodd += item.Zodd;
-        ss_Zeven += item.Zeven;
-        ss_Zdiff += item.Zdiff;
-        ss_Zcomm += item.Zcomm;
-        
-        ss_Lodd += item.Lodd;
-        ss_Leven += item.Leven;
-        ss_Codd += item.Codd;
-        ss_Ceven += item.Ceven;
+        for (std::int32_t i = 0; i < 2; i++)
+        {
+            for (std::int32_t j = 0; j < 2; j++)
+            {
+                c_matrix[i][j] += item.c_matrix[i][j];
+                l_matrix[i][j] += item.l_matrix[i][j];
+                r_matrix[i][j] += item.r_matrix[i][j];
+                g_matrix[i][j] += item.g_matrix[i][j];
+            }
+        }
     }
     
-    ss_Zodd = ss_Zodd / ss_Z0s.size();
-    ss_Zeven = ss_Zeven / ss_Z0s.size();
-    ss_Zdiff = ss_Zdiff / ss_Z0s.size();
-    ss_Zcomm = ss_Zcomm / ss_Z0s.size();
-    
-    ss_Lodd = ss_Lodd / ss_Z0s.size();
-    ss_Leven = ss_Leven / ss_Z0s.size();
-    ss_Codd = ss_Codd / ss_Z0s.size();
-    ss_Ceven = ss_Ceven / ss_Z0s.size();
-    
-    
-    
-    float s0_Z0 = 0;
-    float s0_v = 0;
-    float s0_c = 0;
-    float s0_l = 0;
-    
-    for (auto& item: s0_Z0s)
+    for (std::int32_t i = 0; i < 2; i++)
     {
-        s0_Z0 += item.Z0;
-        s0_v += item.v;
-        s0_c += item.c;
-        s0_l += item.l;
+        for (std::int32_t j = 0; j < 2; j++)
+        {
+            c_matrix[i][j] = c_matrix[i][j] / ss_Z0s.size();
+            l_matrix[i][j] = l_matrix[i][j] / ss_Z0s.size();
+            r_matrix[i][j] = r_matrix[i][j] / ss_Z0s.size();
+            g_matrix[i][j] = g_matrix[i][j] / ss_Z0s.size();
+        }
     }
     
-    s0_Z0 = s0_Z0 / s0_Z0s.size();
-    s0_v = s0_v / s0_Z0s.size();
-    s0_c = s0_c / s0_Z0s.size();
-    s0_l = s0_l / s0_Z0s.size();
+    float Zodd = sqrt((l_matrix[0][0] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
+                + sqrt((l_matrix[1][1] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
+    Zodd = Zodd * 0.5;
     
-    float s1_Z0 = 0;
-    float s1_v = 0;
-    float s1_c = 0;
-    float s1_l = 0;
-    
-    for (auto& item: s1_Z0s)
-    {
-        s1_Z0 += item.Z0;
-        s1_v += item.v;
-        s1_c += item.c;
-        s1_l += item.l;
-    }
-    
-    s1_Z0 = s1_Z0 / s1_Z0s.size();
-    s1_v = s1_v / s1_Z0s.size();
-    s1_c = s1_c / s1_Z0s.size();
-    s1_l = s1_l / s1_Z0s.size();
+    float Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
+                + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
+    Zeven = Zeven * 0.5;
+
 
     sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
@@ -2798,11 +2731,11 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
                     "+L=%fnH %fnH %fnH\n"
                     "+G=0 0 0\n"
                     "+C=%fpF %fpF %fpF\n",
-                    ss_Zodd, ss_Zeven, ss_Zdiff, ss_Zcomm,
+                    Zodd, Zeven, Zodd * 2, Zeven * 0.5,
                     ss_len * 0.001,
                     s0_r, s1_r,
-                    s0_l, (ss_Leven - ss_Lodd) / 2, s1_l,
-                    s0_c, (ss_Ceven - ss_Codd) / 2, s1_c);
+                    l_matrix[0][0], (l_matrix[0][1] + l_matrix[1][0]) * 0.5, l_matrix[1][1],
+                    c_matrix[0][0], (c_matrix[0][1] + c_matrix[1][0]) * 0.5, c_matrix[1][1]);
     cir += strbuf;
     
     cir += ".ends\n";

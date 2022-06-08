@@ -156,7 +156,7 @@ void mmtl::_add_ground(float x, float y, float w, float thickness)
     sprintf(buf, "-width %f \\\n", w);
     _xsctn += buf;
     _xsctn += "-pitch 1 \\\n";
-    _xsctn += "-conductivity 3e+07siemens/meter \\\n";
+    _xsctn += "-conductivity 5e+07siemens/meter \\\n";
     
     sprintf(buf, "-height %f \\\n", thickness);
     _xsctn += buf;
@@ -180,7 +180,7 @@ void mmtl::_add_wire(float x, float y, float w, float thickness)
     sprintf(buf, "-width %f \\\n", w);
     _xsctn += buf;
     _xsctn += "-pitch 1 \\\n";
-    _xsctn += "-conductivity 3e+07siemens/meter \\\n";
+    _xsctn += "-conductivity 5e+07siemens/meter \\\n";
     
     sprintf(buf, "-height %f \\\n", thickness);
     _xsctn += buf;

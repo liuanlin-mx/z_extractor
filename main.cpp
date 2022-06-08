@@ -8,7 +8,7 @@
 #include <wx/event.h>
 #include "gui/simulation_gui.h"
 #include <wx/image.h>
-
+#include "atlc.h"
 
 
 
@@ -43,6 +43,7 @@ static void _parse_coupled_net(const char *str, std::list<std::pair<std::string,
         }
     }
 }
+
 
 int main(int argc, char **argv)
 {
