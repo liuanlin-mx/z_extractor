@@ -132,8 +132,8 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-   // printf("%s\n", cmd);
+    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
+    //printf("%s\n", cmd);
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
@@ -165,8 +165,8 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     
     cv::imwrite(_get_bmp_name(), _img);
-    cv::imshow(_get_bmp_name(), _img);
-    cv::waitKey(10);
+    //cv::imshow(_get_bmp_name(), _img);
+    //cv::waitKey(10);
     
     if (_is_some(_last_img, _img))
     {
@@ -191,7 +191,7 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float& Zdiff, float& Zcomm
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -r 1.6 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
+    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
     //printf("%s\n", cmd);
     
     char buf[1024] = {0};
