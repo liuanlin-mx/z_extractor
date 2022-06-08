@@ -139,12 +139,49 @@ bool mmtl::calc_zo(float & Z0, float & v, float & c, float & l, float& r, float&
     return false;
 }
 
-bool mmtl::calc_coupled_zo(float & Zodd, float & Zeven, float & Zdiff, float & Zcomm, float & Lodd, float & Leven, float & Codd, float & Ceven)
+
+bool mmtl::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
 {
+    char cmd[512] = {0};
+    char buf[1024] = {0};
+    
+    _build();
+    sprintf(buf, "%s.xsctn", _tmp_name.c_str());
+    FILE *fp = fopen(buf, "wb");
+    if (fp)
+    {
+        fwrite(_xsctn.c_str(), 1, _xsctn.length(), fp);
+        fflush(fp);
+        fclose(fp);
+    }
+    
+    
+    sprintf(cmd, "mmtl_bem %s", _tmp_name.c_str());
+    
+    FILE *pfp = popen(cmd, "r");
+    while (fgets(buf, sizeof(buf), pfp))
+    {
+    }
+    pclose(pfp);
+    _read_value(Zodd, Zeven, c_matrix, l_matrix, r_matrix, g_matrix);
+    
+#if 0
+    printf("C: ");
+    for (int i = 0; i < 2;i++)
+    for (std::int32_t j = 0; j < 2; j++)
+    {
+        printf("%f ", c_matrix[i][j]);
+    }
+    printf("\nL: ");
+    for (int i = 0; i < 2;i++)
+    for (std::int32_t j = 0; j < 2; j++)
+    {
+        printf("%f ", l_matrix[i][j]);
+    }
+#endif
+
     return false;
 }
-
-
 
 
 void mmtl::_add_ground(float x, float y, float w, float thickness)
@@ -319,4 +356,83 @@ void mmtl::_read_value(float & Z0, float & v, float & c, float & l, float& r, fl
         r = atof(s);
     }
     g = 0;
+}
+
+
+void mmtl::_read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
+{
+    
+    char buf[4096];
+    
+    sprintf(buf, "%s.result", _tmp_name.c_str());
+    FILE *fp = fopen(buf, "rb");
+    if (fp == NULL)
+    {
+        return;
+    }
+    
+    
+    int rlen = fread(buf, 1, sizeof(buf) - 1, fp);
+    buf[rlen] = 0;
+    fclose(fp);
+    
+    char *s = strstr(buf, "B( ::cond1R1 , ::cond1R1 )=  ");
+    if (s)
+    {
+        s += strlen("B( ::cond1R1 , ::cond1R1 )=  ");
+        c_matrix[1][1] = atof(s) * 1e12;
+    }
+    
+    s = strstr(buf, "B( ::cond1R1 , ::cond0R0 )= ");
+    if (s)
+    {
+        s += strlen("B( ::cond1R1 , ::cond0R0 )= ");
+        c_matrix[1][0] = atof(s) * 1e12;
+    }
+    
+    s = strstr(buf, "B( ::cond0R0 , ::cond1R1 )= ");
+    if (s)
+    {
+        s += strlen("B( ::cond0R0 , ::cond1R1 )= ");
+        c_matrix[0][1] = atof(s) * 1e12;
+    }
+    
+    s = strstr(buf, "B( ::cond0R0 , ::cond0R0 )=  ");
+    if (s)
+    {
+        s += strlen("B( ::cond0R0 , ::cond0R0 )=  ");
+        c_matrix[0][0] = atof(s) * 1e12;
+    }
+    
+    
+    
+    
+    s = strstr(buf, "L( ::cond1R1 , ::cond1R1 )=  ");
+    if (s)
+    {
+        s += strlen("L( ::cond1R1 , ::cond1R1 )=  ");
+        l_matrix[1][1] = atof(s) * 1e9;
+    }
+    
+    s = strstr(buf, "L( ::cond1R1 , ::cond0R0 )=  ");
+    if (s)
+    {
+        s += strlen("L( ::cond1R1 , ::cond0R0 )=  ");
+        l_matrix[1][0] = atof(s) * 1e9;
+    }
+    
+    s = strstr(buf, "L( ::cond0R0 , ::cond1R1 )=  ");
+    if (s)
+    {
+        s += strlen("L( ::cond0R0 , ::cond1R1 )=  ");
+        l_matrix[0][1] = atof(s) * 1e9;
+    }
+    
+    
+    s = strstr(buf, "L( ::cond0R0 , ::cond0R0 )=  ");
+    if (s)
+    {
+        s += strlen("L( ::cond0R0 , ::cond0R0 )=  ");
+        l_matrix[0][0] = atof(s) * 1e9;
+    }
 }
