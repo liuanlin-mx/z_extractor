@@ -125,7 +125,9 @@ public:
                         
     bool gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call);
-                        
+    void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
+    void set_coupled_min_len(float len) { _coupled_min_len = len; }
+    
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
     void dump();
     

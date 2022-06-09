@@ -57,6 +57,9 @@ int main(int argc, char **argv)
     const char *oname = NULL;
     float v_ratio = 0.7;
     
+    float coupled_max_d = 2;
+    float coupled_min_len = 0.2;
+    
     for (std::int32_t i = 1; i < argc; i++)
     {
         const char *arg = argv[i];
@@ -92,6 +95,14 @@ int main(int argc, char **argv)
         {
             v_ratio = atof(arg_next);
         }
+        else if (std::string(arg) == "-coupled_max_d" && i < argc)
+        {
+            coupled_max_d = atof(arg_next);
+        }
+        else if (std::string(arg) == "-coupled_min_len" && i < argc)
+        {
+            coupled_min_len = atof(arg_next);
+        }
     }
     
     for (auto& net: nets)
@@ -114,19 +125,21 @@ int main(int argc, char **argv)
     fclose(fp);
     
     pcb.parse(buf);
+    pcb.set_coupled_max_d(coupled_max_d);
+    pcb.set_coupled_min_len(coupled_min_len);
     
     if (oname == NULL)
     {
-        oname = "test";
+        oname = "out";
     }
     
-    FILE *spice_lib_fp = fopen("test.lib", "wb");
+    FILE *spice_lib_fp = fopen("out.lib", "wb");
     if (spice_lib_fp == NULL)
     {
         return 0;
     }
     
-    FILE *info_fp = fopen("info.txt", "wb");
+    FILE *info_fp = fopen("out.info", "wb");
     if (info_fp == NULL)
     {
         fclose(spice_lib_fp);
