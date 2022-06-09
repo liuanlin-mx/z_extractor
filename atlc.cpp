@@ -337,7 +337,7 @@ void atlc::_calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float&
         er_str += buf;
     }
     sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
-    printf("%s\n", cmd);
+    //printf("%s\n", cmd);
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
@@ -354,7 +354,7 @@ void atlc::_calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float&
         _l = l;
         _v = v;
     
-        printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
+        //printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
     }
     pclose(fp);
 }

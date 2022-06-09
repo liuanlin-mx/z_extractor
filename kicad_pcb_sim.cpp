@@ -21,19 +21,19 @@ kicad_pcb_sim::kicad_pcb_sim()
     _Z0_w_ratio = 10;
     _Z0_h_ratio = 100;
     
-    _coupled_max_d = 5;
-    _coupled_min_len = 0.5;
+    _coupled_max_d = 2;
+    _coupled_min_len = 0.2;
     _lossless_tl = true;
     _ltra_model = true;
     
-    _img_ratio = 100;
+    _img_ratio = 200;
     _pcb_top = 10000.;
     _pcb_bottom = 0;
     _pcb_left = 10000.;
     _pcb_right = 0;
     
     
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -2268,7 +2268,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     float sl = 0;
     float sr = 0;
     (void)sl;
-    if (_lossless_tl)
+    if (!_lossless_tl)
     {
         fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
     }
@@ -2426,7 +2426,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
     float sl = 0;
     float sr = 0;
     (void)sl;
-    if (_lossless_tl)
+    if (!_lossless_tl)
     {
         fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
     }
@@ -2586,7 +2586,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     float ss_end_y = (s0.end.y + s1.end.y) * 0.5;
     
     float ss_len = sqrt((ss_start_x - ss_end_x) * (ss_start_x - ss_end_x) + (ss_start_y - ss_end_y) * (ss_start_y - ss_end_y));
-    float ss_dist = _calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y);
+    float ss_dist = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
     
     bool s0_is_left = ((ss_start_y - ss_end_y) * s0.start.x + (ss_end_x - ss_start_x) * s0.start.y + ss_start_x * ss_end_y - ss_end_x * ss_start_y) > 0;
 
@@ -2613,7 +2613,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     float s0_r = 0;
     float s1_r = 0;
     (void)tmp_l;
-    if (_lossless_tl)
+    if (!_lossless_tl)
     {
         fasthenry::calc_wire_lr(s0.width, _get_layer_thickness(s0.layer_name), 1000, tmp_l, s0_r);
         fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
@@ -2676,7 +2676,6 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
             _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
         }
         
-        
         Z0_item ss_item;
         
         _Z0_calc->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.c_matrix, ss_item.l_matrix, ss_item.r_matrix, ss_item.g_matrix);
@@ -2722,7 +2721,6 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     float Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
                 + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
     Zeven = Zeven * 0.5;
-
 
     sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"

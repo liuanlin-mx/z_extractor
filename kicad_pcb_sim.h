@@ -258,6 +258,8 @@ private:
     float _Z0_h_ratio;
     float _coupled_max_d;
     float _coupled_min_len;
+    
+    /* 无损传输线 */
     bool _lossless_tl;
     bool _ltra_model;
     

@@ -166,6 +166,7 @@ bool mmtl::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     _read_value(Zodd, Zeven, c_matrix, l_matrix, r_matrix, g_matrix);
     
 #if 0
+    printf("Zodd:%f Zeven:%f\n", Zodd, Zeven);
     printf("C: ");
     for (int i = 0; i < 2;i++)
     for (std::int32_t j = 0; j < 2; j++)
@@ -178,8 +179,8 @@ bool mmtl::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     {
         printf("%f ", l_matrix[i][j]);
     }
+    printf("\n");
 #endif
-
     return false;
 }
 
@@ -193,7 +194,7 @@ void mmtl::_add_ground(float x, float y, float w, float thickness)
     sprintf(buf, "-width %f \\\n", w);
     _xsctn += buf;
     _xsctn += "-pitch 1 \\\n";
-    _xsctn += "-conductivity 5e+07siemens/meter \\\n";
+    _xsctn += "-conductivity 5.0e7S/m \\\n";
     
     sprintf(buf, "-height %f \\\n", thickness);
     _xsctn += buf;
@@ -217,7 +218,7 @@ void mmtl::_add_wire(float x, float y, float w, float thickness)
     sprintf(buf, "-width %f \\\n", w);
     _xsctn += buf;
     _xsctn += "-pitch 1 \\\n";
-    _xsctn += "-conductivity 5e+07siemens/meter \\\n";
+    _xsctn += "-conductivity 5.0e7S/m \\\n";
     
     sprintf(buf, "-height %f \\\n", thickness);
     _xsctn += buf;
@@ -428,11 +429,24 @@ void mmtl::_read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_
         l_matrix[0][1] = atof(s) * 1e9;
     }
     
-    
     s = strstr(buf, "L( ::cond0R0 , ::cond0R0 )=  ");
     if (s)
     {
         s += strlen("L( ::cond0R0 , ::cond0R0 )=  ");
         l_matrix[0][0] = atof(s) * 1e9;
+    }
+    
+    s = strstr(buf, "odd= ");
+    if (s)
+    {
+        s += strlen("odd= ");
+        Zodd = atof(s);
+    }
+    
+    s = strstr(buf, "even= ");
+    if (s)
+    {
+        s += strlen("even= ");
+        Zeven = atof(s);
     }
 }
