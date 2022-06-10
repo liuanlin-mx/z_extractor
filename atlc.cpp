@@ -38,6 +38,12 @@ void atlc::clean()
 {
     _img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(255, 255, 255));
     
+    _wire_w = 0;
+    _wire_h = 0;
+    _coupler_w = 0;
+    _coupler_h = 0;
+    _wire_conductivity = 5.0e7;
+    _coupler_conductivity = 5.0e7;
 }
 
 void atlc::clean_all()
@@ -64,8 +70,10 @@ void atlc::add_ground(float x, float y, float w, float thickness)
     _draw(x, y, w, thickness, 0, 255, 0);
 }
 
-void atlc::add_wire(float x, float y, float w, float thickness)
+void atlc::add_wire(float x, float y, float w, float thickness, float conductivity)
 {
+    _wire_w = w;
+    _wire_h = thickness;
     _draw(x, y, w, thickness, 255, 0, 0);
 }
 
@@ -74,8 +82,10 @@ void atlc::add_ring_wire(float x, float y, float r, float thickness)
     _draw_ring(x, y, r, thickness, 255, 0, 0);
 }
 
-void atlc::add_coupler(float x, float y, float w, float thickness)
+void atlc::add_coupler(float x, float y, float w, float thickness, float conductivity)
 {
+    _coupler_w = w;
+    _coupler_h = thickness;
     _draw(x, y, w, thickness, 0, 0, 255);
 }
 
@@ -107,6 +117,7 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
     //cv::imshow(_get_bmp_name(), _img);
     //cv::waitKey(10);
     
+    r = 1.0 / (_wire_w * _wire_h * _wire_conductivity);
     if (_is_some(_last_img, _img))
     {
         Zo = _Zo;
@@ -146,6 +157,9 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     float Codd;
     float Ceven;
     
+    r_matrix[0][1] = r_matrix[1][0] = 0;
+    r_matrix[0][0] = 1.0 / (_wire_w * _wire_h * _wire_conductivity);
+    r_matrix[1][1] = 1.0 / (_coupler_w * _coupler_h * _coupler_conductivity);
     if (_is_some(_last_img, _img))
     {
         Zodd = _Zodd;

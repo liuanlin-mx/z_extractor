@@ -25,16 +25,16 @@ public:
     virtual void set_box_size(float w, float h) {}
     virtual std::uint32_t get_type() = 0;
     
-    virtual void clean() {}
-    virtual void clean_all() {}
+    virtual void clean() = 0;
+    virtual void clean_all() = 0;
     
     /* 坐标是盒子的中心点 */
-    virtual void add_ground(float x, float y, float w, float thickness) {}
-    virtual void add_wire(float x, float y, float w, float thickness) {}
-    virtual void add_coupler(float x, float y, float w, float thickness) {}
-    virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6) {}
+    virtual void add_ground(float x, float y, float w, float thickness) = 0;
+    virtual void add_wire(float x, float y, float w, float thickness, float conductivity) = 0;
+    virtual void add_coupler(float x, float y, float w, float thickness, float conductivity) = 0;
+    virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6) = 0;
     virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g) = 0;
-    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]) { return false; }
+    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]) = 0;
                         
 public:
     static std::shared_ptr<Z0_calc> create(std::uint32_t type);

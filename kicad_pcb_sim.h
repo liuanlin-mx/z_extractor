@@ -127,6 +127,9 @@ public:
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call);
     void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
+    void set_conductivity(float conductivity) { _conductivity = conductivity; } 
+    void enable_lossless_tl(bool b) { _lossless_tl = b; }
+    void enable_ltra_model(bool b) { _ltra_model = b; }
     
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
     void dump();
@@ -274,6 +277,7 @@ private:
     //std::shared_ptr<Z0_calc> _Z0_calc1;
     //std::shared_ptr<Z0_calc> _Z0_calc_coupled;
     const float _resistivity = 0.0172;
+    float _conductivity;
     
 };
 

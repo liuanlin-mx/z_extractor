@@ -27,9 +27,9 @@ public:
     /* 坐标是盒子的中心点 */
     virtual void add_ground(float x, float y, float w, float thickness);
     virtual void add_ring_ground(float x, float y, float r, float thickness);
-    virtual void add_wire(float x, float y, float w, float thickness);
+    virtual void add_wire(float x, float y, float w, float thickness, float conductivity);
     virtual void add_ring_wire(float x, float y, float r, float thickness);
-    virtual void add_coupler(float x, float y, float w, float thickness);
+    virtual void add_coupler(float x, float y, float w, float thickness, float conductivity);
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
     virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
     virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
@@ -67,6 +67,14 @@ private:
     
     float _c_matrix[2][2];
     float _l_matrix[2][2];
+    
+    float _wire_w;
+    float _wire_h;
+    float _coupler_w;
+    float _coupler_h;
+    
+    float _wire_conductivity;
+    float _coupler_conductivity;
 };
 
 #endif

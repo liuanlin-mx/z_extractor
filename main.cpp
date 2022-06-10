@@ -59,6 +59,8 @@ int main(int argc, char **argv)
     
     float coupled_max_d = 2;
     float coupled_min_len = 0.2;
+    bool lossless_tl = true;
+    float conductivity = 5e7;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -103,6 +105,15 @@ int main(int argc, char **argv)
         {
             coupled_min_len = atof(arg_next);
         }
+        else if (std::string(arg) == "-lossless_tl" && i < argc)
+        {
+            lossless_tl = (atoi(arg_next) == 0)? false: true;
+        }
+        else if (std::string(arg) == "-conductivity" && i < argc)
+        {
+            conductivity = atof(arg_next);
+        }
+        
     }
     
     for (auto& net: nets)
@@ -127,6 +138,8 @@ int main(int argc, char **argv)
     pcb.parse(buf);
     pcb.set_coupled_max_d(coupled_max_d);
     pcb.set_coupled_min_len(coupled_min_len);
+    pcb.enable_lossless_tl(lossless_tl);
+    pcb.set_conductivity(conductivity);
     
     if (oname == NULL)
     {

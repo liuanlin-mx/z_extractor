@@ -79,7 +79,7 @@ void mmtl::add_ground(float x, float y, float w, float thickness)
 }
 
 
-void mmtl::add_wire(float x, float y, float w, float thickness)
+void mmtl::add_wire(float x, float y, float w, float thickness, float conductivity)
 {
     item item_;
     item_.type = ITEM_TYPE_COND;
@@ -87,13 +87,14 @@ void mmtl::add_wire(float x, float y, float w, float thickness)
     item_.y = y;
     item_.w = w;
     item_.h = thickness;
+    item_.conductivity = conductivity;
     _map.emplace(y, item_);
 }
 
 
-void mmtl::add_coupler(float x, float y, float w, float thickness)
+void mmtl::add_coupler(float x, float y, float w, float thickness, float conductivity)
 {
-    add_wire(x, y, w, thickness);
+    add_wire(x, y, w, thickness, conductivity);
 }
 
 
@@ -208,7 +209,7 @@ void mmtl::_add_ground(float x, float y, float w, float thickness)
     _xsctn += buf;
 }
 
-void mmtl::_add_wire(float x, float y, float w, float thickness)
+void mmtl::_add_wire(float x, float y, float w, float thickness, float conductivity)
 {
     char buf[128];
     
@@ -218,7 +219,9 @@ void mmtl::_add_wire(float x, float y, float w, float thickness)
     sprintf(buf, "-width %f \\\n", w);
     _xsctn += buf;
     _xsctn += "-pitch 1 \\\n";
-    _xsctn += "-conductivity 5.0e7S/m \\\n";
+    
+    sprintf(buf, "-conductivity %gS/m \\\n", conductivity);
+    _xsctn += buf;
     
     sprintf(buf, "-height %f \\\n", thickness);
     _xsctn += buf;
@@ -283,14 +286,12 @@ void mmtl::_build()
         else if (item_.type == ITEM_TYPE_GND)
         {
             _add_ground(item_.x, 0, item_.w, item_.h);
-            //_add_elec(item_.x, 0, item_.w, item_.h, 1.);
             flag = true;
             h = item_.h;
         }
         else if (item_.type == ITEM_TYPE_COND)
         {
-            _add_wire(item_.x, 0, item_.w, item_.h);
-            //_add_elec(item_.x, 0, item_.w, item_.h, 1.);
+            _add_wire(item_.x, 0, item_.w, item_.h, item_.conductivity);
             flag = true;
             h = item_.h;
         }
@@ -435,6 +436,36 @@ void mmtl::_read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_
         s += strlen("L( ::cond0R0 , ::cond0R0 )=  ");
         l_matrix[0][0] = atof(s) * 1e9;
     }
+    
+    
+    s = strstr(buf, "Rdc( ::cond1R1 , ::cond1R1 )=  ");
+    if (s)
+    {
+        s += strlen("Rdc( ::cond1R1 , ::cond1R1 )=  ");
+        r_matrix[1][1] = atof(s);
+    }
+    
+    s = strstr(buf, "Rdc( ::cond1R1 , ::cond0R0 )=  ");
+    if (s)
+    {
+        s += strlen("Rdc( ::cond1R1 , ::cond0R0 )=  ");
+        r_matrix[1][0] = atof(s);
+    }
+    
+    s = strstr(buf, "Rdc( ::cond0R0 , ::cond1R1 )=  ");
+    if (s)
+    {
+        s += strlen("Rdc( ::cond0R0 , ::cond1R1 )=  ");
+        r_matrix[0][1] = atof(s);
+    }
+    
+    s = strstr(buf, "Rdc( ::cond0R0 , ::cond0R0 )=  ");
+    if (s)
+    {
+        s += strlen("Rdc( ::cond0R0 , ::cond0R0 )=  ");
+        r_matrix[0][0] = atof(s);
+    }
+    
     
     s = strstr(buf, "odd= ");
     if (s)

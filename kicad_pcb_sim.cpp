@@ -32,8 +32,9 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_left = 10000.;
     _pcb_right = 0;
     
+    _conductivity = 5.0e7;
     
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -2265,13 +2266,6 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     }
     
     
-    float sl = 0;
-    float sr = 0;
-    (void)sl;
-    if (!_lossless_tl)
-    {
-        fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
-    }
     _Z0_calc->clean_all();
     
     for (float i = 0; i < s_len + _Z0_setup; i += _Z0_setup)
@@ -2310,7 +2304,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
             }
         }
         
-        _Z0_calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
+        _Z0_calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
         
         
         float Zo;
@@ -2334,10 +2328,11 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                 //printf("dist:%f last_v:%f\n", dist, last_v);
                 float td = dist * 1000000 / last_v;
                 
-                if (td < 0.001)
+                if (td < 0.001 || _lossless_tl)
                 {
-                    sr = 0;
+                    r = 0;
                 }
+                
                 td_sum += td;
             #if 0
                 if (td >= 0.001)
@@ -2353,10 +2348,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                 {
                     sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                                 "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
-                                ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
+                                ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
                                 last_Z0, td,
                                 idx, pin, pin + 1, idx, dist * 0.001,
-                                idx, sr, last_l, last_c
+                                idx, r, last_l, last_c
                                 );
                 }
                 else
@@ -2364,10 +2359,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
                 
                     sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                                 "O%d pin%d 0 pin%d 0 ltra%d\n"
-                                ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
+                                ".MODEL ltra%d LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
                                 last_Z0, td,
                                 idx, pin, pin + 1, idx,
-                                idx, sr, last_l, last_c, dist * 0.001
+                                idx, r, last_l, last_c, dist * 0.001
                                 );
                 }
                 idx++;
@@ -2422,14 +2417,6 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         box_h = _get_board_thickness() * 1.5;
     }
     
-    
-    float sl = 0;
-    float sr = 0;
-    (void)sl;
-    if (!_lossless_tl)
-    {
-        fasthenry::calc_wire_lr(s.width, _get_layer_thickness(s.layer_name), 1000, sl, sr);
-    }
     _Z0_calc->clean_all();
     
     struct Z0_item
@@ -2438,6 +2425,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         float v;
         float c;
         float l;
+        float r;
         float pos;
     };
     
@@ -2495,7 +2483,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
             }
         }
         
-        atlc.add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name));
+        atlc.add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
         
         
         float Z0;
@@ -2511,6 +2499,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         item.v = v;
         item.c = c;
         item.l = l;
+        item.r = r;
     }
 
     Z0_item begin = Z0s[0];
@@ -2524,9 +2513,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
             //printf("dist:%f Z0:%f\n", dist, begin.Z0);
             float td = dist * 1000000 / begin.v;
             
-            if (td < 0.001)
+            float r = begin.r;
+            if (td < 0.001 || _lossless_tl)
             {
-                sr = 0;
+                r = 0;
             }
             
         #if 0
@@ -2543,10 +2533,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
             {
                 sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                             "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
-                            ".MODEL ymod%d txl R=%f L=%fnH G=0 C=%fpF length=1\n",
+                            ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
                             begin.Z0, td,
                             idx, pin, pin + 1, idx, dist * 0.001,
-                            idx, sr, begin.l, begin.c
+                            idx, r, begin.l, begin.c
                             );
             }
             else
@@ -2554,10 +2544,10 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
             
                 sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                             "O%d pin%d 0 pin%d 0 ltra%d\n"
-                            ".MODEL ltra%d LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
+                            ".MODEL ltra%d LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
                             begin.Z0, td,
                             idx, pin, pin + 1, idx,
-                            idx, sr, begin.l, begin.c, dist * 0.001
+                            idx, r, begin.l, begin.c, dist * 0.001
                             );
             }
             idx++;
@@ -2609,15 +2599,6 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         box_h = _get_board_thickness() * 1.5;
     }
     
-    float tmp_l = 0;
-    float s0_r = 0;
-    float s1_r = 0;
-    (void)tmp_l;
-    if (!_lossless_tl)
-    {
-        fasthenry::calc_wire_lr(s0.width, _get_layer_thickness(s0.layer_name), 1000, tmp_l, s0_r);
-        fasthenry::calc_wire_lr(s1.width, _get_layer_thickness(s1.layer_name), 1000, tmp_l, s1_r);
-    }
     _Z0_calc->clean_all();
     
     
@@ -2667,13 +2648,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         
         if (s0_is_left)
         {
-            _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         else
         {
-            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name));
-            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name));
+            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         
         Z0_item ss_item;
@@ -2725,13 +2706,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
                     ".model PLINE CPL length=%f\n"
-                    "+R=%f 0 %f\n"
+                    "+R=%g 0 %g\n"
                     "+L=%fnH %fnH %fnH\n"
                     "+G=0 0 0\n"
                     "+C=%fpF %fpF %fpF\n",
                     Zodd, Zeven, Zodd * 2, Zeven * 0.5,
                     ss_len * 0.001,
-                    s0_r, s1_r,
+                    r_matrix[0][0], r_matrix[1][1],
                     l_matrix[0][0], (l_matrix[0][1] + l_matrix[1][0]) * 0.5, l_matrix[1][1],
                     c_matrix[0][0], (c_matrix[0][1] + c_matrix[1][0]) * 0.5, c_matrix[1][1]);
     cir += strbuf;
