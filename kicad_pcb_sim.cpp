@@ -529,6 +529,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum)
 {
+    std::string comment;
     std::string sub;
     char buf[512] = {0};
     
@@ -540,7 +541,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     /* 生成子电路参数和调用 */
     ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
     call = "X" + _format_net_name(_nets[net_id]) + " ";
-    
+    comment = std::string(ckt.length(), '*');
     for (auto& p: pads)
     {
         float x;
@@ -551,11 +552,17 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         ckt += buf;
         call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
         call += " ";
+        
+        comment += p.reference_value + ":" + _nets[net_id] + " ";
         reference_value.insert(p.reference_value);
     }
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
     call += "\n";
+    
+    comment += "\n";
+    
+    ckt = comment + ckt;
     
 
     /* 生成走线参数 */
@@ -719,6 +726,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     
     std::string sub;
     std::string tmp;
+    std::string comment;
+    
     fasthenry henry;
     char buf[512] = {0};
     std::uint32_t net_ids[2] = {net_id0, net_id1};
@@ -737,6 +746,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     ckt += " ";
     call += " ";
     
+    comment = std::string(ckt.length(), '*');
+    
     for (auto& net_id: net_ids)
     {
         std::list<pad> pads = get_pads(net_id);
@@ -751,6 +762,9 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             ckt += buf;
             call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
             call += " ";
+            
+            comment += p.reference_value + ":" + _nets[net_id];
+            comment += " ";
             reference_value.insert(p.reference_value);
         }
     }
@@ -759,7 +773,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     call += tmp;
     call += "\n";
     
-    ckt = call + ckt;
+    ckt = comment + "\n" + ckt;
     
     
     //构建fasthenry
