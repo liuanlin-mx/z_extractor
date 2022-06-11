@@ -635,7 +635,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     /* 找到符合耦合条件的走线 */
     for (auto& s_list0: v_segments0)
     {
-        for (auto it0 = s_list0.begin(); it0 != s_list0.end(); it0++)
+        for (auto it0 = s_list0.begin(); it0 != s_list0.end();)
         {
             auto& s0 = *it0;
             bool _brk = false;
@@ -669,10 +669,14 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
                             
                             ss0.pop_front();
                             ss1.pop_front();
+                            
+                            s_list0.erase(it0);
+                            
                             s_list0.splice(s_list0.end(), ss0);
                             s_list1.splice(s_list1.end(), ss1);
                             s_list1.erase(it1);
-                            it0 = s_list0.erase(it0);
+                            
+                            it0 = s_list0.begin();
                             _brk = true;
                             break;
                         }
@@ -683,7 +687,10 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
                     break;
                 }
             }
-            
+            if (!_brk)
+            {
+                it0++;
+            }
             
         }
     }
@@ -2716,7 +2723,12 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
     float Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
                 + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
     Zeven = Zeven * 0.5;
-
+    
+    if (_lossless_tl)
+    {
+        // 正常的无损传输线电阻应该为0 这里将电阻值设置为1 否则ngspice仿真非常容易出异常 无法收敛
+        r_matrix[0][0] = r_matrix[1][1] = 1; 
+    }
     sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
                     ".model PLINE CPL length=%f\n"
@@ -2966,12 +2978,14 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
     float d1 = _calc_dist(x1, y1, s.start.x, s.start.y);
     float d2 = _calc_dist(x2, y2, s.start.x, s.start.y);
     
+    float limit = 0.0254;
+    
     std::uint32_t idx = 0;
     std::vector<pcb_point> ps;
     ps.push_back(s.start);
     if (d1 < d2)
     {
-        if (d1 > _Z0_setup)
+        if (d1 > limit)
         {
             pcb_point p;
             p.x = x1;
@@ -2984,7 +2998,7 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
             idx = 0;
         }
         float d = _calc_dist(x2, y2, s.end.x, s.end.y);
-        if (d > _Z0_setup)
+        if (d > limit)
         {
             pcb_point p;
             p.x = x2;
@@ -2994,7 +3008,7 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
     }
     else
     {
-        if (d2 > _Z0_setup)
+        if (d2 > limit)
         {
             pcb_point p;
             p.x = x2;
@@ -3007,7 +3021,7 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
             idx = 0;
         }
         float d = _calc_dist(x1, y1, s.end.x, s.end.y);
-        if (d > _Z0_setup)
+        if (d > limit)
         {
             pcb_point p;
             p.x = x1;
