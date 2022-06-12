@@ -25,6 +25,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _coupled_min_len = 0.2;
     _lossless_tl = true;
     _ltra_model = true;
+    _via_tl_mode = false;
     
     _img_ratio = 200;
     _pcb_top = 10000.;
@@ -33,7 +34,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_right = 0;
     
     _conductivity = 5.0e7;
-    
+    _anti_pad_diameter = 0.;
     _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
 
@@ -575,7 +576,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
             td_sum += td;
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -590,27 +591,23 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     /* 生成过孔参数 */
     for (auto& v: vias)
     {
-        std::vector<std::string> layers = _get_via_layers(v);
-        for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+        std::string via_call;
+        float td = 0;
+        if (_via_tl_mode)
         {
-            const std::string& start = layers[i];
-            const std::string& end = layers[i + 1];
-            std::string name = _get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end);
-            
-            float td = 0;
-            sub += _gen_segment_zo_ckt("VIAZ0" + name, v, start, end, refs_mat, td);
-            td_sum += td;
-            
-            sprintf(buf, "X%s %s %s VIAZ0%s\n", name.c_str(),
-                                    _pos2net(v.at.x, v.at.y, start).c_str(),
-                                    _pos2net(v.at.x, v.at.y, end).c_str(),
-                                    name.c_str());
-            ckt += buf;
+            sub += _gen_via_Z0_ckt(v, refs_mat, via_call, td);
         }
+        else
+        {
+            sub += _gen_via_model_ckt(v, refs_mat, via_call, td);
+        }
+        td_sum += td;
+        ckt += via_call;
     }
-        
+
     ckt += ".ends\n";
     ckt += sub;
+    
     return true;
 }
 
@@ -735,7 +732,6 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     std::string tmp;
     std::string comment;
     
-    fasthenry henry;
     char buf[512] = {0};
     std::uint32_t net_ids[2] = {net_id0, net_id1};
     
@@ -782,27 +778,6 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     
     ckt = comment + "\n" + ckt;
     
-    
-    //构建fasthenry
-    for (auto& net_id: net_ids)
-    {
-        std::list<via> vias = get_vias(net_id);
-        for (auto& v: vias)
-        {
-            std::vector<std::string> layers = _get_via_layers(v);
-            for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
-            {
-                const std::string& start = layers[i];
-                const std::string& end = layers[i + 1];
-                henry.add_via((_get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end)).c_str(),
-                                fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(start)),
-                                fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(end)),
-                                v.drill, v.size);
-            }
-        }
-    }
-    henry.dump();
-    
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
@@ -812,7 +787,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         kicad_pcb_sim::segment& s0 = ss_item.second.first;
         kicad_pcb_sim::segment& s1 = ss_item.second.second;
         
-        sub += _gen_segment_coupled_zo_ckt(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
+        sub += _gen_segment_coupled_Z0_ckt(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
         sprintf(buf, "X%s %s %s %s %s CPL%s\n", _get_tstamp_short(s0.tstamp).c_str(),
                         _pos2net(s0.start.x, s0.start.y, s0.layer_name).c_str(),
                         _pos2net(s0.end.x, s0.end.y, s0.layer_name).c_str(),
@@ -830,7 +805,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
             
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -849,7 +824,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_zo_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
             
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -871,21 +846,17 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     
         for (auto& v: vias)
         {
-            std::string tstamp = _get_tstamp_short(v.tstamp);
-                
-            std::vector<std::string> layers = _get_via_layers(v);
-            for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+            std::string via_call;
+            float td = 0;
+            if (_via_tl_mode)
             {
-                const std::string& start = layers[i];
-                const std::string& end = layers[i + 1];
-                std::string name = tstamp + _format_layer_name(start) + _format_layer_name(end);
-                sub += henry.gen_ckt(name.c_str(), ("RL" + name).c_str());
-                sprintf(buf, "X%s %s %s RL%s\n", name.c_str(),
-                                        _pos2net(v.at.x, v.at.y, start).c_str(),
-                                        _pos2net(v.at.x, v.at.y, end).c_str(),
-                                        name.c_str());
-                ckt += buf;
+                sub += _gen_via_Z0_ckt(v, refs_mat, via_call, td);
             }
+            else
+            {
+                sub += _gen_via_model_ckt(v, refs_mat, via_call, td);
+            }
+            ckt += via_call;
         }
     }
     
@@ -1860,6 +1831,29 @@ std::vector<std::string> kicad_pcb_sim::_get_via_layers(const via& v)
 }
 
 
+std::vector<std::string> kicad_pcb_sim::_get_via_conn_layers(const kicad_pcb_sim::via& v)
+{
+    std::vector<std::string> layers;
+    std::set<std::string> layer_set;
+    std::list<kicad_pcb_sim::segment> segments = get_segments(v.net);
+    for (const auto& s: segments)
+    {
+        if (_point_equal(s.start.x, s.start.y, v.at.x, v.at.y) || _point_equal(s.end.x, s.end.y, v.at.x, v.at.y))
+        {
+            layer_set.insert(s.layer_name);
+        }
+    }
+    
+    for (auto& l: _layers)
+    {
+        if (layer_set.count(l.name))
+        {
+            layers.push_back(l.name);
+        }
+    }
+    return layers;
+}
+
 float kicad_pcb_sim::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {
     bool flag = false;
@@ -2248,7 +2242,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
     std::string cir;
     float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2335,7 +2329,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
         float r;
         float g;
         
-        if ((!_Z0_calc->calc_zo(Zo, v, c, l, r, g) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
+        if ((!_Z0_calc->calc_Z0(Zo, v, c, l, r, g) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
         {
             float pos = i;
             if (pos > s_len)
@@ -2405,7 +2399,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat)
 {
     std::string cir;
     float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2514,7 +2508,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
         float r;
         float g;
         
-        atlc.calc_zo(Z0, v, c, l, r, g);
+        atlc.calc_Z0(Z0, v, c, l, r, g);
         log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
         item.Z0 = Z0;
         item.v = v;
@@ -2583,7 +2577,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt_omp(const std::string& cir_name, 
     return  strbuf + cir;
 }
 
-std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat)
 {
     std::string cir;
     if (_calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > _calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
@@ -2680,7 +2674,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
         
         Z0_item ss_item;
         
-        _Z0_calc->calc_coupled_zo(ss_item.Zodd, ss_item.Zeven, ss_item.c_matrix, ss_item.l_matrix, ss_item.r_matrix, ss_item.g_matrix);
+        _Z0_calc->calc_coupled_Z0(ss_item.Zodd, ss_item.Zeven, ss_item.c_matrix, ss_item.l_matrix, ss_item.r_matrix, ss_item.g_matrix);
         ss_Z0s.push_back(ss_item);
     }
     
@@ -2749,73 +2743,149 @@ std::string kicad_pcb_sim::_gen_segment_coupled_zo_ckt(const std::string& cir_na
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::via& v, const std::string& start, const std::string& end, std::map<std::string, cv::Mat>& refs_mat, float& td)
+std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
 {
-    std::string cir;
+    char buf[2048] = {0};
+    std::string ckt;
+    ckt = ".subckt VIA" + _get_tstamp_short(v.tstamp) + " ";
+    call = "XVIA" + _get_tstamp_short(v.tstamp) + " ";
     
-    char strbuf[512];
+    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
+    {
+        const std::string& layer_name = conn_layers[i];
+        ckt += _pos2net(v.at.x, v.at.y, layer_name) + " ";
+        call += _pos2net(v.at.x, v.at.y, layer_name) + " ";
+    }
+    
+    ckt += "\n";
+    call += "VIA" + _get_tstamp_short(v.tstamp) + "\n";
+    
+    
+    float anti_pad_diameter = v.size * 2;
+    if (_anti_pad_diameter > 0.001)
+    {
+        anti_pad_diameter = _anti_pad_diameter;
+    }
+    
     float radius = v.drill * 0.5;
-    float box_w = v.drill * 10;
-    float box_h = v.drill * 10;
-    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    float box_w = v.drill * 15;
+    float box_h = v.drill * 15;
     float thickness = 0.0254 * 1;
-    
-    float Zo;
-    float v_;
-    float c;
-    float l;
-    float r = 0.;
-    float g = 0.;
-    
-    //atlc_pix_unit = 0.0254;
+    float atlc_pix_unit = thickness * 0.5;
     
     atlc atlc_;
-    atlc_.clean_all();
     atlc_.set_precision(atlc_pix_unit);
     atlc_.set_box_size(box_w, box_h);
     
     
-    float anti_pad = 0.7;
-    float er = _get_layer_epsilon_r(start, end);
-    atlc_.add_ring_elec(0, 0, radius, radius * 10, er);
-    atlc_.add_ring_wire(0, 0, radius - thickness, thickness);
-    atlc_.add_ring_ground(0, 0, anti_pad, thickness * 10);
+    std::uint32_t id = 0;
+    std::vector<std::string> layers = _get_via_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+    {
+        const std::string& start = layers[i];
+        const std::string& end = layers[i + 1];
         
-    atlc_.calc_zo(Zo, v_, c, l, r, g);
-    float dist = _get_layer_distance(start, end);
-    printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v_ / 1000000, c, l);
+        float h = _get_layer_distance(start, end);
+        float er = _get_layer_epsilon_r(start, end);
         
-    td = dist * 1000000 / v_;
-    printf("dist:%f v:%f td:%fNS\n", dist, v_, td);
+        
+        float Z0;
+        float v_;
+        float c;
+        float l;
+        float r = 0.;
+        float g = 0.;
+        
+        atlc_.clean_all();
+        atlc_.add_ring_elec(0, 0, radius, radius * 10, er);
+        atlc_.add_ring_wire(0, 0, radius, thickness);
+        atlc_.add_ring_ground(0, 0, anti_pad_diameter, thickness);
     
-    if (_lossless_tl)
-    {
-        r = 0;
-        g = 0;
+        atlc_.calc_Z0(Z0, v_, c, l, r, g);
+        float td_ = h * 1000000 / v_;
+        
+        td += td_;
+        
+        if (!_ltra_model)
+        {
+            sprintf(buf, "***Z0:%f TD:%fNS***\n"
+                        "Y%u %s 0 %s 0 ymod%u LEN=%f\n"
+                        ".MODEL ymod%u txl R=0 L=%fnH G=0 C=%fpF length=1\n",
+                        Z0, td_,
+                        id, _pos2net(v.at.x, v.at.y, start).c_str(), _pos2net(v.at.x, v.at.y, end).c_str(), id, h * 0.001,
+                        id, l, c
+                        );
+        }
+        else
+        {
+            sprintf(buf, "***Z0:%f TD:%fNS***\n"
+                        "O%u %s 0 %s 0 ltra%u\n"
+                        ".MODEL ltra%u LTRA R=0 L=%fnH G=0 C=%fpF LEN=%g\n",
+                        Z0, td_,
+                        id, _pos2net(v.at.x, v.at.y, start).c_str(), _pos2net(v.at.x, v.at.y, end).c_str(), id,
+                        id, l, c, h * 0.001
+                        );
+        }
+        
+        id++;
+        ckt += buf;
     }
-    
-    if (!_ltra_model)
-    {
-        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                    "Y1 pin1 0 pin2 0 ymod1 LEN=%f\n"
-                    ".MODEL ymod1 txl R=%g L=%fnH G=0 C=%fpF length=1\n",
-                    Zo, td,
-                    dist * 0.001,
-                    r, l, c
-                    );
-    }
-    else
-    {
-        sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                    "O1 pin1 0 pin2 0 ltra1\n"
-                    ".MODEL ltra1 LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
-                    Zo, td,
-                    r, l, c, dist * 0.001
-                    );
-    }
-    return ".subckt " + cir_name + " pin1 pin2\n" + strbuf + ".ends\n";
+    return ckt + ".ends\n";
 }
 
+
+std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
+{
+    char buf[2048] = {0};
+    std::string ckt;
+    ckt = ".subckt VIA" + _get_tstamp_short(v.tstamp) + " ";
+    call = "XVIA" + _get_tstamp_short(v.tstamp) + " ";
+    
+    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
+    {
+        const std::string& layer_name = conn_layers[i];
+        ckt += _pos2net(v.at.x, v.at.y, layer_name) + " ";
+        call += _pos2net(v.at.x, v.at.y, layer_name) + " ";
+    }
+    
+    ckt += "\n";
+    call += "VIA" + _get_tstamp_short(v.tstamp) + "\n";
+    
+    
+    std::uint32_t id = 0;
+    float anti_pad_diameter = v.size * 2;
+    if (_anti_pad_diameter > 0.001)
+    {
+        anti_pad_diameter = _anti_pad_diameter;
+    }
+    
+    std::vector<std::string> layers = _get_via_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+    {
+        const std::string& start = layers[i];
+        const std::string& end = layers[i + 1];
+        
+        float h = _get_layer_distance(start, end);
+        float er = _get_layer_epsilon_r(start, end);
+        
+        float c = 1.41 * er * (h / 25.4) * v.size / (anti_pad_diameter - v.size); //pF
+        float l = h / 5 * (1 + log(4 * h / v.drill)); //nH
+        
+        td += sqrt(l * c * 0.001);
+        
+        sprintf(buf, "Cl%u %s 0 %gpF\n"
+                        "L%u %s %s %gnH\n"
+                        "Cr%u %s 0 %gpF\n",
+                        id, _pos2net(v.at.x, v.at.y, start).c_str(), c * 0.5,
+                        id, _pos2net(v.at.x, v.at.y, start).c_str(), _pos2net(v.at.x, v.at.y, end).c_str(), l,
+                        id, _pos2net(v.at.x, v.at.y, end).c_str(), c * 0.5);
+        id++;
+        ckt += buf;
+    }
+    return ckt + ".ends\n";
+}
 
 float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
 {

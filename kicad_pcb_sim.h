@@ -128,9 +128,11 @@ public:
     void set_setup(float setup) { _Z0_setup = setup; }
     void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
-    void set_conductivity(float conductivity) { _conductivity = conductivity; } 
+    void set_conductivity(float conductivity) { _conductivity = conductivity; }
+    void set_anti_pad_diameter(float d) { _anti_pad_diameter = d; }
     void enable_lossless_tl(bool b) { _lossless_tl = b; }
     void enable_ltra_model(bool b) { _ltra_model = b; }
+    void enable_via_tl_mode(bool b) { _via_tl_mode = b; }
     
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
     void dump();
@@ -176,6 +178,7 @@ private:
     std::vector<std::string> _get_all_cu_layer();
     std::vector<std::string> _get_all_dielectric_layer();
     std::vector<std::string> _get_via_layers(const via& v);
+    std::vector<std::string> _get_via_conn_layers(const via& v);
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float _get_layer_thickness(const std::string& layer_name);
@@ -206,11 +209,12 @@ private:
     
     /* 提取走线附近的参考平面横界面参数 */
     std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
-    std::string _gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td);
-    std::string _gen_segment_zo_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
-    std::string _gen_segment_coupled_zo_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat);
+    std::string _gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td);
+    std::string _gen_segment_Z0_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
+    std::string _gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat);
     
-    std::string _gen_segment_zo_ckt(const std::string& cir_name, kicad_pcb_sim::via& v, const std::string& start, const std::string& end, std::map<std::string, cv::Mat>& refs_mat, float& td);
+    std::string _gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
+    std::string _gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
     
     /* 计算两点连线倾斜角 */
     float _calc_angle(float x1, float y1, float x2, float y2)
@@ -268,6 +272,7 @@ private:
     /* 无损传输线 */
     bool _lossless_tl;
     bool _ltra_model;
+    bool _via_tl_mode;
     
     float _img_ratio;
     float _pcb_top;
@@ -279,7 +284,7 @@ private:
     //std::shared_ptr<Z0_calc> _Z0_calc_coupled;
     const float _resistivity = 0.0172;
     float _conductivity;
-    
+    float _anti_pad_diameter;
 };
 
 #endif

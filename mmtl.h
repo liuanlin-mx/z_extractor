@@ -48,8 +48,8 @@ public:
     virtual void add_wire(float x, float y, float w, float thickness, float conductivity);
     virtual void add_coupler(float x, float y, float w, float thickness, float conductivity);
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
-    virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
-    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
+    virtual bool calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g);
+    virtual bool calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
 private:
     
     void _add_ground(float x, float y, float w, float thickness);

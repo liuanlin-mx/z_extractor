@@ -63,6 +63,8 @@ int main(int argc, char **argv)
     bool ltra = true;
     float conductivity = 5e7;
     float setup = 0.5;
+    float anti_pad_diameter = 0;
+    bool via_tl_mode = false;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -123,6 +125,14 @@ int main(int argc, char **argv)
         {
             setup = atof(arg_next);
         }
+        else if (std::string(arg) == "-anti_pad" && i < argc)
+        {
+            anti_pad_diameter = atof(arg_next);
+        }
+        else if (std::string(arg) == "-via_tl_mode" && i < argc)
+        {
+            via_tl_mode = (atoi(arg_next) == 0)? false: true;
+        }
         
     }
     
@@ -150,27 +160,13 @@ int main(int argc, char **argv)
     pcb.set_coupled_min_len(coupled_min_len);
     pcb.enable_lossless_tl(lossless_tl);
     pcb.enable_ltra_model(ltra);
+    pcb.enable_via_tl_mode(via_tl_mode);
     pcb.set_conductivity(conductivity);
     pcb.set_setup(setup);
+    pcb.set_anti_pad_diameter(anti_pad_diameter);
     
-    if (oname == NULL)
-    {
-        oname = "out";
-    }
-    
-    FILE *spice_lib_fp = fopen("out.lib", "wb");
-    if (spice_lib_fp == NULL)
-    {
-        return 0;
-    }
-    
-    FILE *info_fp = fopen("out.info", "wb");
-    if (info_fp == NULL)
-    {
-        fclose(spice_lib_fp);
-        return 0;
-    }
-    
+    std::string spice;
+    std::string info;
     if (tl)
     {
         std::vector<std::uint32_t> v_refs;
@@ -189,17 +185,17 @@ int main(int argc, char **argv)
             float td = 0;
             pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td);
             printf("ckt:%s\n", ckt.c_str());
-            fwrite(ckt.c_str(), 1, ckt.length(), spice_lib_fp);
+            spice += ckt;
             char str[4096] = {0};
             float c = 299792458000 * v_ratio;
             float len = c * (td / 1000000000.);
             sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", net.c_str(), td, len, len / 0.0254);
-            fwrite(str, 1, strlen(str), info_fp);
+            info += str;
         }
         
         for (const auto& coupled: coupled_nets)
         {
-            printf("-------------%s %s\n", coupled.first.c_str(), coupled.second.c_str());
+            printf("%s %s\n", coupled.first.c_str(), coupled.second.c_str());
             std::string ckt;
             std::string call;
             std::set<std::string> reference_value;
@@ -208,7 +204,7 @@ int main(int argc, char **argv)
             pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()), v_refs, ckt, reference_value, call);
     
             printf("ckt:%s\n", ckt.c_str());
-            fwrite(ckt.c_str(), 1, ckt.length(), spice_lib_fp);
+            spice += ckt;
             
             //char str[4096] = {0};
             //float c = 299792458000 * v_ratio;
@@ -220,8 +216,25 @@ int main(int argc, char **argv)
         
     }
     
-    fclose(spice_lib_fp);
-    fclose(info_fp);
+    if (oname == NULL)
+    {
+        oname = "out";
+    }
+    sprintf(buf, "%s.lib", oname);
+    FILE *spice_lib_fp = fopen(buf, "wb");
+    if (spice_lib_fp)
+    {
+        fwrite(spice.c_str(), 1, spice.length(), spice_lib_fp);
+        fclose(spice_lib_fp);
+    }
+    
+    sprintf(buf, "%s.info", oname);
+    FILE *info_fp = fopen(buf, "wb");
+    if (info_fp)
+    {
+        fwrite(info.c_str(), 1, info.length(), info_fp);
+        fclose(info_fp);
+    }
     return 0;
 }
 

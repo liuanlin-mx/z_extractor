@@ -111,7 +111,7 @@ void mmtl::add_elec(float x, float y, float w, float thickness, float er)
 }
 
 
-bool mmtl::calc_zo(float & Z0, float & v, float & c, float & l, float& r, float& g)
+bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float& g)
 {
     char cmd[512] = {0};
     char buf[1024] = {0};
@@ -141,7 +141,7 @@ bool mmtl::calc_zo(float & Z0, float & v, float & c, float & l, float& r, float&
 }
 
 
-bool mmtl::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
+bool mmtl::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
 {
     char cmd[512] = {0};
     char buf[1024] = {0};

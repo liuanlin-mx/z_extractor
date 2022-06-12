@@ -105,7 +105,7 @@ void atlc::add_ring_elec(float x, float y, float r, float thickness, float er)
 }
 
 
-bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
+bool atlc::calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g)
 {
     r = g = 0;
     //cv::namedWindow("img", cv::WINDOW_NORMAL);
@@ -129,11 +129,11 @@ bool atlc::calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g)
     cv::imwrite(_get_bmp_name(), _img);
     _last_img = _img;
     
-    _calc_zo(_img, Zo, v, c, l, r, g);
+    _calc_Z0(_img, Zo, v, c, l, r, g);
     return false;
 }
 
-bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
+bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
 {
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     
@@ -187,7 +187,7 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     
     cv::imwrite(_get_bmp_name(), img);
     //cv::imshow(_get_bmp_name(), img);
-    _calc_zo(img, z1, v1, c1, l1, r1, g1);
+    _calc_Z0(img, z1, v1, c1, l1, r1, g1);
     
     //printf("z1:%f, v1:%f, c1:%f, l1:%f, r1:%f, g1:%f\n", z1, v1, c1, l1, r1, g1);
     //cv::waitKey();
@@ -215,7 +215,7 @@ bool atlc::calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     
     cv::imwrite(_get_bmp_name(), img);
     //cv::imshow(_get_bmp_name(), img);
-    _calc_zo(img, z2, v2, c2, l2, r2, g2);
+    _calc_Z0(img, z2, v2, c2, l2, r2, g2);
     
     //printf("z2:%f, v2:%f, c2:%f, l2:%f, r2:%f, g2:%f\n", z2, v2, c2, l2, r2, g2);
     
@@ -336,7 +336,7 @@ std::string atlc::_get_bmp_name()
 
 
 
-void atlc::_calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g)
+void atlc::_calc_Z0(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g)
 {
     
     cv::imwrite(_get_bmp_name(), img);

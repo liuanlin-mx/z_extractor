@@ -32,8 +32,8 @@ public:
     virtual void add_coupler(float x, float y, float w, float thickness, float conductivity);
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6);
     virtual void add_ring_elec(float x, float y, float r, float thickness, float er = 4.6);
-    virtual bool calc_zo(float& Zo, float& v, float& c, float& l, float& r, float& g);
-    virtual bool calc_coupled_zo(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
+    virtual bool calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g);
+    virtual bool calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
 private:
     std::int32_t _unit2pix(float v) { return round(v * _pix_unit_r);}
     void _draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
@@ -43,7 +43,7 @@ private:
     std::string _get_bmp_name();
     
     
-    void _calc_zo(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g);
+    void _calc_Z0(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g);
 private:
     std::string _bmp_name;
     float _pix_unit;
