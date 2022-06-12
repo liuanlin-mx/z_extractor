@@ -125,6 +125,11 @@ public:
                         
     bool gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call);
+    
+    std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
+    
+    void set_calc(std::uint32_t type = Z0_calc::Z0_CALC_MMTL);
+    
     void set_setup(float setup) { _Z0_setup = setup; }
     void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
@@ -134,7 +139,6 @@ public:
     void enable_ltra_model(bool b) { _ltra_model = b; }
     void enable_via_tl_mode(bool b) { _via_tl_mode = b; }
     
-    std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points);
     void dump();
     
     static std::string format_net_name(const std::string& net_name) { return _format_net_name(net_name); }

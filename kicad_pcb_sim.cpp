@@ -906,6 +906,19 @@ std::string kicad_pcb_sim::gen_zone_fasthenry(std::uint32_t net_id, std::set<kic
 }
 
 
+void kicad_pcb_sim::set_calc(std::uint32_t type)
+{
+    if (type == Z0_calc::Z0_CALC_MMTL)
+    {
+        _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
+    }
+    else if (type == Z0_calc::Z0_CALC_ATLC)
+    {
+        _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    }
+}
+
+
 void kicad_pcb_sim::dump()
 {
     for (auto& i : _nets)

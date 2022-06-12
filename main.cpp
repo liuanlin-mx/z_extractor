@@ -65,6 +65,7 @@ int main(int argc, char **argv)
     float setup = 0.5;
     float anti_pad_diameter = 0;
     bool via_tl_mode = false;
+    bool use_mmtl = false;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -133,6 +134,10 @@ int main(int argc, char **argv)
         {
             via_tl_mode = (atoi(arg_next) == 0)? false: true;
         }
+        else if (std::string(arg) == "-mmtl" && i < argc)
+        {
+            use_mmtl = (atoi(arg_next) == 0)? false: true;
+        }
         
     }
     
@@ -164,6 +169,7 @@ int main(int argc, char **argv)
     pcb.set_conductivity(conductivity);
     pcb.set_setup(setup);
     pcb.set_anti_pad_diameter(anti_pad_diameter);
+    pcb.set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);
     
     std::string spice;
     std::string info;
