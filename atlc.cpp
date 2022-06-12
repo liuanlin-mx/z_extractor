@@ -135,7 +135,8 @@ bool atlc::calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g)
 
 bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2])
 {
-    cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
+    cv::rectangle(_img, cv::Point(0, _img.rows - 1), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
+    cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, 0), cv::Scalar(0, 255, 0), 1);
     
     
     float z1;

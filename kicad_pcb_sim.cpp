@@ -18,7 +18,7 @@
 kicad_pcb_sim::kicad_pcb_sim()
 {
     _Z0_setup = 0.5;
-    _Z0_w_ratio = 15;
+    _Z0_w_ratio = 10;
     _Z0_h_ratio = 100;
     
     _coupled_max_d = 2;
