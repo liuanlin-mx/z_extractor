@@ -62,6 +62,7 @@ int main(int argc, char **argv)
     bool lossless_tl = true;
     bool ltra = true;
     float conductivity = 5e7;
+    float setup = 0.5;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -114,10 +115,13 @@ int main(int argc, char **argv)
         {
             ltra = (atoi(arg_next) == 0)? false: true;
         }
-        
         else if (std::string(arg) == "-conductivity" && i < argc)
         {
             conductivity = atof(arg_next);
+        }
+        else if (std::string(arg) == "-setup" && i < argc)
+        {
+            setup = atof(arg_next);
         }
         
     }
@@ -147,6 +151,7 @@ int main(int argc, char **argv)
     pcb.enable_lossless_tl(lossless_tl);
     pcb.enable_ltra_model(ltra);
     pcb.set_conductivity(conductivity);
+    pcb.set_setup(setup);
     
     if (oname == NULL)
     {

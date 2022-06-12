@@ -18,7 +18,7 @@
 kicad_pcb_sim::kicad_pcb_sim()
 {
     _Z0_setup = 0.5;
-    _Z0_w_ratio = 10;
+    _Z0_w_ratio = 15;
     _Z0_h_ratio = 100;
     
     _coupled_max_d = 2;
@@ -34,7 +34,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     
     _conductivity = 5.0e7;
     
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -2788,11 +2788,17 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     td = dist * 1000000 / v_;
     printf("dist:%f v:%f td:%fNS\n", dist, v_, td);
     
+    if (_lossless_tl)
+    {
+        r = 0;
+        g = 0;
+    }
+    
     if (!_ltra_model)
     {
         sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                     "Y1 pin1 0 pin2 0 ymod1 LEN=%f\n"
-                    ".MODEL ymod1 txl R=%f L=%fnH G=0 C=%fpF length=1\n",
+                    ".MODEL ymod1 txl R=%g L=%fnH G=0 C=%fpF length=1\n",
                     Zo, td,
                     dist * 0.001,
                     r, l, c
@@ -2802,7 +2808,7 @@ std::string kicad_pcb_sim::_gen_segment_zo_ckt(const std::string& cir_name, kica
     {
         sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
                     "O1 pin1 0 pin2 0 ltra1\n"
-                    ".MODEL ltra1 LTRA R=%f L=%fnH G=0 C=%fpF LEN=%g\n",
+                    ".MODEL ltra1 LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
                     Zo, td,
                     r, l, c, dist * 0.001
                     );
