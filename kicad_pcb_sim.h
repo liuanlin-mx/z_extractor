@@ -181,13 +181,16 @@ private:
     
     std::vector<std::string> _get_all_cu_layer();
     std::vector<std::string> _get_all_dielectric_layer();
+    std::vector<std::string> _get_all_mask_layer();
     std::vector<std::string> _get_via_layers(const via& v);
     std::vector<std::string> _get_via_conn_layers(const via& v);
+    
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float _get_layer_thickness(const std::string& layer_name);
     float _get_layer_z_axis(const std::string& layer_name);
     float _get_layer_epsilon_r(const std::string& layer_name);
+    float _get_cu_layer_epsilon_r(const std::string& layer_name);
     float _get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end);
     float _get_board_thickness();
     float _get_cu_min_thickness();

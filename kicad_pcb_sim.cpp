@@ -1634,8 +1634,17 @@ const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
         }
     }
     
-    if (l.type == "copper" || l.type == "core" || l.type == "prepreg")
+    if (l.type == "copper"
+        || l.type == "core"
+        || l.type == "prepreg"
+        || l.type == "Top Solder Mask"
+        || l.type == "Bottom Solder Mask")
     {
+        if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
+        {
+            l.epsilon_r  = 3.8;
+        }
+        
         _layers.push_back(l);
         log_debug("layer name:%s type:%s t:%f e:%f\n", l.name.c_str(), l.type.c_str(), l.thickness, l.epsilon_r);
     }
@@ -1800,7 +1809,10 @@ std::vector<std::string> kicad_pcb_sim::_get_all_dielectric_layer()
     std::vector<std::string> layers;
     for (auto& l: _layers)
     {
-        if (l.type != "core" && l.type != "prepreg")
+        if (l.type != "core"
+            && l.type != "prepreg"
+            && l.type != "Top Solder Mask"
+            && l.type != "Bottom Solder Mask")
         {
             continue;
         }
@@ -1808,6 +1820,21 @@ std::vector<std::string> kicad_pcb_sim::_get_all_dielectric_layer()
     }
     return layers;
 }
+
+std::vector<std::string> kicad_pcb_sim::_get_all_mask_layer()
+{
+    std::vector<std::string> layers;
+    for (auto& l: _layers)
+    {
+        if (l.type != "Top Solder Mask" && l.type != "Bottom Solder Mask")
+        {
+            continue;
+        }
+        layers.push_back(l.name);
+    }
+    return layers;
+}
+
 
 std::vector<std::string> kicad_pcb_sim::_get_via_layers(const via& v)
 {
@@ -1931,6 +1958,54 @@ float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_name)
         }
     }
     return 1;
+}
+
+/* 取上下两层介电常数的均值 */
+float kicad_pcb_sim::_get_cu_layer_epsilon_r(const std::string& layer_name)
+{
+    layer up;
+    layer down;
+    std::int32_t state = 0;
+    for (auto& l: _layers)
+    {
+        if (l.name == layer_name)
+        {
+            state = 1;
+            continue;
+        }
+        if (state == 0)
+        {
+            up = l;
+        }
+        else if (state == 1)
+        {
+            down = l;
+            break;
+        }
+    }
+    
+    float er1 = 0;
+    float er2 = 0;
+    
+    if (up.type == "Top Solder Mask" || up.type == "Bottom Solder Mask")
+    {
+        er1 = 1.0;
+    }
+    else
+    {
+        er1 = up.epsilon_r;
+    }
+    
+    if (down.type == "Top Solder Mask" || down.type == "Bottom Solder Mask")
+    {
+        er2 = 1.0;
+    }
+    else
+    {
+        er2 = down.epsilon_r;
+    }
+    
+    return (er1 + er2) * 0.5;
 }
 
 float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
@@ -2284,6 +2359,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
                     
 #endif
     std::vector<std::string> layers = _get_all_dielectric_layer();
+    
     float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * -0.5;
@@ -2322,18 +2398,28 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
             _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
+        std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
             std::list<std::pair<float, float> >  grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
             
             for (auto& g: grounds)
             {
+                if (elec_add.count(refs.first) == 0)
+                {
+                    elec_add.insert(refs.first);
+                    _Z0_calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                }
                 _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
+        if (elec_add.count(s.layer_name) == 0)
+        {
+            elec_add.insert(s.layer_name);
+            _Z0_calc->add_elec(0, _get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _get_layer_thickness(s.layer_name), _get_cu_layer_epsilon_r(s.layer_name));
+        }
         _Z0_calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
-        
         
         float Zo;
         float v;
@@ -2664,18 +2750,36 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
             _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
+        std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
             std::list<std::pair<float, float> > grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
             
             for (auto& g: grounds)
             {
+                if (elec_add.count(refs.first) == 0)
+                {
+                    elec_add.insert(refs.first);
+                    _Z0_calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                }
                 _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
+        if (elec_add.count(s0.layer_name) == 0)
+        {
+            elec_add.insert(s0.layer_name);
+            _Z0_calc->add_elec(0, _get_layer_z_axis(s0.layer_name) + box_y_offset, box_w, _get_layer_thickness(s0.layer_name), _get_cu_layer_epsilon_r(s0.layer_name));
+        }
+        if (elec_add.count(s1.layer_name) == 0)
+        {
+            elec_add.insert(s1.layer_name);
+            _Z0_calc->add_elec(0, _get_layer_z_axis(s1.layer_name) + box_y_offset, box_w, _get_layer_thickness(s1.layer_name), _get_cu_layer_epsilon_r(s1.layer_name));
+        }
+        
         if (s0_is_left)
         {
+                
             _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
             _Z0_calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }

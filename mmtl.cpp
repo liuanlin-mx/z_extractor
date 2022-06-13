@@ -136,7 +136,7 @@ bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float&
     }
     pclose(pfp);
     _read_value(Z0, v, c, l, r, g);
-    //printf("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
+    //printf("Z0:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
     return false;
 }
 
@@ -265,35 +265,31 @@ void mmtl::_add_elec(float x, float y, float w, float thickness, float er)
 void mmtl::_build()
 {
     _xsctn = base_xsctn;
-    float y = 0;
-    float h = 0;
-    bool flag = false;
-    for (const auto& it: _map)
+    while (!_map.empty())
     {
-        const item& item_ = it.second;
-        if (flag && y != item_.y)
+        auto it = _map.begin();
+        std::size_t cnt = _map.count(it->first);
+        auto it2 = it;
+        for (std::size_t i = 0; i < cnt; i++)
         {
-            flag = false;
-            _add_elec(0, 0, 0, h, 1.);
+            if (it->second.type == ITEM_TYPE_GND)
+            {
+                _add_ground(it->second.x, 0, it->second.w, it->second.h);
+            }
+            else if (it->second.type == ITEM_TYPE_COND)
+            {
+                _add_wire(it->second.x, 0, it->second.w, it->second.h, it->second.conductivity);
+            }
+            it++;
         }
         
-        y = item_.y;
-        
-        if (item_.type == ITEM_TYPE_ELEC)
+        for (std::size_t i = 0; i < cnt; i++)
         {
-            _add_elec(item_.x, 0, item_.w, item_.h, item_.er);
-        }
-        else if (item_.type == ITEM_TYPE_GND)
-        {
-            _add_ground(item_.x, 0, item_.w, item_.h);
-            flag = true;
-            h = item_.h;
-        }
-        else if (item_.type == ITEM_TYPE_COND)
-        {
-            _add_wire(item_.x, 0, item_.w, item_.h, item_.conductivity);
-            flag = true;
-            h = item_.h;
+            if (it2->second.type == ITEM_TYPE_ELEC)
+            {
+                _add_elec(it2->second.x, 0, it2->second.w, it2->second.h, it2->second.er);
+            }
+            it2 = _map.erase(it2);
         }
     }
 }
