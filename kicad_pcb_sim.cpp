@@ -26,6 +26,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _lossless_tl = true;
     _ltra_model = true;
     _via_tl_mode = false;
+    _enable_openmp = true;
     
     _img_ratio = 200;
     _pcb_top = 10000.;
@@ -35,7 +36,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     
     _conductivity = 5.0e7;
     _anti_pad_diameter = 0.;
-    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
+    _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
 }
 
 kicad_pcb_sim::~kicad_pcb_sim()
@@ -576,7 +577,14 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            if (_enable_openmp && _Z0_calc->get_type() == Z0_calc::Z0_CALC_MMTL)
+            {
+                sub += _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
+            else
+            {
+                sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
             td_sum += td;
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
@@ -787,7 +795,16 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         kicad_pcb_sim::segment& s0 = ss_item.second.first;
         kicad_pcb_sim::segment& s1 = ss_item.second.second;
         
-        sub += _gen_segment_coupled_Z0_ckt(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
+        if (_enable_openmp && _Z0_calc->get_type() == Z0_calc::Z0_CALC_MMTL)
+        {
+            sub += _gen_segment_coupled_Z0_ckt_openmp(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
+        }
+        else
+        {
+            sub += _gen_segment_coupled_Z0_ckt(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
+        }
+        
+        
         sprintf(buf, "X%s %s %s %s %s CPL%s\n", _get_tstamp_short(s0.tstamp).c_str(),
                         _pos2net(s0.start.x, s0.start.y, s0.layer_name).c_str(),
                         _pos2net(s0.end.x, s0.end.y, s0.layer_name).c_str(),
@@ -805,8 +822,14 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
-            
+            if (_enable_openmp && _Z0_calc->get_type() == Z0_calc::Z0_CALC_MMTL)
+            {
+                sub += _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
+            else
+            {
+                sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -824,8 +847,14 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         {
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
-            sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
-            
+            if (_enable_openmp && _Z0_calc->get_type() == Z0_calc::Z0_CALC_MMTL)
+            {
+                sub += _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
+            else
+            {
+                sub += _gen_segment_Z0_ckt(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            }
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -2330,7 +2359,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
     std::string cir;
     float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2339,6 +2368,10 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
     float rad_left = angle + (float)M_PI_2;
     float rad_right = angle - (float)M_PI_2;
     
+    if (s_len < _segment_min_len)
+    {
+        return  ".subckt " + cir_name + " pin1 pin1\n.ends\n";
+    }
     
     float begin = 0;
     float last_Z0 = -100;
@@ -2461,7 +2494,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
                 if (!_ltra_model)
                 {
                     sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                                "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
+                                "Y%d pin%d 0 pin%d 0 ymod%d LEN=%g\n"
                                 ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
                                 last_Z0, td,
                                 idx, pin, pin + 1, idx, dist * 0.001,
@@ -2498,7 +2531,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
     std::string cir;
     float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2507,7 +2540,10 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
     float rad_left = angle + (float)M_PI_2;
     float rad_right = angle - (float)M_PI_2;
     
-    
+    if (s_len < _segment_min_len)
+    {
+        return  ".subckt " + cir_name + " pin1 pin1\n.ends\n";
+    }
     
     int pin = 1;
     int idx = 1;
@@ -2531,7 +2567,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
         box_h = _get_board_thickness() * 1.5;
     }
     
-    _Z0_calc->clean_all();
     
     struct Z0_item
     {
@@ -2545,6 +2580,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
     
     std::vector<Z0_item> Z0s;
     
+    
     for (float i = 0; i < s_len; i += _Z0_setup)
     {
         Z0_item tmp;
@@ -2552,21 +2588,38 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
         Z0s.push_back(tmp);
     }
     
-    Z0_item tmp;
-    tmp.pos = s_len;
-    Z0s.push_back(tmp);
+    if (Z0s.size() > 1 && s_len - Z0s.back().pos < 0.5 * _Z0_setup)
+    {
+        Z0s.back().pos = s_len;
+    }
+    else
+    {
+        Z0_item tmp;
+        tmp.pos = s_len;
+        Z0s.push_back(tmp);
+    }
     
-    std::int32_t thread_nums = 32;
-    atlc atlcs[thread_nums];
+    std::int32_t thread_nums = omp_get_max_threads();
+    if (thread_nums > (std::int32_t)Z0s.size())
+    {
+        thread_nums = Z0s.size();
+        omp_set_num_threads(thread_nums);
+    }
+    
+    std::vector<std::shared_ptr<Z0_calc> > Z0_calcs;
+    for (std::int32_t i = 0; i < thread_nums; i++)
+    {
+        Z0_calcs.push_back(Z0_calc::create(_Z0_calc->get_type()));
+    }
     
     #pragma omp parallel for
     for (std::uint32_t i = 0; i < Z0s.size(); i++)
     {
         char name[32];
         std::int32_t thread_num = omp_get_thread_num();
-        atlc& atlc = atlcs[thread_num];
-        sprintf(name, "%d.bmp", thread_num);
-        atlc.set_tmp_name(name);
+        std::shared_ptr<Z0_calc>& calc = Z0_calcs[thread_num];
+        sprintf(name, "tmp%d", thread_num);
+        calc->set_tmp_name(name);
         
         Z0_item& item = Z0s[i];
         float pos = item.pos;
@@ -2578,26 +2631,37 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
         float y_right = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_right);
         
         
-        atlc.clean();
-        atlc.set_precision(atlc_pix_unit);
-        atlc.set_box_size(box_w, box_h);
+        calc->clean();
+        calc->set_precision(atlc_pix_unit);
+        calc->set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
-            atlc.add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
+        std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
             std::list<std::pair<float, float> >  grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
             
             for (auto& g: grounds)
             {
-                atlc.add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                if (elec_add.count(refs.first) == 0)
+                {
+                    elec_add.insert(refs.first);
+                    calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                }
+                calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
-        atlc.add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
+        if (elec_add.count(s.layer_name) == 0)
+        {
+            elec_add.insert(s.layer_name);
+            calc->add_elec(0, _get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _get_layer_thickness(s.layer_name), _get_cu_layer_epsilon_r(s.layer_name));
+        }
+        calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
         
         
         float Z0;
@@ -2607,7 +2671,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
         float r;
         float g;
         
-        atlc.calc_Z0(Z0, v, c, l, r, g);
+        calc->calc_Z0(Z0, v, c, l, r, g);
         log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
         item.Z0 = Z0;
         item.v = v;
@@ -2626,7 +2690,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
             float dist = (end.pos - begin.pos);
             //printf("dist:%f Z0:%f\n", dist, begin.Z0);
             float td = dist * 1000000 / begin.v;
-            
+            td_sum += td;
             float r = begin.r;
             if (td < 0.001 || _lossless_tl)
             {
@@ -2646,7 +2710,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
             if (!_ltra_model)
             {
                 sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                            "Y%d pin%d 0 pin%d 0 ymod%d LEN=%f\n"
+                            "Y%d pin%d 0 pin%d 0 ymod%d LEN=%g\n"
                             ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
                             begin.Z0, td,
                             idx, pin, pin + 1, idx, dist * 0.001,
@@ -2668,6 +2732,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
         #endif
             pin++;
             cir += strbuf;
+            begin = end;
         }
     }
     
@@ -2676,7 +2741,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_omp(const std::string& cir_name, 
     return  strbuf + cir;
 }
 
-std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat)
 {
     std::string cir;
     if (_calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > _calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
@@ -2859,6 +2924,231 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
     return  strbuf + cir;
 }
 
+
+std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat)
+{
+    std::string cir;
+    if (_calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > _calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
+    {
+        std::swap(s1.start, s1.end);
+    }
+    float ss_start_x = (s0.start.x + s1.start.x) * 0.5;
+    float ss_start_y = (s0.start.y + s1.start.y) * 0.5;
+    
+    float ss_end_x = (s0.end.x + s1.end.x) * 0.5;
+    float ss_end_y = (s0.end.y + s1.end.y) * 0.5;
+    
+    float ss_len = sqrt((ss_start_x - ss_end_x) * (ss_start_x - ss_end_x) + (ss_start_y - ss_end_y) * (ss_start_y - ss_end_y));
+    float ss_dist = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
+    
+    bool s0_is_left = ((ss_start_y - ss_end_y) * s0.start.x + (ss_end_x - ss_start_x) * s0.start.y + ss_start_x * ss_end_y - ss_end_x * ss_start_y) > 0;
+
+    
+    float angle = _calc_angle(ss_start_x, ss_start_y, ss_end_x, ss_end_y);
+    float rad_left = angle + (float)M_PI_2;
+    float rad_right = angle - (float)M_PI_2;
+    
+    
+    char strbuf[512];
+    
+    
+    std::vector<std::string> layers = _get_all_dielectric_layer();
+    float box_w = ss_dist * _Z0_w_ratio;
+    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
+    float box_y_offset = _get_board_thickness() * - 0.5;
+    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
+    if (box_h < _get_board_thickness() * 1.5)
+    {
+        box_h = _get_board_thickness() * 1.5;
+    }
+    
+    _Z0_calc->clean_all();
+    
+    
+    struct Z0_item
+    {
+        float c_matrix[2][2];
+        float l_matrix[2][2];
+        float r_matrix[2][2];
+        float g_matrix[2][2];
+    
+        float Zodd;
+        float Zeven;
+        
+        float pos;
+    };
+    
+    std::vector<Z0_item> ss_Z0s;
+    
+    for (float i = 0; i < ss_len; i += _Z0_setup)
+    {
+        Z0_item tmp;
+        tmp.pos = i;
+        ss_Z0s.push_back(tmp);
+    }
+    
+    if (ss_Z0s.size() > 1 && ss_len - ss_Z0s.back().pos < 0.5 * _Z0_setup)
+    {
+        ss_Z0s.back().pos = ss_len;
+    }
+    else
+    {
+        Z0_item tmp;
+        tmp.pos = ss_len;
+        ss_Z0s.push_back(tmp);
+    }
+    
+    
+    
+    std::int32_t thread_nums = omp_get_max_threads();
+    if (thread_nums > (std::int32_t)ss_Z0s.size())
+    {
+        thread_nums = ss_Z0s.size();
+        omp_set_num_threads(thread_nums);
+    }
+    
+    std::vector<std::shared_ptr<Z0_calc> > Z0_calcs;
+    for (std::int32_t i = 0; i < thread_nums; i++)
+    {
+        Z0_calcs.push_back(Z0_calc::create(_Z0_calc->get_type()));
+    }
+    
+    #pragma omp parallel for
+    for (std::uint32_t i = 0; i < ss_Z0s.size(); i++)
+    {
+        char name[32];
+        std::int32_t thread_num = omp_get_thread_num();
+        std::shared_ptr<Z0_calc>& calc = Z0_calcs[thread_num];
+        sprintf(name, "tmp%d", thread_num);
+        calc->set_tmp_name(name);
+        
+        Z0_item& ss_item = ss_Z0s[i];
+        
+        float x = ss_start_x + ss_item.pos * cos(angle);
+        float y = ss_start_y + ss_item.pos * sin(angle);
+        float x_left = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_left);
+        float y_left = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_left);
+        float x_right = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_right);
+        float y_right = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_right);
+        
+        
+        calc->clean();
+        calc->set_precision(atlc_pix_unit);
+        calc->set_box_size(box_w, box_h);
+        
+        
+        for (auto& l: layers)
+        {
+            float y = _get_layer_z_axis(l);
+            calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+        }
+        
+        std::set<std::string> elec_add;
+        for (auto& refs: refs_mat)
+        {
+            std::list<std::pair<float, float> > grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            
+            for (auto& g: grounds)
+            {
+                if (elec_add.count(refs.first) == 0)
+                {
+                    elec_add.insert(refs.first);
+                    calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                }
+                calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+            }
+        }
+        
+        if (elec_add.count(s0.layer_name) == 0)
+        {
+            elec_add.insert(s0.layer_name);
+            calc->add_elec(0, _get_layer_z_axis(s0.layer_name) + box_y_offset, box_w, _get_layer_thickness(s0.layer_name), _get_cu_layer_epsilon_r(s0.layer_name));
+        }
+        if (elec_add.count(s1.layer_name) == 0)
+        {
+            elec_add.insert(s1.layer_name);
+            calc->add_elec(0, _get_layer_z_axis(s1.layer_name) + box_y_offset, box_w, _get_layer_thickness(s1.layer_name), _get_cu_layer_epsilon_r(s1.layer_name));
+        }
+        
+        if (s0_is_left)
+        {
+                
+            calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+        }
+        else
+        {
+            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+        }
+        
+        
+        calc->calc_coupled_Z0(ss_item.Zodd, ss_item.Zeven, ss_item.c_matrix, ss_item.l_matrix, ss_item.r_matrix, ss_item.g_matrix);
+    }
+    
+    
+    float c_matrix[2][2] = {0, 0, 0, 0};
+    float l_matrix[2][2] = {0, 0, 0, 0};
+    float r_matrix[2][2] = {0, 0, 0, 0};
+    float g_matrix[2][2] = {0, 0, 0, 0};
+        
+    
+    for (auto& item: ss_Z0s)
+    {
+        for (std::int32_t i = 0; i < 2; i++)
+        {
+            for (std::int32_t j = 0; j < 2; j++)
+            {
+                c_matrix[i][j] += item.c_matrix[i][j];
+                l_matrix[i][j] += item.l_matrix[i][j];
+                r_matrix[i][j] += item.r_matrix[i][j];
+                g_matrix[i][j] += item.g_matrix[i][j];
+            }
+        }
+    }
+    
+    for (std::int32_t i = 0; i < 2; i++)
+    {
+        for (std::int32_t j = 0; j < 2; j++)
+        {
+            c_matrix[i][j] = c_matrix[i][j] / ss_Z0s.size();
+            l_matrix[i][j] = l_matrix[i][j] / ss_Z0s.size();
+            r_matrix[i][j] = r_matrix[i][j] / ss_Z0s.size();
+            g_matrix[i][j] = g_matrix[i][j] / ss_Z0s.size();
+        }
+    }
+    
+    float Zodd = sqrt((l_matrix[0][0] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
+                + sqrt((l_matrix[1][1] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
+    Zodd = Zodd * 0.5;
+    
+    float Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
+                + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
+    Zeven = Zeven * 0.5;
+    
+    if (_lossless_tl)
+    {
+        // 正常的无损传输线电阻应该为0 这里将电阻值设置为1 否则ngspice仿真非常容易出异常 无法收敛
+        r_matrix[0][0] = r_matrix[1][1] = 1; 
+    }
+    sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
+                    "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
+                    ".model PLINE CPL length=%f\n"
+                    "+R=%g 0 %g\n"
+                    "+L=%fnH %fnH %fnH\n"
+                    "+G=0 0 0\n"
+                    "+C=%fpF %fpF %fpF\n",
+                    Zodd, Zeven, Zodd * 2, Zeven * 0.5,
+                    ss_len * 0.001,
+                    r_matrix[0][0], r_matrix[1][1],
+                    l_matrix[0][0], (l_matrix[0][1] + l_matrix[1][0]) * 0.5, l_matrix[1][1],
+                    c_matrix[0][0], (c_matrix[0][1] + c_matrix[1][0]) * 0.5, c_matrix[1][1]);
+    cir += strbuf;
+    
+    cir += ".ends\n";
+    sprintf(strbuf, ".subckt %s pin1 pin2  pin3 pin4\n", cir_name.c_str());
+    return  strbuf + cir;
+}
 
 std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
 {

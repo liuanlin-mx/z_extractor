@@ -332,7 +332,7 @@ bool atlc::_is_some(cv::Mat& img1, cv::Mat& img2)
 
 std::string atlc::_get_bmp_name()
 {
-    return _bmp_name;
+    return _bmp_name + ".bmp";
 }
 
 

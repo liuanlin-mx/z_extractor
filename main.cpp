@@ -66,6 +66,7 @@ int main(int argc, char **argv)
     float anti_pad_diameter = 0;
     bool via_tl_mode = false;
     bool use_mmtl = true;
+    bool enable_openmp = true;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -138,6 +139,10 @@ int main(int argc, char **argv)
         {
             use_mmtl = (atoi(arg_next) == 0)? false: true;
         }
+        else if (std::string(arg) == "-openmp" && i < argc)
+        {
+            enable_openmp = (atoi(arg_next) == 0)? false: true;
+        }
         
     }
     
@@ -166,6 +171,7 @@ int main(int argc, char **argv)
     pcb.enable_lossless_tl(lossless_tl);
     pcb.enable_ltra_model(ltra);
     pcb.enable_via_tl_mode(via_tl_mode);
+    pcb.enable_openmp(enable_openmp);
     pcb.set_conductivity(conductivity);
     pcb.set_setup(setup);
     pcb.set_anti_pad_diameter(anti_pad_diameter);

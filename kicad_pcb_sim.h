@@ -138,7 +138,7 @@ public:
     void enable_lossless_tl(bool b) { _lossless_tl = b; }
     void enable_ltra_model(bool b) { _ltra_model = b; }
     void enable_via_tl_mode(bool b) { _via_tl_mode = b; }
-    
+    void enable_openmp(bool b) { _enable_openmp = b; }
     void dump();
     
     static std::string format_net_name(const std::string& net_name) { return _format_net_name(net_name); }
@@ -216,9 +216,10 @@ private:
     
     /* 提取走线附近的参考平面横界面参数 */
     std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
-    std::string _gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat, float& td);
-    std::string _gen_segment_Z0_ckt_omp(const std::string& cir_name, kicad_pcb_sim::segment& s, std::map<std::string, cv::Mat>& refs_mat);
-    std::string _gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, std::map<std::string, cv::Mat>& refs_mat);
+    std::string _gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum);
+    std::string _gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum);
+    std::string _gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat);
+    std::string _gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat);
     
     std::string _gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
     std::string _gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
@@ -280,6 +281,7 @@ private:
     bool _lossless_tl;
     bool _ltra_model;
     bool _via_tl_mode;
+    bool _enable_openmp;
     
     float _img_ratio;
     float _pcb_top;
@@ -290,6 +292,7 @@ private:
     //std::shared_ptr<Z0_calc> _Z0_calc1;
     //std::shared_ptr<Z0_calc> _Z0_calc_coupled;
     const float _resistivity = 0.0172;
+    const float _segment_min_len = 0.01;
     float _conductivity;
     float _anti_pad_diameter;
 };

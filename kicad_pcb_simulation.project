@@ -50,7 +50,7 @@
         <Library Value="opencv_core"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testcpl/testcpl.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t -coupled &quot;/SP:/SN&quot; -coupled_max_d 3 -coupled_min_len 0.2" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/testcpl/testcpl.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t -coupled &quot;/SP:/SN&quot; -coupled_max_d 3 -coupled_min_len 0.2" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t  -coupled &quot;/ddr3/DQS1_N:/ddr3/DQS1_P&quot; -coupled_max_d 2 -coupled_min_len 0.2 -ltra 0 -anti_pad 0.7 -mmtl 1 -openmp 1" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t  -coupled &quot;/ddr3/DQS1_N:/ddr3/DQS1_P&quot; -coupled_max_d 2 -coupled_min_len 0.2 -ltra 0 -anti_pad 0.7 -mmtl 1 -openmp 1" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

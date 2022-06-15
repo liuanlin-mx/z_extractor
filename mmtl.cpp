@@ -113,12 +113,10 @@ void mmtl::add_elec(float x, float y, float w, float thickness, float er)
 
 bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float& g)
 {
-    char cmd[512] = {0};
     char buf[1024] = {0};
     
     _build();
-    sprintf(buf, "%s.xsctn", _tmp_name.c_str());
-    FILE *fp = fopen(buf, "wb");
+    FILE *fp = fopen((_tmp_name + ".xsctn").c_str(), "wb");
     if (fp)
     {
         fwrite(_xsctn.c_str(), 1, _xsctn.length(), fp);
@@ -127,9 +125,7 @@ bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float&
     }
     
     
-    sprintf(cmd, "mmtl_bem %s", _tmp_name.c_str());
-    
-    FILE *pfp = popen(cmd, "r");
+    FILE *pfp = popen(("mmtl_bem " + _tmp_name).c_str(), "r");
     while (fgets(buf, sizeof(buf), pfp))
     {
         //printf("%s", buf);
