@@ -33,6 +33,7 @@ public:
     virtual void add_wire(float x, float y, float w, float thickness, float conductivity) = 0;
     virtual void add_coupler(float x, float y, float w, float thickness, float conductivity) = 0;
     virtual void add_elec(float x, float y, float w, float thickness, float er = 4.6) = 0;
+    /* 返回true表示返回的结果为上一次计算结果的缓存值  */
     virtual bool calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g) = 0;
     virtual bool calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]) = 0;
                         

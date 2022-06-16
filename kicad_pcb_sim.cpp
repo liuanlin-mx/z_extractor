@@ -2370,18 +2370,9 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
     
     if (s_len < _segment_min_len)
     {
-        return  ".subckt " + cir_name + " pin1 pin1\n.ends\n";
+        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
     }
     
-    float begin = 0;
-    float last_Z0 = -100;
-    float last_v;
-    float last_c;
-    float last_l;
-    
-    int pin = 1;
-    int idx = 1;
-    char strbuf[512];
     
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -2392,7 +2383,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
                     
 #endif
     std::vector<std::string> layers = _get_all_dielectric_layer();
-    
     float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * -0.5;
@@ -2403,32 +2393,57 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
     }
     
     
-    _Z0_calc->clean_all();
-    
-    for (float i = 0; i < s_len + _Z0_setup; i += _Z0_setup)
+    struct Z0_item
     {
-        float x = s.start.x + i * cos(angle);
-        float y = s.start.y + i * sin(angle);
+        float Z0;
+        float v;
+        float c;
+        float l;
+        float r;
+        float pos;
+    };
+    
+    std::vector<Z0_item> Z0s;
+    for (float i = 0; i < s_len; i += _Z0_setup)
+    {
+        Z0_item tmp;
+        tmp.pos = i;
+        Z0s.push_back(tmp);
+    }
+    
+    if (Z0s.size() > 1 && s_len - Z0s.back().pos < 0.5 * _Z0_setup)
+    {
+        Z0s.back().pos = s_len;
+    }
+    else
+    {
+        Z0_item tmp;
+        tmp.pos = s_len;
+        Z0s.push_back(tmp);
+    }
+    
+    
+    for (std::uint32_t i = 0; i < Z0s.size(); i++)
+    {
+        std::shared_ptr<Z0_calc>& calc = _Z0_calc;
+        
+        Z0_item& item = Z0s[i];
+        float pos = item.pos;
+        float x = s.start.x + pos * cos(angle);
+        float y = s.start.y + pos * sin(angle);
         float x_left = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_left);
         float y_left = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_left);
         float x_right = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_right);
         float y_right = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_right);
         
-    #if DBG_IMG
-        cv::circle(img, cv::Point(_cvt_img_x(x), _cvt_img_y(y)), 2, cv::Scalar(100, 0, 0));
-        cv::line(img, cv::Point(_cvt_img_x(x_left), _cvt_img_y(y_left)),
-                    cv::Point(_cvt_img_x(x_right), _cvt_img_y(y_right)),
-                    cv::Scalar(255, 255, 255), 1, cv::LINE_4);
-    #endif
         
-        
-        _Z0_calc->clean();
-        _Z0_calc->set_precision(atlc_pix_unit);
-        _Z0_calc->set_box_size(box_w, box_h);
+        calc->clean();
+        calc->set_precision(atlc_pix_unit);
+        calc->set_box_size(box_w, box_h);
         for (auto& l: layers)
         {
             float y = _get_layer_z_axis(l);
-            _Z0_calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
         }
         
         std::set<std::string> elec_add;
@@ -2441,89 +2456,95 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
                 if (elec_add.count(refs.first) == 0)
                 {
                     elec_add.insert(refs.first);
-                    _Z0_calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                    calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
                 }
-                _Z0_calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
             }
         }
         
         if (elec_add.count(s.layer_name) == 0)
         {
             elec_add.insert(s.layer_name);
-            _Z0_calc->add_elec(0, _get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _get_layer_thickness(s.layer_name), _get_cu_layer_epsilon_r(s.layer_name));
+            calc->add_elec(0, _get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _get_layer_thickness(s.layer_name), _get_cu_layer_epsilon_r(s.layer_name));
         }
-        _Z0_calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
+        calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
         
-        float Zo;
+        
+        float Z0;
         float v;
         float c;
         float l;
         float r;
         float g;
         
-        if ((!_Z0_calc->calc_Z0(Zo, v, c, l, r, g) && fabs(last_Z0 - Zo) > 0.1) || i >= s_len)
+        calc->calc_Z0(Z0, v, c, l, r, g);
+        log_debug("Zo:%g v:%gmm/ns c:%g l:%g\n", Z0, v / 1000000, c, l);
+        item.Z0 = Z0;
+        item.v = v;
+        item.c = c;
+        item.l = l;
+        item.r = r;
+    }
+
+    int pin = 1;
+    int idx = 1;
+    char strbuf[512];
+    
+    Z0_item begin = Z0s[0];
+    Z0_item end;
+    for (std::uint32_t i = 1; i < Z0s.size(); i++)
+    {
+        end = Z0s[i];
+        if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
         {
-            float pos = i;
-            if (pos > s_len)
+            float dist = (end.pos - begin.pos);
+            log_debug("dist:%g Z0:%g\n", dist, begin.Z0);
+            float td = dist * 1000000 / begin.v;
+            td_sum += td;
+            float r = begin.r;
+            if (td < _td_threshold || _lossless_tl)
             {
-                pos = s_len;
+                r = 0;
             }
-            log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Zo, v / 1000000, c, l);
-            if (pos - begin > 0.001)
+            
+        #if 0
+            if (td >= 0.001)
             {
-                float dist = (pos - begin);
-                //printf("dist:%f last_v:%f\n", dist, last_v);
-                float td = dist * 1000000 / last_v;
-                
-                if (td < 0.001 || _lossless_tl)
-                {
-                    r = 0;
-                }
-                
-                td_sum += td;
-            #if 0
-                if (td >= 0.001)
-                {
-                    sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%f TD=%fNS\n", idx++, pin, pin + 1, last_Z0, td);
-                }
-                else
-                {
-                    sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
-                }
-            #else
-                if (!_ltra_model)
-                {
-                    sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                                "Y%d pin%d 0 pin%d 0 ymod%d LEN=%g\n"
-                                ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
-                                last_Z0, td,
-                                idx, pin, pin + 1, idx, dist * 0.001,
-                                idx, r, last_l, last_c
-                                );
-                }
-                else
-                {
-                
-                    sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
-                                "O%d pin%d 0 pin%d 0 ltra%d\n"
-                                ".MODEL ltra%d LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
-                                last_Z0, td,
-                                idx, pin, pin + 1, idx,
-                                idx, r, last_l, last_c, dist * 0.001
-                                );
-                }
-                idx++;
-            #endif
-                pin++;
-                cir += strbuf;
+                sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%g TD=%gNS\n", idx++, pin, pin + 1, begin.Z0, td);
             }
-            begin = pos;
-            last_Z0 = Zo;
-            last_v = v;
-            last_c = c;
-            last_l = l;
+            else
+            {
+                sprintf(strbuf, "L%d pin%d pin%d %gnH\n", idx++, pin, pin + 1, last_l * dist * 0.001);
+            }
+        #else
+            if (!_ltra_model)
+            {
+                sprintf(strbuf, "***Z0:%g TD:%gNS***\n"
+                            "Y%d pin%d 0 pin%d 0 ymod%d LEN=%g\n"
+                            ".MODEL ymod%d txl R=%g L=%gnH G=0 C=%gpF length=1\n",
+                            begin.Z0, td,
+                            idx, pin, pin + 1, idx, dist * 0.001,
+                            idx, r, begin.l, begin.c
+                            );
+            }
+            else
+            {
+            
+                sprintf(strbuf, "***Z0:%g TD:%gNS***\n"
+                            "O%d pin%d 0 pin%d 0 ltra%d\n"
+                            ".MODEL ltra%d LTRA R=%g L=%gnH G=0 C=%gpF LEN=%g\n",
+                            begin.Z0, td,
+                            idx, pin, pin + 1, idx,
+                            idx, r, begin.l, begin.c, dist * 0.001
+                            );
+            }
+            idx++;
+        #endif
+            pin++;
+            cir += strbuf;
+            begin = end;
         }
-    };
+    }
     
     cir += ".ends\n";
     sprintf(strbuf, ".subckt %s pin1 pin%d\n", cir_name.c_str(), pin);
@@ -2542,12 +2563,9 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
     
     if (s_len < _segment_min_len)
     {
-        return  ".subckt " + cir_name + " pin1 pin1\n.ends\n";
+        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
     }
     
-    int pin = 1;
-    int idx = 1;
-    char strbuf[512];
     
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -2672,7 +2690,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         float g;
         
         calc->calc_Z0(Z0, v, c, l, r, g);
-        log_debug("Zo:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
+        log_debug("Zo:%g v:%gmm/ns c:%g l:%g\n", Z0, v / 1000000, c, l);
         item.Z0 = Z0;
         item.v = v;
         item.c = c;
@@ -2680,6 +2698,10 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         item.r = r;
     }
 
+    int pin = 1;
+    int idx = 1;
+    char strbuf[512];
+    
     Z0_item begin = Z0s[0];
     Z0_item end;
     for (std::uint32_t i = 1; i < Z0s.size(); i++)
@@ -2688,11 +2710,11 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
         {
             float dist = (end.pos - begin.pos);
-            //printf("dist:%f Z0:%f\n", dist, begin.Z0);
+            log_debug("dist:%g Z0:%g\n", dist, begin.Z0);
             float td = dist * 1000000 / begin.v;
             td_sum += td;
             float r = begin.r;
-            if (td < 0.001 || _lossless_tl)
+            if (td < _td_threshold || _lossless_tl)
             {
                 r = 0;
             }
@@ -2700,7 +2722,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         #if 0
             if (td >= 0.001)
             {
-                sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%f TD=%fNS\n", idx++, pin, pin + 1, begin.Z0, td);
+                sprintf(strbuf, "T%d pin%d 0 pin%d 0 Z0=%g TD=%gNS\n", idx++, pin, pin + 1, begin.Z0, td);
             }
             else
             {
@@ -2709,9 +2731,9 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         #else
             if (!_ltra_model)
             {
-                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                sprintf(strbuf, "***Z0:%g TD:%gNS***\n"
                             "Y%d pin%d 0 pin%d 0 ymod%d LEN=%g\n"
-                            ".MODEL ymod%d txl R=%g L=%fnH G=0 C=%fpF length=1\n",
+                            ".MODEL ymod%d txl R=%g L=%gnH G=0 C=%gpF length=1\n",
                             begin.Z0, td,
                             idx, pin, pin + 1, idx, dist * 0.001,
                             idx, r, begin.l, begin.c
@@ -2720,9 +2742,9 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
             else
             {
             
-                sprintf(strbuf, "***Z0:%f TD:%fNS***\n"
+                sprintf(strbuf, "***Z0:%g TD:%gNS***\n"
                             "O%d pin%d 0 pin%d 0 ltra%d\n"
-                            ".MODEL ltra%d LTRA R=%g L=%fnH G=0 C=%fpF LEN=%g\n",
+                            ".MODEL ltra%d LTRA R=%g L=%gnH G=0 C=%gpF LEN=%g\n",
                             begin.Z0, td,
                             idx, pin, pin + 1, idx,
                             idx, r, begin.l, begin.c, dist * 0.001
@@ -2905,13 +2927,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
         // 正常的无损传输线电阻应该为0 这里将电阻值设置为1 否则ngspice仿真非常容易出异常 无法收敛
         r_matrix[0][0] = r_matrix[1][1] = 1; 
     }
-    sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
+    sprintf(strbuf, "***Zodd:%g Zeven:%g Zdiff:%g Zcomm:%g***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
-                    ".model PLINE CPL length=%f\n"
+                    ".model PLINE CPL length=%g\n"
                     "+R=%g 0 %g\n"
-                    "+L=%fnH %fnH %fnH\n"
+                    "+L=%gnH %gnH %gnH\n"
                     "+G=0 0 0\n"
-                    "+C=%fpF %fpF %fpF\n",
+                    "+C=%gpF %gpF %gpF\n",
                     Zodd, Zeven, Zodd * 2, Zeven * 0.5,
                     ss_len * 0.001,
                     r_matrix[0][0], r_matrix[1][1],
@@ -2949,9 +2971,8 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     float rad_right = angle - (float)M_PI_2;
     
     
-    char strbuf[512];
     
-    
+
     std::vector<std::string> layers = _get_all_dielectric_layer();
     float box_w = ss_dist * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
@@ -3131,13 +3152,15 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
         // 正常的无损传输线电阻应该为0 这里将电阻值设置为1 否则ngspice仿真非常容易出异常 无法收敛
         r_matrix[0][0] = r_matrix[1][1] = 1; 
     }
-    sprintf(strbuf, "***Zodd:%f Zeven:%f Zdiff:%f Zcomm:%f***\n"
+    
+    char strbuf[512];
+    sprintf(strbuf, "***Zodd:%g Zeven:%g Zdiff:%g Zcomm:%g***\n"
                     "P1 pin1 pin3 0 pin2 pin4 0 PLINE\n"
-                    ".model PLINE CPL length=%f\n"
+                    ".model PLINE CPL length=%g\n"
                     "+R=%g 0 %g\n"
-                    "+L=%fnH %fnH %fnH\n"
+                    "+L=%gnH %gnH %gnH\n"
                     "+G=0 0 0\n"
-                    "+C=%fpF %fpF %fpF\n",
+                    "+C=%gpF %gpF %gpF\n",
                     Zodd, Zeven, Zodd * 2, Zeven * 0.5,
                     ss_len * 0.001,
                     r_matrix[0][0], r_matrix[1][1],
@@ -3216,9 +3239,9 @@ std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::
         
         if (!_ltra_model)
         {
-            sprintf(buf, "***Z0:%f TD:%fNS***\n"
-                        "Y%u %s 0 %s 0 ymod%u LEN=%f\n"
-                        ".MODEL ymod%u txl R=0 L=%fnH G=0 C=%fpF length=1\n",
+            sprintf(buf, "***Z0:%g TD:%gNS***\n"
+                        "Y%u %s 0 %s 0 ymod%u LEN=%g\n"
+                        ".MODEL ymod%u txl R=0 L=%gnH G=0 C=%gpF length=1\n",
                         Z0, td_,
                         id, _pos2net(v.at.x, v.at.y, start).c_str(), _pos2net(v.at.x, v.at.y, end).c_str(), id, h * 0.001,
                         id, l, c
@@ -3226,9 +3249,9 @@ std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::
         }
         else
         {
-            sprintf(buf, "***Z0:%f TD:%fNS***\n"
+            sprintf(buf, "***Z0:%g TD:%gNS***\n"
                         "O%u %s 0 %s 0 ltra%u\n"
-                        ".MODEL ltra%u LTRA R=0 L=%fnH G=0 C=%fpF LEN=%g\n",
+                        ".MODEL ltra%u LTRA R=0 L=%gnH G=0 C=%gpF LEN=%g\n",
                         Z0, td_,
                         id, _pos2net(v.at.x, v.at.y, start).c_str(), _pos2net(v.at.x, v.at.y, end).c_str(), id,
                         id, l, c, h * 0.001
