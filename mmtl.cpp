@@ -23,12 +23,32 @@ static const char *base_xsctn = "package require csdl\n\n"
                 "   -xOffset 0.0\n";
                 
 mmtl::mmtl()
+    : _tmp_name("tmp")
+    , _xsctn(base_xsctn)
+    , _cond_id(0)
+    , _gnd_id(0)
+    , _elec_id(0)
+    , _pix_unit(0.035)
+    , _pix_unit_r(1.0 / _pix_unit)
+    , _box_w(10)
+    , _box_h(10)
+    , _c_x(_box_w / 2)
+    , _c_y(_box_h / 3)
+    , _Z0(0)
+    , _c(0)
+    , _l(0)
+    , _v(0)
+    , _r(0)
+    , _g(0)
+    , _Zodd(0)
+    , _Zeven(0)
+    , _wire_w(0)
+    , _wire_h(0)
+    , _coupler_w(0)
+    , _coupler_h(0)
 {
-    _tmp_name = "tmp";
-    _xsctn = base_xsctn;
-    _cond_id = 0;
-    _gnd_id = 0;
-    _elec_id = 0;
+    memset(_c_matrix, 0, sizeof(_c_matrix));
+    memset(_l_matrix, 0, sizeof(_l_matrix));
 }
 
 
@@ -36,15 +56,21 @@ mmtl::~mmtl()
 {
 }
 
+
 void mmtl::set_precision(float unit)
 {
+    _pix_unit = unit;
+    _pix_unit_r = 1.0 / _pix_unit;
 }
-
 
 void mmtl::set_box_size(float w, float h)
 {
+    _box_w = w;
+    _box_h = h;
+    _c_x = _box_w / 2;
+    _c_y = _box_h / 2;
+    clean();
 }
-
 
 void mmtl::clean()
 {
@@ -53,6 +79,8 @@ void mmtl::clean()
     _cond_id = 0;
     _gnd_id = 0;
     _elec_id = 0;
+    
+    _img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(255, 255, 255));
 }
 
 
@@ -63,6 +91,9 @@ void mmtl::clean_all()
     _cond_id = 0;
     _gnd_id = 0;
     _elec_id = 0;
+    
+    _img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(255, 255, 255));
+    _last_img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(0, 0, 0));
 }
 
 
@@ -76,6 +107,7 @@ void mmtl::add_ground(float x, float y, float w, float thickness)
     item_.h = thickness;
     
     _map.emplace(y, item_);
+    _draw(x, y, w, thickness, 0, 255, 0);
 }
 
 
@@ -89,12 +121,36 @@ void mmtl::add_wire(float x, float y, float w, float thickness, float conductivi
     item_.h = thickness;
     item_.conductivity = conductivity;
     _map.emplace(y, item_);
+    _draw(x, y, w, thickness, 255, 0, 0);
+    
+    if (fabs(w - _wire_w) > 0.0001 || fabs(thickness - _wire_h) > 0.0001)
+    {
+        _last_img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(0, 0, 0));
+    }
+    _wire_w = w;
+    _wire_h = thickness;
 }
 
 
 void mmtl::add_coupler(float x, float y, float w, float thickness, float conductivity)
 {
-    add_wire(x, y, w, thickness, conductivity);
+    item item_;
+    item_.type = ITEM_TYPE_COND;
+    item_.x = x;
+    item_.y = y;
+    item_.w = w;
+    item_.h = thickness;
+    item_.conductivity = conductivity;
+    _map.emplace(y, item_);
+    _draw(x, y, w, thickness, 0, 0, 255);
+    
+    if (fabs(w - _coupler_w) > 0.0001 || fabs(thickness - _coupler_h) > 0.0001)
+    {
+        _last_img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(0, 0, 0));
+    }
+    _coupler_w = w;
+    _coupler_h = thickness;
+    
 }
 
 
@@ -108,12 +164,28 @@ void mmtl::add_elec(float x, float y, float w, float thickness, float er)
     item_.h = thickness;
     item_.er = er;
     _map.emplace(y, item_);
+    
+    std::uint16_t uer =  er * 1000;
+    _draw(x, y, w, thickness, 0x0f, (uer >> 8) & 0xff, uer & 0xff);
 }
 
 
-bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float& g)
+bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
 {
     char buf[1024] = {0};
+    
+    if (_is_some())
+    {
+        Z0 = _Z0;
+        v = _v;
+        c = _c;
+        l = _l;
+        r = _r;
+        g = _g;
+        return true;
+    }
+    
+    _last_img = _img;
     
     _build();
     FILE *fp = fopen((_tmp_name + ".xsctn").c_str(), "wb");
@@ -132,6 +204,15 @@ bool mmtl::calc_Z0(float & Z0, float & v, float & c, float & l, float& r, float&
     }
     pclose(pfp);
     _read_value(Z0, v, c, l, r, g);
+    
+    
+    _Z0 = Z0;
+    _v = v;
+    _c = c;
+    _l = l;
+    _r = r;
+    _g = g;
+        
     //printf("Z0:%f v:%fmm/ns c:%f l:%f\n", Z0, v / 1000000, c, l);
     return false;
 }
@@ -141,7 +222,20 @@ bool mmtl::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
 {
     char cmd[512] = {0};
     char buf[1024] = {0};
+    g_matrix[0][0] = g_matrix[0][1] = g_matrix[1][0] = g_matrix[1][1];
     
+    if (_is_some())
+    {
+        Zodd = _Zodd;
+        Zeven = _Zeven;
+        
+        memcpy(c_matrix, _c_matrix, sizeof(_c_matrix));
+        memcpy(l_matrix, _l_matrix, sizeof(_l_matrix));
+        memcpy(r_matrix, _r_matrix, sizeof(_r_matrix));
+        return true;
+    }
+    
+    _last_img = _img;
     _build();
     sprintf(buf, "%s.xsctn", _tmp_name.c_str());
     FILE *fp = fopen(buf, "wb");
@@ -161,6 +255,10 @@ bool mmtl::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     }
     pclose(pfp);
     _read_value(Zodd, Zeven, c_matrix, l_matrix, r_matrix, g_matrix);
+    
+    memcpy(_c_matrix, c_matrix, sizeof(_c_matrix));
+    memcpy(_l_matrix, l_matrix, sizeof(_l_matrix));
+    memcpy(_r_matrix, r_matrix, sizeof(_r_matrix));
     
 #if 0
     printf("Zodd:%f Zeven:%f\n", Zodd, Zeven);
@@ -472,4 +570,46 @@ void mmtl::_read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_
         s += strlen("even= ");
         Zeven = atof(s);
     }
+}
+
+
+
+void mmtl::_draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b)
+{
+    std::int32_t pix_y1 = _unit2pix(y + _c_y);
+    std::int32_t pix_x1 = _unit2pix(x + _c_x - w / 2);
+    std::int32_t pix_x2 = _unit2pix(x + _c_x - w / 2 + w);
+    std::int32_t pix_y2 = _unit2pix(y + _c_y + thick);;
+    cv::rectangle(_img, cv::Point(pix_x1, pix_y1), cv::Point(pix_x2 - 1, pix_y2 - 1), cv::Scalar(b, g, r), -1);
+}
+
+void mmtl::_draw_ring(float x, float y, float radius, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b)
+{
+    std::int32_t pix_y = _unit2pix(y + _c_y);
+    std::int32_t pix_x = _unit2pix(x + _c_x);
+    cv::circle(_img, cv::Point(pix_x, pix_y), _unit2pix(radius + thick * 0.5), cv::Scalar(b, g, r), _unit2pix(thick));
+}
+
+
+bool mmtl::_is_some()
+{
+    if (_img.cols != _last_img.cols || _img.rows != _last_img.rows)
+    {
+        return false;
+    }
+    
+    std::int32_t count = 0;
+    for (std::int32_t row = 0; row < _img.rows; row++)
+    {
+        for (std::int32_t col = 0; col < _img.cols; col++)
+        {
+            if (_img.at<std::uint8_t>(row, col) == _last_img.at<std::uint8_t>(row, col))
+            {
+                count++;
+            }
+        }
+    }
+    
+    return count > _img.cols * _img.rows  - _unit2pix(4 * 0.0254);
+    //return count > _img.cols * _img.rows  - _unit2pix(_wire_w) * _unit2pix(_wire_h);
 }

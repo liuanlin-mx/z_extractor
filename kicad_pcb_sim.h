@@ -289,13 +289,12 @@ private:
     float _pcb_left;
     float _pcb_right;
     std::shared_ptr<Z0_calc> _Z0_calc;
-    //std::shared_ptr<Z0_calc> _Z0_calc1;
-    //std::shared_ptr<Z0_calc> _Z0_calc_coupled;
+    
     const float _resistivity = 0.0172;
     /* 小于这个长度的走线不计算阻抗 使用0欧电阻连接 */
     const float _segment_min_len = 0.01;
-    /* 如果两次计算得到的阻抗差小于于该值 则认为阻抗没有变化*/
-    const float _Z0_threshold = 0.1;
+    /* 如果计算得到的阻抗差小于于该值 则认为阻抗没有变化*/
+    const float _Z0_threshold = 0.5;
     /* td小于该值的传输线 只导出无损模型 */
     const float _td_threshold = 0.001;
     float _conductivity;

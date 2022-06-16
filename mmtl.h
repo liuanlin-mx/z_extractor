@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <map>
+#include <opencv2/opencv.hpp>
 #include "Z0_calc.h"
 
 class mmtl: public Z0_calc
@@ -60,6 +61,11 @@ private:
     void _read_value(float & Z0, float & v, float & c, float & l, float& r, float& g);
     void _read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
     
+    std::int32_t _unit2pix(float v) { return round(v * _pix_unit_r);}
+    void _draw(float x, float y, float w, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
+    void _draw_ring(float x, float y, float radius, float thick, std::uint8_t r, std::uint8_t g, std::uint8_t b);
+    bool _is_some();
+    
 private:
 
     std::string _tmp_name;
@@ -68,6 +74,35 @@ private:
     std::uint32_t _gnd_id;
     std::uint32_t _elec_id;
     std::multimap<float, item> _map;
+    
+    cv::Mat _img;
+    cv::Mat _last_img;
+    float _pix_unit;
+    float _pix_unit_r;
+    float _box_w;
+    float _box_h;
+    float _c_x;
+    float _c_y;
+    
+    float _Z0;
+    float _c;
+    float _l;
+    float _v;
+    float _r;
+    float _g;
+    
+    float _Zodd;
+    float _Zeven;
+    
+    float _c_matrix[2][2];
+    float _l_matrix[2][2];
+    float _r_matrix[2][2];
+    
+    
+    float _wire_w;
+    float _wire_h;
+    float _coupler_w;
+    float _coupler_h;
 };
 
 #endif

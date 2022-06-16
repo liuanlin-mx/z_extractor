@@ -2495,7 +2495,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
     for (std::uint32_t i = 1; i < Z0s.size(); i++)
     {
         end = Z0s[i];
-        if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
+        if (fabs(end.Z0 - begin.Z0) > _Z0_threshold || i + 1 == Z0s.size())
         {
             float dist = (end.pos - begin.pos);
             log_debug("dist:%g Z0:%g\n", dist, begin.Z0);
@@ -2707,7 +2707,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
     for (std::uint32_t i = 1; i < Z0s.size(); i++)
     {
         end = Z0s[i];
-        if (fabs(end.Z0 - begin.Z0) > 0.1 || i + 1 == Z0s.size())
+        if (fabs(end.Z0 - begin.Z0) > _Z0_threshold || i + 1 == Z0s.size())
         {
             float dist = (end.pos - begin.pos);
             log_debug("dist:%g Z0:%g\n", dist, begin.Z0);

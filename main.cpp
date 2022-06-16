@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     float anti_pad_diameter = 0;
     bool via_tl_mode = false;
     bool use_mmtl = true;
-    bool enable_openmp = true;
+    bool enable_openmp = false;
     
     for (std::int32_t i = 1; i < argc; i++)
     {
