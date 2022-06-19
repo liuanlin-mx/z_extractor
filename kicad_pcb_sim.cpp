@@ -706,17 +706,13 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     {
         for (auto& s0: s_list0)
         {
-            cv::line(img, cv::Point(_cvt_img_x(s0.start.x), _cvt_img_y(s0.start.y)),
-                    cv::Point(_cvt_img_x(s0.end.x), _cvt_img_y(s0.end.y)),
-                    cv::Scalar(255, 0, 0), _cvt_img_len(s0.width), cv::LINE_4);
+            _draw_segment(img, s0, 255, 0, 0);
             
             for (auto& s_list1: v_segments1)
             {
                 for (auto& s1: s_list1)
                 {
-                    cv::line(img, cv::Point(_cvt_img_x(s1.start.x), _cvt_img_y(s1.start.y)),
-                            cv::Point(_cvt_img_x(s1.end.x), _cvt_img_y(s1.end.y)),
-                            cv::Scalar(0, 255, 0), _cvt_img_len(s1.width), cv::LINE_4);
+                    _draw_segment(img, s1, 0, 255, 0);
                 }
             }
         }
@@ -724,12 +720,9 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     for (auto& ss_item: coupler_segment)
     {
         auto& ss = ss_item.second;
-        cv::line(img, cv::Point(_cvt_img_x(ss.first.start.x), _cvt_img_y(ss.first.start.y)),
-                    cv::Point(_cvt_img_x(ss.first.end.x), _cvt_img_y(ss.first.end.y)),
-                    cv::Scalar(0, 0, 255), _cvt_img_len(ss.first.width), cv::LINE_4);
-        cv::line(img, cv::Point(_cvt_img_x(ss.second.start.x), _cvt_img_y(ss.second.start.y)),
-                    cv::Point(_cvt_img_x(ss.second.end.x), _cvt_img_y(ss.second.end.y)),
-                    cv::Scalar(0, 0, 255), _cvt_img_len(ss.second.width), cv::LINE_4);
+        
+        _draw_segment(img, ss.first, 0, 0, 255);
+        _draw_segment(img, ss.second, 0, 0, 255);
     }
     
     cv::imshow("img", img);
@@ -1682,6 +1675,11 @@ const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
             l.epsilon_r  = 3.8;
         }
         
+        if (l.thickness == 0)
+        {
+            l.thickness = 1;
+        }
+        
         _layers.push_back(l);
         log_debug("layer name:%s type:%s t:%f e:%f\n", l.name.c_str(), l.type.c_str(), l.thickness, l.epsilon_r);
     }
@@ -2271,7 +2269,7 @@ void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::ma
             cv::fillPoly(refs_mat[zone.layer_name], std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(255, 255, 255));
             
             //cv::Mat tmp;
-            //cv::resize(refs_mat[s.layer_name], tmp, cv::Size(1280, 960));
+            //cv::resize(refs_mat[zone.layer_name], tmp, cv::Size(1280, 960));
             //cv::namedWindow("mat", cv::WINDOW_NORMAL);
             //cv::imshow("mat", refs_mat[zone.layer_name]);
             //cv::waitKey();
@@ -2287,20 +2285,52 @@ void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::ma
                     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
                     refs_mat.emplace(s.layer_name, img);
                 }
-                
-                cv::line(refs_mat[s.layer_name],
-                    cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
-                    cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
-                    cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
+                _draw_segment(refs_mat[s.layer_name], s, 255, 255, 255);
                     
             }
             
+            /*for (auto& mat: refs_mat)
+            {
+                cv::Mat tmp;
+                cv::resize(mat.second, tmp, cv::Size(1280, 960));
+                cv::namedWindow("mat", cv::WINDOW_NORMAL);
+                cv::imshow("mat", tmp);
+                cv::waitKey();
+            }*/
         }
     }
     
 }
 
 
+void kicad_pcb_sim::_draw_segment(cv::Mat& img, kicad_pcb_sim::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
+{
+    if (s.is_arc())
+    {
+        float s_len = _get_segment_len(s);
+        for (float i = 0; i <= s_len - 0.01; i += 0.01)
+        {
+            float x1 = 0;
+            float y1 = 0;
+            float x2 = 0;
+            float y2 = 0;
+            _get_segment_pos(s, i, x1, y1);
+            _get_segment_pos(s, i + 0.01, x2, y2);
+            
+            cv::line(img,
+                cv::Point(_cvt_img_x(x1), _cvt_img_y(y1)),
+                cv::Point(_cvt_img_x(x2), _cvt_img_y(y2)),
+                cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
+        }
+    }
+    else
+    {
+        cv::line(img,
+            cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
+            cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
+            cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
+    }
+}
 std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2)
 {
     std::list<std::pair<float, float> > tmp;
@@ -2325,7 +2355,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
     for (float l = 0; l < len; l += 0.01)
     {
         float x = x1 + l * cos(angle);
-        float y = y1 + l * sin(angle);
+        float y = -(-y1 + l * sin(angle));
         
         if (img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
         {
@@ -2371,10 +2401,8 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
-    
-    cv::line(img, cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
-                    cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
-                    cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
+    _draw_segment(img, s, 255, 255, 255);
+    cv::imshow("img", img);
                     
 #endif
 
@@ -2554,10 +2582,8 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
-    
-    cv::line(img, cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
-                    cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
-                    cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
+    _draw_segment(img, s, 255, 255, 255);
+    cv::imshow("img", img);
                     
 #endif
 
@@ -3304,6 +3330,10 @@ std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<st
 
 float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
 {
+    ay = -ay;
+    by = -by;
+    cy = -cy;
+    
     float theta = atan2(ax - cx, ay - cy) - atan2(bx - cx, by - cy);
     if (theta > M_PI)
     {
@@ -3319,7 +3349,8 @@ float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float c
 float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
 {
     float angle = _calc_angle(x2, y2, x, y, x1, y1);
-    float d = sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+    
+    float d = hypot(x - x1, y - y1);
     if (angle > (float)M_PI_2)
     {
         angle = (float)M_PI - angle;
@@ -3336,8 +3367,8 @@ bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, floa
 {
     float line_angle = _calc_angle(x1, y1, x2, y2);
     float angle = _calc_angle(x2, y2, x, y, x1, y1);
-    float d = sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
-    float line_d = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+    float d = hypot(x - x1, y - y1);
+    float line_d = hypot(x2 - x1, y2 - y1);
     
     if (angle > (float)M_PI_2)
     {
@@ -3350,7 +3381,7 @@ bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, floa
     }
     
     ix = x1 + len * cos(line_angle);
-    iy = y1 + len * sin(line_angle);
+    iy = -(-y1 + len * sin(line_angle));
     return true;
 }
 
@@ -3433,7 +3464,7 @@ float kicad_pcb_sim::_calc_parallel_lines_overlap_len(float ax1, float ay1, floa
                                     aox1, aoy1, aox2, aoy2,
                                     box1, boy1, box2, boy2))
     {
-        return sqrt((aox2 - aox1) * (aox2 - aox1) + (aoy2 - aoy1) * (aoy2 - aoy1));
+        return hypot(aox2 - aox1, aoy2 - aoy1);
     }
     return 0;
 }
@@ -3479,6 +3510,7 @@ void kicad_pcb_sim::_calc_arc_angle(float x1, float y1, float x2, float y2, floa
     float angle2 = asin(a / radius) * 2;
     angle = angle1 + angle2;
     
+    /* <0 为顺时针方向 */
     if ((x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2) < 0)
     {
         angle = -angle;
@@ -3533,7 +3565,7 @@ void kicad_pcb_sim::_get_segment_pos(const kicad_pcb_sim::segment& s, float offs
     {
         float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
         x = s.start.x + offset * cos(angle);
-        y = s.start.y + offset * sin(angle);
+        y = -(-s.start.y + offset * sin(angle));
     }
 }
 
@@ -3554,10 +3586,16 @@ void kicad_pcb_sim::_get_segment_perpendicular(const kicad_pcb_sim::segment& s, 
         float rad_left = _calc_angle(cx, cy, x, y);
         float rad_right = rad_left - (float)M_PI;
         
+        /* >0 弧线为逆时针方向 */
+        if ((s.mid.x - s.start.x) * (-s.end.y - -s.mid.y) - (-s.mid.y - -s.start.y) * (s.end.x - s.mid.x) > 0)
+        {
+            std::swap(rad_left, rad_right);
+        }
+        
         x_left = x + w * 0.5 * cos(rad_left);
-        y_left = y + w * 0.5 * sin(rad_left);
+        y_left = -(-y + w * 0.5 * sin(rad_left));
         x_right = x + w * 0.5 * cos(rad_right);
-        y_right = y + w * 0.5 * sin(rad_right);
+        y_right = -(-y + w * 0.5 * sin(rad_right));
     }
     else
     {
@@ -3570,9 +3608,9 @@ void kicad_pcb_sim::_get_segment_perpendicular(const kicad_pcb_sim::segment& s, 
         _get_segment_pos(s, offset, x, y);
         
         x_left = x + w * 0.5 * cos(rad_left);
-        y_left = y + w * 0.5 * sin(rad_left);
+        y_left = -(-y + w * 0.5 * sin(rad_left));
         x_right = x + w * 0.5 * cos(rad_right);
-        y_right = y + w * 0.5 * sin(rad_right);
+        y_right = -(-y + w * 0.5 * sin(rad_right));
     }
 }
 

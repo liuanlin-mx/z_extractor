@@ -94,7 +94,7 @@ public:
     {
         std::string name;
         std::string type;
-        float thickness;
+        float thickness = 0;
         float epsilon_r = 0;
     };
     
@@ -216,6 +216,7 @@ private:
     void _get_zone_cond(const kicad_pcb_sim::zone& z, std::list<cond>& conds, std::set<kicad_pcb_sim::pcb_point>& points);
     
     void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat);
+    void _draw_segment(cv::Mat& img, kicad_pcb_sim::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r);
     
     /* 提取走线附近的参考平面横界面参数 */
     std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
@@ -230,6 +231,8 @@ private:
     /* 计算两点连线倾斜角 */
     float _calc_angle(float x1, float y1, float x2, float y2)
     {
+        y1 = -y1;
+        y2 = -y2;
         return atan2(y2 - y1, x2 - x1);
     }
 
