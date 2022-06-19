@@ -35,7 +35,6 @@ kicad_pcb_sim::kicad_pcb_sim()
     _pcb_right = 0;
     
     _conductivity = 5.0e7;
-    _anti_pad_diameter = 0.;
     _Z0_calc = Z0_calc::create(Z0_calc::Z0_CALC_MMTL);
 }
 
@@ -3172,13 +3171,6 @@ std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::
     ckt += "\n";
     call += "VIA" + _get_tstamp_short(v.tstamp) + "\n";
     
-    
-    float anti_pad_diameter = v.size * 2;
-    if (_anti_pad_diameter > 0.001)
-    {
-        anti_pad_diameter = _anti_pad_diameter;
-    }
-    
     float radius = v.drill * 0.5;
     float box_w = v.drill * 15;
     float box_h = v.drill * 15;
@@ -3196,6 +3188,10 @@ std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::
     {
         const std::string& start = layers[i];
         const std::string& end = layers[i + 1];
+        
+        float start_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, start);
+        float end_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, end);
+        float anti_pad_diameter = std::min(start_anti_pad_d, end_anti_pad_d);
         
         float h = _get_layer_distance(start, end);
         float er = _get_layer_epsilon_r(start, end);
@@ -3266,17 +3262,14 @@ std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<st
     
     
     std::uint32_t id = 0;
-    float anti_pad_diameter = v.size * 2;
-    if (_anti_pad_diameter > 0.001)
-    {
-        anti_pad_diameter = _anti_pad_diameter;
-    }
-    
     std::vector<std::string> layers = _get_via_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
     {
         const std::string& start = layers[i];
         const std::string& end = layers[i + 1];
+        float start_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, start);
+        float end_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, end);
+        float anti_pad_diameter = std::min(start_anti_pad_d, end_anti_pad_d);
         
         float h = _get_layer_distance(start, end);
         float er = _get_layer_epsilon_r(start, end);
@@ -3596,6 +3589,40 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_segment_ref_plane(const 
     return _get_mat_line(ref, x_left, y_left, x_right, y_right);
 }
 
+
+float kicad_pcb_sim::_get_via_anti_pad_diameter(const kicad_pcb_sim::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
+{
+    float diameter = v.size * 5;
+    if (refs_mat.count(layer) == 0)
+    {
+        return diameter;
+    }
+    const cv::Mat& img = refs_mat.find(layer)->second;
+    
+    float y = v.at.y - diameter * 0.5;
+    float y_end = v.at.y + diameter * 0.5;
+    while (y < y_end)
+    {
+        
+        float x = v.at.x - diameter * 0.5;
+        float x_end = v.at.x + diameter * 0.5;
+        
+        while (x < x_end)
+        {
+            if (img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
+            {
+                float dist = _calc_dist(x, y, v.at.x, v.at.y);
+                if (dist * 2 < diameter)
+                {
+                    diameter = dist * 2;
+                }
+            }
+            x += 0.01;
+        }
+        y += 0.01;
+    }
+    return diameter;
+}
 
 bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len)
 {

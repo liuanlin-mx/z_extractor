@@ -137,7 +137,6 @@ public:
     void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
-    void set_anti_pad_diameter(float d) { _anti_pad_diameter = d; }
     void enable_lossless_tl(bool b) { _lossless_tl = b; }
     void enable_ltra_model(bool b) { _ltra_model = b; }
     void enable_via_tl_mode(bool b) { _via_tl_mode = b; }
@@ -278,6 +277,9 @@ private:
     /* 获取走线在offset位置处的参考平面的截面 */
     std::list<std::pair<float/*中心点*/, float/*宽度*/> > _get_segment_ref_plane(const kicad_pcb_sim::segment& s, const cv::Mat& ref, float offset, float w);
     
+    /* 获取过孔反焊盘直径 */
+    float _get_via_anti_pad_diameter(const kicad_pcb_sim::via& v, const std::map<std::string, cv::Mat>& refs_mat, std::string layer);
+    
     bool _is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len);
     void _split_segment(const kicad_pcb_sim::segment& s, std::list<kicad_pcb_sim::segment>& ss, float x1, float y1, float x2, float y2);
     
@@ -323,7 +325,6 @@ private:
     /* td小于该值的传输线 只导出无损模型 */
     const float _td_threshold = 0.001;
     float _conductivity;
-    float _anti_pad_diameter;
 };
 
 #endif
