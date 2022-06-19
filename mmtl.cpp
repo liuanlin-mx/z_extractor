@@ -173,7 +173,6 @@ void mmtl::add_elec(float x, float y, float w, float thickness, float er)
 bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
 {
     char buf[1024] = {0};
-    
     if (_is_some())
     {
         Z0 = _Z0;
@@ -200,7 +199,6 @@ bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
     FILE *pfp = popen(("mmtl_bem " + _tmp_name).c_str(), "r");
     while (fgets(buf, sizeof(buf), pfp))
     {
-        //printf("%s", buf);
     }
     pclose(pfp);
     _read_value(Z0, v, c, l, r, g);
@@ -603,13 +601,11 @@ bool mmtl::_is_some()
     {
         for (std::int32_t col = 0; col < _img.cols; col++)
         {
-            if (_img.at<std::uint8_t>(row, col) == _last_img.at<std::uint8_t>(row, col))
+            if (_img.at<cv::Vec3b>(row, col) == _last_img.at<cv::Vec3b>(row, col))
             {
                 count++;
             }
         }
     }
-    
     return count > _img.cols * _img.rows  - _unit2pix(4 * 0.0254);
-    //return count > _img.cols * _img.rows  - _unit2pix(_wire_w) * _unit2pix(_wire_h);
 }

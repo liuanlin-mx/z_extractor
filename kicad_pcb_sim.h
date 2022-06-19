@@ -15,6 +15,7 @@ class kicad_pcb_sim
 public:
     struct pcb_point
     {
+        pcb_point(): x(0), y(0) { }
         float x;
         float y;
         bool operator < (const pcb_point& p) const {
@@ -32,7 +33,9 @@ public:
     
     struct segment
     {
+        bool is_arc() const { return mid.x != 0 || mid.y != 0; }
         pcb_point start;
+        pcb_point mid;
         pcb_point end;
         float width;
         std::string layer_name;
@@ -252,7 +255,26 @@ private:
     /* 计算两条平行线段的交叠区域长度 */             
     float _calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
                                         float bx1, float by1, float bx2, float by2);
-                                        
+    
+    
+    void _calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius);
+
+    /* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
+    void _calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle);
+    float _calc_arc_len(float radius, float angle);
+    
+    
+    /* 获取走线长度 */
+    float _get_segment_len(const kicad_pcb_sim::segment& s);
+    /* 获取从起点向终点前进指定offset后的坐标 */
+    void _get_segment_pos(const kicad_pcb_sim::segment& s, float offset, float& x, float& y);
+    
+    /* 获取过从起点向终点前进指定offset后的点且垂直与走线的一条线段 长度为 w 线段中点与走线相交 */
+    void _get_segment_perpendicular(const kicad_pcb_sim::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right);
+    
+    /* 获取走线在offset位置处的参考平面的截面 */
+    std::list<std::pair<float/*中心点*/, float/*宽度*/> > _get_segment_ref_plane(const kicad_pcb_sim::segment& s, const cv::Mat& ref, float offset, float w);
+    
     bool _is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len);
     void _split_segment(const kicad_pcb_sim::segment& s, std::list<kicad_pcb_sim::segment>& ss, float x1, float y1, float x2, float y2);
     

@@ -64,7 +64,7 @@ bool kicad_pcb_sim::parse(const char *str)
                 _nets.emplace(id, name);
                 continue;
             }
-            else if (label == "segment")
+            else if (label == "segment" || label == "arc")
             {
                 segment s;
                 str = _parse_segment(str, s);
@@ -1187,6 +1187,14 @@ const char *kicad_pcb_sim::_parse_segment(const char *str, segment& s)
                 str = _parse_postion(str, x, y);
                 s.start.x = x;
                 s.start.y = y;
+            }
+            else if (label == "mid")
+            {
+                float x;
+                float y;
+                str = _parse_postion(str, x, y);
+                s.mid.x = x;
+                s.mid.y = y;
             }
             else if (label == "end")
             {
@@ -2361,19 +2369,6 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 
 std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
-    std::string cir;
-    float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
-    float s_w = s.width;
-    float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-    float rad_left = angle + (float)M_PI_2;
-    float rad_right = angle - (float)M_PI_2;
-    
-    if (s_len < _segment_min_len)
-    {
-        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
-    }
-    
-    
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
     
@@ -2382,6 +2377,15 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
                     cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
                     
 #endif
+
+    std::string cir;
+    float s_len = _get_segment_len(s);
+    if (s_len < _segment_min_len)
+    {
+        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
+    }
+    
+    
     std::vector<std::string> layers = _get_all_dielectric_layer();
     float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
@@ -2429,12 +2433,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
         
         Z0_item& item = Z0s[i];
         float pos = item.pos;
-        float x = s.start.x + pos * cos(angle);
-        float y = s.start.y + pos * sin(angle);
-        float x_left = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_left);
-        float y_left = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_left);
-        float x_right = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_right);
-        float y_right = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_right);
         
         
         calc->clean();
@@ -2449,7 +2447,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
         std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
-            std::list<std::pair<float, float> >  grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, pos, s.width * _Z0_w_ratio);
             
             for (auto& g: grounds)
             {
@@ -2554,19 +2552,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt(const std::string& cir_name, kica
 
 std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
 {
-    std::string cir;
-    float s_len = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
-    float s_w = s.width;
-    float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-    float rad_left = angle + (float)M_PI_2;
-    float rad_right = angle - (float)M_PI_2;
-    
-    if (s_len < _segment_min_len)
-    {
-        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
-    }
-    
-    
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
     
@@ -2575,6 +2560,14 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
                     cv::Scalar(255, 255, 255), _cvt_img_len(s.width), cv::LINE_4);
                     
 #endif
+
+    std::string cir;
+    float s_len = _get_segment_len(s);
+    if (s_len < _segment_min_len)
+    {
+        return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
+    }
+    
     std::vector<std::string> layers = _get_all_dielectric_layer();
     float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
@@ -2641,14 +2634,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         
         Z0_item& item = Z0s[i];
         float pos = item.pos;
-        float x = s.start.x + pos * cos(angle);
-        float y = s.start.y + pos * sin(angle);
-        float x_left = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_left);
-        float y_left = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_left);
-        float x_right = x + (s_w * _Z0_w_ratio * 0.5) * cos(rad_right);
-        float y_right = y + (s_w * _Z0_w_ratio * 0.5) * sin(rad_right);
-        
-        
         calc->clean();
         calc->set_precision(atlc_pix_unit);
         calc->set_box_size(box_w, box_h);
@@ -2661,7 +2646,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
         std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
-            std::list<std::pair<float, float> >  grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, pos, s.width * _Z0_w_ratio);
             
             for (auto& g: grounds)
             {
@@ -3452,6 +3437,157 @@ float kicad_pcb_sim::_calc_parallel_lines_overlap_len(float ax1, float ay1, floa
     }
     return 0;
 }
+
+void kicad_pcb_sim::_calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius)
+{
+    y1 = -y1;
+    y2 = -y2;
+    y3 = -y3;
+    
+    float a = x1 - x2;
+    float b = y1 - y2;
+    float c = x1 - x3;
+    float d = y1 - y3;
+    float e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) * 0.5;
+    float f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) * 0.5;
+    float det = b * c - a * d;
+    if (fabs(det) < 1e-5)
+    {
+        radius = -1;
+        x = 0;
+        y = 0;
+    }
+
+    x = -(d * e - b * f) / det;
+    y = -(a * f - c * e) / det;
+    radius = hypot(x1 - x, y1 - y);
+    y = -y;
+}
+
+/* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
+void kicad_pcb_sim::_calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle)
+{
+    y1 = -y1;
+    y2 = -y2;
+    y3 = -y3;
+    y = -y;
+    
+    float a = hypot(x2 - x1, y2 - y1) * 0.5;
+    float angle1 = asin(a / radius) * 2;
+    
+    a = hypot(x3 - x2, y3 - y2) * 0.5;
+    float angle2 = asin(a / radius) * 2;
+    angle = angle1 + angle2;
+    
+    if ((x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2) < 0)
+    {
+        angle = -angle;
+    }
+}
+
+float kicad_pcb_sim::_calc_arc_len(float radius, float angle)
+{
+    return radius * fabs(angle);
+}
+
+
+float kicad_pcb_sim::_get_segment_len(const kicad_pcb_sim::segment& s)
+{
+    if (s.is_arc())
+    {
+        float cx;
+        float cy;
+        float radius;
+        float angle;
+        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
+        _calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
+        return _calc_arc_len(radius, angle);
+    }
+    else
+    {
+        return hypot(s.end.x - s.start.x, s.end.y - s.start.y);
+    }
+}
+
+void kicad_pcb_sim::_get_segment_pos(const kicad_pcb_sim::segment& s, float offset, float& x, float& y)
+{
+    if (s.is_arc())
+    {
+        float cx;
+        float cy;
+        float arc_radius;
+        float arc_angle;
+        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        _calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
+        float arc_len = _calc_arc_len(arc_radius, arc_angle);
+        
+        float angle = arc_angle * offset / arc_len;
+        
+        float x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
+        float y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
+    
+        x = cx + x1;
+        y = cy - y1;
+    }
+    else
+    {
+        float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        x = s.start.x + offset * cos(angle);
+        y = s.start.y + offset * sin(angle);
+    }
+}
+
+
+void kicad_pcb_sim::_get_segment_perpendicular(const kicad_pcb_sim::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
+{
+    if (s.is_arc())
+    {
+        float x = 0;
+        float y = 0;
+        float cx;
+        float cy;
+        float arc_radius;
+        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        
+        _get_segment_pos(s, offset, x, y);
+        
+        float rad_left = _calc_angle(cx, cy, x, y);
+        float rad_right = rad_left - (float)M_PI;
+        
+        x_left = x + w * 0.5 * cos(rad_left);
+        y_left = y + w * 0.5 * sin(rad_left);
+        x_right = x + w * 0.5 * cos(rad_right);
+        y_right = y + w * 0.5 * sin(rad_right);
+    }
+    else
+    {
+        float x = 0;
+        float y = 0;
+        float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        float rad_left = angle + (float)M_PI_2;
+        float rad_right = angle - (float)M_PI_2;
+        
+        _get_segment_pos(s, offset, x, y);
+        
+        x_left = x + w * 0.5 * cos(rad_left);
+        y_left = y + w * 0.5 * sin(rad_left);
+        x_right = x + w * 0.5 * cos(rad_right);
+        y_right = y + w * 0.5 * sin(rad_right);
+    }
+}
+
+
+std::list<std::pair<float, float> > kicad_pcb_sim::_get_segment_ref_plane(const kicad_pcb_sim::segment& s, const cv::Mat& ref, float offset, float w)
+{
+    float x_left = 0;
+    float y_left = 0;
+    float x_right = 0;
+    float y_right = 0;
+    
+    _get_segment_perpendicular(s, offset, w, x_left, y_left, x_right, y_right);
+    return _get_mat_line(ref, x_left, y_left, x_right, y_right);
+}
+
 
 bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len)
 {

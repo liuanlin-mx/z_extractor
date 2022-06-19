@@ -319,7 +319,7 @@ bool atlc::_is_some(cv::Mat& img1, cv::Mat& img2)
     {
         for (std::int32_t col = 0; col < img1.cols; col++)
         {
-            if (img1.at<std::uint8_t>(row, col) == img2.at<std::uint8_t>(row, col))
+            if (img1.at<cv::Vec3b>(row, col) == img2.at<cv::Vec3b>(row, col))
             {
                 count++;
             }
