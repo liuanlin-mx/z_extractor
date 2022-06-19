@@ -3591,6 +3591,11 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_segment_ref_plane(const 
 
 bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len)
 {
+    if (s1.is_arc() || s2.is_arc())
+    {
+        return false;
+    }
+    
     float a1 = _calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
     float a2 = _calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
     float a22 = _calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
