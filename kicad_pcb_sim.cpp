@@ -2781,28 +2781,23 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
     {
         std::swap(s1.start, s1.end);
     }
-    float ss_start_x = (s0.start.x + s1.start.x) * 0.5;
-    float ss_start_y = (s0.start.y + s1.start.y) * 0.5;
     
-    float ss_end_x = (s0.end.x + s1.end.x) * 0.5;
-    float ss_end_y = (s0.end.y + s1.end.y) * 0.5;
+    kicad_pcb_sim::segment s;
+    s.start.x = (s0.start.x + s1.start.x) * 0.5;
+    s.start.y = (s0.start.y + s1.start.y) * 0.5;
+    s.end.x = (s0.end.x + s1.end.x) * 0.5;
+    s.end.y = (s0.end.y + s1.end.y) * 0.5;
+    s.width = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
     
-    float ss_len = sqrt((ss_start_x - ss_end_x) * (ss_start_x - ss_end_x) + (ss_start_y - ss_end_y) * (ss_start_y - ss_end_y));
-    float ss_dist = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
-    
-    bool s0_is_left = ((ss_start_y - ss_end_y) * s0.start.x + (ss_end_x - ss_start_x) * s0.start.y + ss_start_x * ss_end_y - ss_end_x * ss_start_y) > 0;
+    float s_len = _get_segment_len(s);
+    bool s0_is_left = ((s.start.y - s.end.y) * s0.start.x + (s.end.x - s.start.x) * s0.start.y + s.start.x * s.end.y - s.end.x * s.start.y) > 0;
 
-    
-    float angle = _calc_angle(ss_start_x, ss_start_y, ss_end_x, ss_end_y);
-    float rad_left = angle + (float)M_PI_2;
-    float rad_right = angle - (float)M_PI_2;
-    
     
     char strbuf[512];
     
     
     std::vector<std::string> layers = _get_all_dielectric_layer();
-    float box_w = ss_dist * _Z0_w_ratio;
+    float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * - 0.5;
     float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
@@ -2827,16 +2822,8 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
     
     std::vector<Z0_item> ss_Z0s;
     
-    for (float i = 0; i < ss_len; i += _Z0_setup)
+    for (float i = 0; i <= s_len; i += _Z0_setup)
     {
-        float x = ss_start_x + i * cos(angle);
-        float y = ss_start_y + i * sin(angle);
-        float x_left = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_left);
-        float y_left = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_left);
-        float x_right = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_right);
-        float y_right = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_right);
-        
-        
         _Z0_calc->clean();
         _Z0_calc->set_precision(atlc_pix_unit);
         _Z0_calc->set_box_size(box_w, box_h);
@@ -2851,7 +2838,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
         std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
-            std::list<std::pair<float, float> > grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, i, s.width * _Z0_w_ratio);
             
             for (auto& g: grounds)
             {
@@ -2877,14 +2864,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
         
         if (s0_is_left)
         {
-                
-            _Z0_calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            _Z0_calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            _Z0_calc->add_wire(0 - s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 + s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         else
         {
-            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            _Z0_calc->add_wire(0 + s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 - s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         
         Z0_item ss_item;
@@ -2946,7 +2932,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt(const std::string& cir_na
                     "+G=0 0 0\n"
                     "+C=%gpF %gpF %gpF\n",
                     Zodd, Zeven, Zodd * 2, Zeven * 0.5,
-                    ss_len * 0.001,
+                    s_len * 0.001,
                     r_matrix[0][0], r_matrix[1][1],
                     l_matrix[0][0], (l_matrix[0][1] + l_matrix[1][0]) * 0.5, l_matrix[1][1],
                     c_matrix[0][0], (c_matrix[0][1] + c_matrix[1][0]) * 0.5, c_matrix[1][1]);
@@ -2965,27 +2951,19 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     {
         std::swap(s1.start, s1.end);
     }
-    float ss_start_x = (s0.start.x + s1.start.x) * 0.5;
-    float ss_start_y = (s0.start.y + s1.start.y) * 0.5;
     
-    float ss_end_x = (s0.end.x + s1.end.x) * 0.5;
-    float ss_end_y = (s0.end.y + s1.end.y) * 0.5;
+    kicad_pcb_sim::segment s;
+    s.start.x = (s0.start.x + s1.start.x) * 0.5;
+    s.start.y = (s0.start.y + s1.start.y) * 0.5;
+    s.end.x = (s0.end.x + s1.end.x) * 0.5;
+    s.end.y = (s0.end.y + s1.end.y) * 0.5;
+    s.width = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
     
-    float ss_len = sqrt((ss_start_x - ss_end_x) * (ss_start_x - ss_end_x) + (ss_start_y - ss_end_y) * (ss_start_y - ss_end_y));
-    float ss_dist = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
-    
-    bool s0_is_left = ((ss_start_y - ss_end_y) * s0.start.x + (ss_end_x - ss_start_x) * s0.start.y + ss_start_x * ss_end_y - ss_end_x * ss_start_y) > 0;
-
-    
-    float angle = _calc_angle(ss_start_x, ss_start_y, ss_end_x, ss_end_y);
-    float rad_left = angle + (float)M_PI_2;
-    float rad_right = angle - (float)M_PI_2;
-    
-    
-    
+    float s_len = _get_segment_len(s);
+    bool s0_is_left = ((s.start.y - s.end.y) * s0.start.x + (s.end.x - s.start.x) * s0.start.y + s.start.x * s.end.y - s.end.x * s.start.y) > 0;
 
     std::vector<std::string> layers = _get_all_dielectric_layer();
-    float box_w = ss_dist * _Z0_w_ratio;
+    float box_w = s.width * _Z0_w_ratio;
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * - 0.5;
     float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
@@ -3012,21 +2990,21 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     
     std::vector<Z0_item> ss_Z0s;
     
-    for (float i = 0; i < ss_len; i += _Z0_setup)
+    for (float i = 0; i < s_len; i += _Z0_setup)
     {
         Z0_item tmp;
         tmp.pos = i;
         ss_Z0s.push_back(tmp);
     }
     
-    if (ss_Z0s.size() > 1 && ss_len - ss_Z0s.back().pos < 0.5 * _Z0_setup)
+    if (ss_Z0s.size() > 1 && s_len - ss_Z0s.back().pos < 0.5 * _Z0_setup)
     {
-        ss_Z0s.back().pos = ss_len;
+        ss_Z0s.back().pos = s_len;
     }
     else
     {
         Z0_item tmp;
-        tmp.pos = ss_len;
+        tmp.pos = s_len;
         ss_Z0s.push_back(tmp);
     }
     
@@ -3056,14 +3034,6 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
         
         Z0_item& ss_item = ss_Z0s[i];
         
-        float x = ss_start_x + ss_item.pos * cos(angle);
-        float y = ss_start_y + ss_item.pos * sin(angle);
-        float x_left = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_left);
-        float y_left = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_left);
-        float x_right = x + (ss_dist * _Z0_w_ratio * 0.5) * cos(rad_right);
-        float y_right = y + (ss_dist * _Z0_w_ratio * 0.5) * sin(rad_right);
-        
-        
         calc->clean();
         calc->set_precision(atlc_pix_unit);
         calc->set_box_size(box_w, box_h);
@@ -3078,7 +3048,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
         std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
-            std::list<std::pair<float, float> > grounds = _get_mat_line(refs.second, x_left, y_left, x_right, y_right);
+            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, ss_item.pos, s.width * _Z0_w_ratio);
             
             for (auto& g: grounds)
             {
@@ -3105,13 +3075,13 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
         if (s0_is_left)
         {
                 
-            calc->add_wire(0 - ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            calc->add_coupler(0 + ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            calc->add_wire(0 - s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            calc->add_coupler(0 + s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         else
         {
-            _Z0_calc->add_wire(0 + ss_dist * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            _Z0_calc->add_coupler(0 - ss_dist * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            _Z0_calc->add_wire(0 + s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
+            _Z0_calc->add_coupler(0 - s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
         }
         
         
@@ -3173,7 +3143,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
                     "+G=0 0 0\n"
                     "+C=%gpF %gpF %gpF\n",
                     Zodd, Zeven, Zodd * 2, Zeven * 0.5,
-                    ss_len * 0.001,
+                    s_len * 0.001,
                     r_matrix[0][0], r_matrix[1][1],
                     l_matrix[0][0], (l_matrix[0][1] + l_matrix[1][0]) * 0.5, l_matrix[1][1],
                     c_matrix[0][0], (c_matrix[0][1] + c_matrix[1][0]) * 0.5, c_matrix[1][1]);
