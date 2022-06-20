@@ -15,7 +15,7 @@ static const char *base_xsctn = "package require csdl\n\n"
                 "   -yOffset 0.0 \\\n"
                 "   -xOffset 0.0\n"
                 "DielectricLayer dielAir  \\\n"
-                "   -thickness 5 \\\n"
+                "   -thickness 3 \\\n"
                 "   -lossTangent 0.0002 \\\n"
                 "   -permittivity 1.0 \\\n"
                 "   -permeability 1.0 \\\n"
@@ -54,6 +54,10 @@ mmtl::mmtl()
 
 mmtl::~mmtl()
 {
+    remove((_tmp_name + ".xsctn").c_str());
+    remove((_tmp_name + ".result").c_str());
+    remove((_tmp_name + ".dump").c_str());
+    remove((_tmp_name + ".result_field_plot_data").c_str());
 }
 
 
@@ -191,7 +195,6 @@ bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
     if (fp)
     {
         fwrite(_xsctn.c_str(), 1, _xsctn.length(), fp);
-        fflush(fp);
         fclose(fp);
     }
     
