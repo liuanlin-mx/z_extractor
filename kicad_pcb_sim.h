@@ -219,9 +219,7 @@ private:
     
     /* 提取走线附近的参考平面横界面参数 */
     std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
-    std::string _gen_segment_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum);
     std::string _gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum);
-    std::string _gen_segment_coupled_Z0_ckt(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat);
     std::string _gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat);
     
     std::string _gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
@@ -315,7 +313,10 @@ private:
     float _pcb_bottom;
     float _pcb_left;
     float _pcb_right;
-    std::shared_ptr<Z0_calc> _Z0_calc;
+    
+    //std::shared_ptr<Z0_calc> _Z0_calc;
+    
+    std::vector<std::shared_ptr<Z0_calc> > _Z0_calc;
     
     const float _resistivity = 0.0172;
     /* 小于这个长度的走线不计算阻抗 使用0欧电阻连接 */
