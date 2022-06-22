@@ -5,6 +5,10 @@
       <![CDATA[00010001N0005Debug000000000000]]>
     </Plugin>
   </Plugins>
+  <VirtualDirectory Name="plugin">
+    <File Name="plugin/__init__.py"/>
+    <File Name="plugin/z_extractor.py"/>
+  </VirtualDirectory>
   <VirtualDirectory Name="gui">
     <File Name="gui/simulation_gui.h"/>
     <File Name="gui/simulation_gui.cpp"/>
@@ -50,7 +54,7 @@
         <Library Value="opencv_core"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t -coupled &quot;/ddr3/DQS0_N:/ddr3/DQS0_P&quot; -coupled_max_d 2 -coupled_min_len 0.2 -ltra 0 -anti_pad 0.7 -mmtl 1" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND,VCC_DRAM-1V5&quot; -t -coupled &quot;/ddr3/DQS0_N:/ddr3/DQS0_P&quot; -coupled_max_d 2 -coupled_min_len 0.2 -ltra 0 -anti_pad 0.7 -mmtl 1" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -61,7 +65,9 @@
         <StartupCommands/>
       </Debugger>
       <PreBuild/>
-      <PostBuild/>
+      <PostBuild>
+        <Command Enabled="yes">cp -arf plugin/*.py ~/.local/share/kicad/6.0/scripting/plugins/kicad_pcb_simulation/</Command>
+      </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
         <CleanCommand/>
