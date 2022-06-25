@@ -638,7 +638,7 @@
                                                         <property name="max_size"></property>
                                                         <property name="maximize_button">0</property>
                                                         <property name="maximum_size"></property>
-                                                        <property name="maxlength"></property>
+                                                        <property name="maxlength">6</property>
                                                         <property name="min_size"></property>
                                                         <property name="minimize_button">0</property>
                                                         <property name="minimum_size"></property>
@@ -661,10 +661,11 @@
                                                         <property name="validator_style">wxFILTER_NONE</property>
                                                         <property name="validator_type">wxDefaultValidator</property>
                                                         <property name="validator_variable"></property>
-                                                        <property name="value">0.5</property>
+                                                        <property name="value">0.1</property>
                                                         <property name="window_extra_style"></property>
                                                         <property name="window_name"></property>
                                                         <property name="window_style"></property>
+                                                        <event name="OnText">m_textCtrlMinLenOnText</event>
                                                     </object>
                                                 </object>
                                             </object>
@@ -774,7 +775,7 @@
                                                         <property name="max_size"></property>
                                                         <property name="maximize_button">0</property>
                                                         <property name="maximum_size"></property>
-                                                        <property name="maxlength"></property>
+                                                        <property name="maxlength">6</property>
                                                         <property name="min_size"></property>
                                                         <property name="minimize_button">0</property>
                                                         <property name="minimum_size"></property>
@@ -801,6 +802,7 @@
                                                         <property name="window_extra_style"></property>
                                                         <property name="window_name"></property>
                                                         <property name="window_style"></property>
+                                                        <event name="OnText">m_textCtrlMaxDistOnText</event>
                                                     </object>
                                                 </object>
                                             </object>
@@ -1266,6 +1268,7 @@
                                         <property name="window_extra_style"></property>
                                         <property name="window_name"></property>
                                         <property name="window_style"></property>
+                                        <event name="OnListBox">m_listBoxCfgOnListBox</event>
                                     </object>
                                 </object>
                                 <object class="sizeritem" expanded="0">
@@ -1798,6 +1801,15 @@
                         <property name="window_style"></property>
                     </object>
                 </object>
+            </object>
+            <object class="wxTimer" expanded="1">
+                <property name="enabled">0</property>
+                <property name="id">wxID_ANY</property>
+                <property name="name">m_timer</property>
+                <property name="oneshot">0</property>
+                <property name="period">1000</property>
+                <property name="permission">protected</property>
+                <event name="OnTimer">m_timerOnTimer</event>
             </object>
         </object>
     </object>

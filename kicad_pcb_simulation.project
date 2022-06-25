@@ -67,6 +67,7 @@
       <PreBuild/>
       <PostBuild>
         <Command Enabled="yes">cp -arf plugin/*.py ~/.local/share/kicad/6.0/scripting/plugins/kicad_pcb_simulation/</Command>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/6.0/scripting/plugins/kicad_pcb_simulation/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>

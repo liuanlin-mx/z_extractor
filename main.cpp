@@ -53,7 +53,7 @@ int main(int argc, char **argv)
     std::list<std::pair<std::string, std::string> > coupled_nets;
     std::list<std::string> refs;
     const char *pcb_file = NULL;
-    bool tl = false;
+    bool tl = true;
     const char *oname = NULL;
     float v_ratio = 0.7;
     
@@ -222,6 +222,7 @@ int main(int argc, char **argv)
         
     }
     
+    printf("%s\n", info.c_str());
     if (oname == NULL)
     {
         oname = "out";
