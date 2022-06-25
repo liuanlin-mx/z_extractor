@@ -72,8 +72,6 @@ int main(int argc, char **argv)
         const char *arg = argv[i];
         const char *arg_next = argv[i + 1];
         
-        printf("argv[%d]:%s\n", i, arg);
-        
         if (std::string(arg) == "-net" && i < argc)
         {
             _parse_net(arg_next, nets);

@@ -5,6 +5,7 @@ import os
 import wx
 import subprocess
 import json
+import time
 
 ###########################################################################
 ## Class z_extractor_base
@@ -13,7 +14,7 @@ import json
 class z_extractor_base ( wx.Dialog ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 815,622 ), style = wx.DEFAULT_DIALOG_STYLE )
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 880,640 ), style = wx.DEFAULT_DIALOG_STYLE )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -139,7 +140,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		sbSizer6 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"options" ), wx.HORIZONTAL )
 
-		m_radioBoxSpiceFmtChoices = [ u"ngspice(txl)", u"ngspice (ltra)" ]
+		m_radioBoxSpiceFmtChoices = [ u"ngspice (txl)", u"ngspice (ltra)" ]
 		self.m_radioBoxSpiceFmt = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Spice Format", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSpiceFmtChoices, 1, wx.RA_SPECIFY_COLS )
 		self.m_radioBoxSpiceFmt.SetSelection( 0 )
 		sbSizer6.Add( self.m_radioBoxSpiceFmt, 0, wx.ALL, 5 )
@@ -251,10 +252,10 @@ class z_config_item():
         self.tline = []
         self.ref_net = []
         self.coupled = []
-        self.name = "test"
+        self.name = "newcfg"
         self.spice_fmt = 0
-        self.coupled_max_d = 1
-        self.coupled_min_len = 0.2
+        self.coupled_max_d = 2
+        self.coupled_min_len = 0.5
         
 
 class z_extractor_gui(z_extractor_base):
@@ -265,6 +266,7 @@ class z_extractor_gui(z_extractor_base):
         self.net_classes_list = []
         self.board = pcbnew.GetBoard()
         self.sub_process = None
+        self.start_time = time.perf_counter()
             
         file_name = self.board.GetFileName()
         self.board_path = os.path.split(file_name)[0]
@@ -547,12 +549,12 @@ class z_extractor_gui(z_extractor_base):
 
     def m_buttonExtractOnButtonClick( self, event ):
         cmd = self.gen_cmd()
-        self.m_textCtrlOutput.AppendText("cmd: "cmd + "\n\n")
+        self.m_textCtrlOutput.AppendText("cmd: " + cmd + "\n\n")
         
         #self.m_textCtrlOutput.AppendText(self.board_path + "\n")
         #self.m_textCtrlOutput.AppendText(self.plugin_path + "\n")
-        
-        self.sub_process = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=self.board_path, env={"PATH": self.plugin_path})
+        self.start_time = time.perf_counter()
+        self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.board_path, env={"PATH": self.plugin_path})
         
         self.m_buttonExtract.Enable(False)
         self.m_timer.Start(1000)
@@ -576,8 +578,10 @@ class z_extractor_gui(z_extractor_base):
         else:
             str = self.sub_process.stdout.read().decode()
             self.m_textCtrlOutput.AppendText("\n" + str + "\n");
+            self.m_textCtrlOutput.AppendText("time: {:.3f}s\n".format((time.perf_counter() - self.start_time)));
             self.m_buttonExtract.Enable()
             self.m_timer.Stop()
+            self.sub_process.wait(0.1)
 
         
 class z_extractor( pcbnew.ActionPlugin ):
