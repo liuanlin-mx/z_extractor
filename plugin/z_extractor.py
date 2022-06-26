@@ -271,8 +271,11 @@ class z_extractor_gui(z_extractor_base):
         file_name = self.board.GetFileName()
         self.board_path = os.path.split(file_name)[0]
         self.plugin_path = os.path.split(os.path.realpath(__file__))[0]
-        file_name = os.path.split(file_name)[1]
-        name = file_name.rsplit('.', 1)[0]
+        
+        self.output_path = self.board_path + os.sep + "z_extractor"
+        if not os.path.exists(self.output_path):
+            os.mkdir(self.output_path)
+        
         
         self.load_cfg()
         
