@@ -548,15 +548,19 @@ class z_extractor_gui(z_extractor_base):
         
 
     def m_buttonExtractOnButtonClick( self, event ):
+        if self.m_buttonExtract.GetLabel() == "Terminate":
+            if self.sub_process.poll() == None:
+                self.sub_process.terminate()
+            self.m_buttonExtract.SetLabel("Extract")
+            self.m_timer.Stop()
+            return
+            
         cmd = self.gen_cmd()
         self.m_textCtrlOutput.AppendText("cmd: " + cmd + "\n\n")
-        
-        #self.m_textCtrlOutput.AppendText(self.board_path + "\n")
-        #self.m_textCtrlOutput.AppendText(self.plugin_path + "\n")
         self.start_time = time.perf_counter()
         self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.board_path, env={"PATH": self.plugin_path})
         
-        self.m_buttonExtract.Enable(False)
+        self.m_buttonExtract.SetLabel("Terminate")
         self.m_timer.Start(1000)
         
     def m_buttonSaveOnButtonClick( self, event ):
@@ -579,7 +583,7 @@ class z_extractor_gui(z_extractor_base):
             str = self.sub_process.stdout.read().decode()
             self.m_textCtrlOutput.AppendText("\n" + str + "\n");
             self.m_textCtrlOutput.AppendText("time: {:.3f}s\n".format((time.perf_counter() - self.start_time)));
-            self.m_buttonExtract.Enable()
+            self.m_buttonExtract.SetLabel("Extract")
             self.m_timer.Stop()
             self.sub_process.wait(0.1)
 
