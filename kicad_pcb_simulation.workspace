@@ -10,5 +10,9 @@
       <Environment/>
       <Project Name="kicad_pcb_simulation" ConfigName="Release"/>
     </WorkspaceConfiguration>
+    <WorkspaceConfiguration Name="linux_static">
+      <Environment/>
+      <Project Name="kicad_pcb_simulation" ConfigName="linux_static"/>
+    </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

@@ -4,12 +4,6 @@
 #include <opencv2/opencv.hpp>
 #include "make_cir.h"
 
-#include <wx/app.h>
-#include <wx/event.h>
-#include "gui/simulation_gui.h"
-#include <wx/image.h>
-#include "atlc.h"
-
 
 
 
