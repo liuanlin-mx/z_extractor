@@ -286,7 +286,7 @@ class z_extractor_gui(z_extractor_base):
     
     def load_cfg(self):
         
-        cfg_file = open("z_extractor.json", "r")
+        cfg_file = open(self.board_path + os.sep + "z_extractor.json", "r")
         if cfg_file == None:
             self.cfg_list[0] = z_config_item()
             self.cur_cfg = self.cfg_list[0]
@@ -568,7 +568,7 @@ class z_extractor_gui(z_extractor_base):
             
         json_str = json.dumps(list)
         
-        cfg_file = open("z_extractor.json", "w")
+        cfg_file = open(self.board_path + os.sep + "z_extractor.json", "w")
         json.dump(list, cfg_file)
         cfg_file.close()
         

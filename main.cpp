@@ -139,10 +139,6 @@ int main(int argc, char **argv)
         
     }
     
-    for (auto& net: nets)
-    {
-        printf("%s\n", net.c_str());
-    }
     
     if (pcb_file == NULL || (nets.empty() && coupled_nets.empty()) || (tl == true && refs.empty()))
     {
@@ -188,18 +184,18 @@ int main(int argc, char **argv)
             std::set<std::string> reference_value;
             float td = 0;
             pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td);
-            printf("ckt:%s\n", ckt.c_str());
+            //printf("ckt:%s\n", ckt.c_str());
             spice += ckt;
             char str[4096] = {0};
             float c = 299792458000 * v_ratio;
             float len = c * (td / 1000000000.);
-            sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", net.c_str(), td, len, len / 0.0254);
+            sprintf(str, "net:%s td:%fNS len:(%.4fmm %.1fmil)\n", net.c_str(), td, len, len / 0.0254);
             info += str;
         }
         
         for (const auto& coupled: coupled_nets)
         {
-            printf("%s %s\n", coupled.first.c_str(), coupled.second.c_str());
+            //printf("%s %s\n", coupled.first.c_str(), coupled.second.c_str());
             std::string ckt;
             std::string call;
             std::set<std::string> reference_value;
@@ -207,7 +203,7 @@ int main(int argc, char **argv)
             
             pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()), v_refs, ckt, reference_value, call);
     
-            printf("ckt:%s\n", ckt.c_str());
+            //printf("ckt:%s\n", ckt.c_str());
             spice += ckt;
             
             //char str[4096] = {0};
@@ -220,6 +216,7 @@ int main(int argc, char **argv)
         
     }
     
+    printf("v_ratio:%f\nlen=c * v_ratio / td\n", v_ratio);
     printf("%s\n", info.c_str());
     if (oname == NULL)
     {
@@ -241,84 +238,4 @@ int main(int argc, char **argv)
         fclose(info_fp);
     }
     return 0;
-}
-
-int mainx(int argc, char **argv)
-{
-    kicad_pcb_sim pcb;
-    static char buf[8 * 1024 * 1024];
-    FILE *fp = fopen("../testatlc/testatlc.kicad_pcb", "rb");
-    if (fp)
-    {
-        fread(buf, 1, sizeof(buf), fp);
-        fclose(fp);
-    }
-    pcb.parse(buf);
-    pcb.dump();
-    
-    
-    std::string ckt;
-    std::string call;
-    std::set<std::string> reference_value;
-    std::vector<std::uint32_t> refs;
-    
-    refs.push_back(pcb.get_net_id("GND"));
-    refs.push_back(pcb.get_net_id("0"));
-    pcb.gen_subckt_coupled_tl(pcb.get_net_id("/SN"), pcb.get_net_id("/SP"), refs, ckt, reference_value, call);
-    
-    make_cir mcir;
-    std::set<std::string> net_names;
-    net_names.insert("/SN");
-    net_names.insert("/SP");
-    printf("ckt:%s\n", ckt.c_str());
-    std::string cir = mcir.make("../testatlc/testatlc.cir", net_names, ckt, reference_value);
-    
-    cir += ".control\n";
-    cir += "plot v(\"R4_NET__SN\") v(\"R3_NET__SN\") v(\"R2_NET__SP\") v(\"R1_NET__SP\")";
-    cir += "\n.endc\n";
-    
-	printf("%s\n", cir.c_str());
-    {
-        FILE *fp = fopen("otest.cir", "wb");
-        if (fp)
-        {
-            fwrite(cir.c_str(), 1, cir.length(), fp);
-            fclose(fp);
-        }
-    }
-    
-    cv::waitKey();
-	return 0;
-}
-
-int main2(int argc, char **argv)
-{
-    kicad_pcb_sim pcb;
-    static char buf[8 * 1024 * 1024];
-    FILE *fp = fopen("/home/mx/work/pcba/a33_core/a33_core.kicad_pcb", "rb");
-    if (fp)
-    {
-        fread(buf, 1, sizeof(buf), fp);
-        fclose(fp);
-    }
-    pcb.parse(buf);
-    pcb.dump();
-    
-    
-    std::string ckt;
-    std::string call;
-    std::set<std::string> reference_value;
-    std::vector<std::uint32_t> refs;
-    float td = 0;
-    refs.push_back(pcb.get_net_id("GND"));
-    refs.push_back(pcb.get_net_id("0"));
-    refs.push_back(pcb.get_net_id("VCC_DRAM-1V5"));
-    //pcb.gen_subckt_coupled_tl(pcb.get_net_id("/ddr3/DCK_P"), pcb.get_net_id("/SP"), refs, ckt, reference_value);
-    
-    pcb.gen_subckt_zo(pcb.get_net_id("/ddr3/DCK_N"), refs, ckt, reference_value, call, td);
-
-    printf("ckt:%s\n", ckt.c_str());
-    
-    cv::waitKey();
-	return 0;
 }
