@@ -140,8 +140,8 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
-      <BuildSystem Name="Default"/>
+      <General OutputFile="" IntermediateDirectory="" Command="$(WorkspacePath)/cmake-build-$(WorkspaceConfiguration)/output/$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(WorkspacePath)/cmake-build-$(WorkspaceConfiguration)/output" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="CMake"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
       </Environment>
@@ -152,8 +152,11 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">cp -arf plugin/*.py ~/.local/share/kicad/6.0/scripting/plugins/kicad_pcb_simulation/</Command>
-        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/6.0/scripting/plugins/kicad_pcb_simulation/</Command>
+        <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_plugin/linux</Command>
+        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/kicad_pcb_simulation ${WORKSPACE_PATH}/z_extractor_plugin/linux/</Command>
+        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/mmtl_bem ${WORKSPACE_PATH}/z_extractor_plugin/linux/</Command>
+        <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_plugin/</Command>
+        <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/z_extractor_plugin ~/.local/share/kicad/6.0/scripting/plugins</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>

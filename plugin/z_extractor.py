@@ -6,7 +6,7 @@ import wx
 import subprocess
 import json
 import time
-
+import platform
 ###########################################################################
 ## Class z_extractor_base
 ###########################################################################
@@ -14,7 +14,7 @@ import time
 class z_extractor_base ( wx.Dialog ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = wx.EmptyString, pos = wx.DefaultPosition, size = wx.Size( 880,640 ), style = wx.DEFAULT_DIALOG_STYLE )
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"z_extractor", pos = wx.DefaultPosition, size = wx.Size( 880,640 ), style = wx.DEFAULT_DIALOG_STYLE )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -276,6 +276,13 @@ class z_extractor_gui(z_extractor_base):
         if not os.path.exists(self.output_path):
             os.mkdir(self.output_path)
         
+        sys = platform.system()
+        if sys == "Windows":
+            self.plugin_bin_path = self.plugin_path + os.sep + "win"
+        elif sys == "Linux":
+            self.plugin_bin_path = self.plugin_path + os.sep + "linux"
+        else:
+            pass
         
         self.load_cfg()
         
@@ -561,7 +568,7 @@ class z_extractor_gui(z_extractor_base):
         cmd = self.gen_cmd()
         self.m_textCtrlOutput.AppendText("cmd: " + cmd + "\n\n")
         self.start_time = time.perf_counter()
-        self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.board_path, env={"PATH": self.plugin_path})
+        self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.output_path, env={"PATH": self.plugin_bin_path})
         
         self.m_buttonExtract.SetLabel("Terminate")
         self.m_timer.Start(1000)
