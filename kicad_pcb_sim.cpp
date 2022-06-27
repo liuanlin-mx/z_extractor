@@ -80,7 +80,7 @@ bool kicad_pcb_sim::parse(const char *str)
                 _segments.emplace(s.net, s);
                 continue;
             }
-            else if (label == "gr_line")
+            else if (label == "gr_line" || label == "gr_circle" || label == "gr_rect" || label == "gr_arc")
             {
                 str = _parse_edge(str);
                 continue;
@@ -1702,6 +1702,15 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
+    pcb_point start;
+    pcb_point mid;
+    pcb_point end;
+    pcb_point center;
+    std::string layer_name;
+    
+    bool is_arc = false;
+    bool is_circle = false;
+    
     while (*str)
     {
         if (*str == '(')
@@ -1709,33 +1718,29 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
             left++;
             std::string label;
             str = _parse_label(str + 1, label);
-            if (label == "start" || label == "end")
+            if (label == "start")
             {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                if (x < _pcb_left)
-                {
-                    _pcb_left = x;
-                }
-                if (x > _pcb_right)
-                {
-                    _pcb_right = x;
-                }
-                if (y < _pcb_top)
-                {
-                    _pcb_top = y;
-                }
-                if (y > _pcb_bottom)
-                {
-                    _pcb_bottom = y;
-                }
+                str = _parse_postion(str, start.x, start.y);
                 
+            }
+            else if (label == "end")
+            {
+                str = _parse_postion(str, end.x, end.y);
+                
+            }
+            else if (label == "mid")
+            {
+                str = _parse_postion(str, mid.x, mid.y);
+                is_arc = true;
+            }
+            else if (label == "center")
+            {
+                str = _parse_postion(str, center.x, center.y);
+                is_circle = true;
             }
             else if (label == "layer")
             {
                 while (*str != '"') str++;
-                std::string layer_name;
                 str = _parse_string(str, layer_name);
             }
             else if (label == "width")
@@ -1760,6 +1765,62 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
             break;
         }
     }
+    
+    if (layer_name == "Edge.Cuts")
+    {
+        float left = _pcb_left;
+        float right = _pcb_right;
+        float top = _pcb_top;
+        float bottom = _pcb_bottom;
+            
+        if (is_arc)
+        {
+            float r;
+            _calc_arc_center_radius(start.x, start.y, mid.x, mid.y, end.x, end.y, center.x, center.y, r);
+            is_circle = true;
+            is_arc = false;
+        }
+        
+        if (is_circle)
+        {
+            float r = _calc_dist(center.x, center.y, end.x, end.y);
+            left = center.x - r;
+            right = center.x + r;
+            top = center.y - r;
+            bottom = center.y + r;
+        }
+        else
+        {
+            
+            left = std::min(start.x, end.x);
+            right = std::max(start.x, end.x);
+            top = std::min(start.y, end.y);
+            bottom = std::max(start.y, end.y);
+            
+        }
+        
+        if (left < _pcb_left)
+        {
+            _pcb_left = left;
+        }
+            
+        if (right > _pcb_right)
+        {
+            _pcb_right = right;
+        }
+            
+        if (top < _pcb_top)
+        {
+            _pcb_top = top;
+        }
+            
+        if (bottom > _pcb_bottom)
+        {
+            _pcb_bottom = bottom;
+        }
+        
+    }
+                
     return str;
 }
 
