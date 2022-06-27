@@ -153,7 +153,7 @@ private:
 
     const char *_parse_label(const char *str, std::string& label);
     const char *_skip(const char *str);
-    const char *_parse_zone(const char *str, zone& z);
+    const char *_parse_zone(const char *str, std::vector<zone>& zones);
     const char *_parse_filled_polygon(const char *str, zone& z);
     const char *_parse_net(const char *str, std::uint32_t& id, std::string& name);
     const char *_parse_segment(const char *str, segment& s);

@@ -104,9 +104,12 @@ bool kicad_pcb_sim::parse(const char *str)
             }
             else if (label == "zone")
             {
-                zone z;
-                str = _parse_zone(str, z);
-                _zones.emplace(z.net, z);
+                std::vector<zone> zones;
+                str = _parse_zone(str, zones);
+                for (auto& z: zones)
+                {
+                    _zones.emplace(z.net, z);
+                }
                 continue;
             }
             
@@ -1056,10 +1059,11 @@ const char *kicad_pcb_sim::_skip(const char *str)
     return str;
 }
 
-const char *kicad_pcb_sim::_parse_zone(const char *str, zone& z)
+const char *kicad_pcb_sim::_parse_zone(const char *str, std::vector<zone>& zones)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
+    zone z;
     while (*str)
     {
         if (*str == '(')
@@ -1079,7 +1083,10 @@ const char *kicad_pcb_sim::_parse_zone(const char *str, zone& z)
             }
             else if (label == "filled_polygon")
             {
-                _parse_filled_polygon(str, z);
+                str = _parse_filled_polygon(str, z);
+                zones.push_back(z);
+                z.pts.clear();
+                z.layer_name.clear();
                 right++;
             }
             continue;
