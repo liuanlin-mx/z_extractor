@@ -296,9 +296,10 @@ class z_extractor_gui(z_extractor_base):
     
     def load_cfg(self):
         
-        cfg_file = open(self.board_path + os.sep + "z_extractor.json", "r")
-        if cfg_file == None:
-            self.cfg_list[0] = z_config_item()
+        try:
+            cfg_file = open(self.board_path + os.sep + "z_extractor.json", "r")
+        except:
+            self.cfg_list.append(z_config_item())
             self.cur_cfg = self.cfg_list[0]
             return
             
@@ -318,7 +319,7 @@ class z_extractor_gui(z_extractor_base):
             self.cfg_list.append(item)
         
         if len(self.cfg_list) == 0:
-            self.cfg_list[0] = z_config_item()
+            self.cfg_list.append(z_config_item())
         
         self.cur_cfg = self.cfg_list[0]
         
