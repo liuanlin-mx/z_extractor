@@ -49,7 +49,6 @@ int main(int argc, char **argv)
     const char *pcb_file = NULL;
     bool tl = true;
     const char *oname = NULL;
-    float v_ratio = 0.7;
     
     float coupled_max_d = 2;
     float coupled_min_len = 0.5;
@@ -89,10 +88,6 @@ int main(int argc, char **argv)
         else if (std::string(arg) == "-t")
         {
             tl = true;
-        }
-        else if (std::string(arg) == "-v_ratio" && i < argc)
-        {
-            v_ratio = atof(arg_next);
         }
         else if (std::string(arg) == "-coupled_max_d" && i < argc)
         {
@@ -170,20 +165,27 @@ int main(int argc, char **argv)
             v_refs.push_back(pcb.get_net_id(net.c_str()));
         }
         
-        
+        bool first = true;
+        float velocity = 0;
+        char str[4096] = {0};
         for (const auto& net: nets)
         {
             std::string ckt;
             std::string call;
             std::set<std::string> reference_value;
             float td = 0;
-            pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td);
+            float velocity_avg = 0;
+            pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td, velocity_avg);
             //printf("ckt:%s\n", ckt.c_str());
             spice += ckt;
-            char str[4096] = {0};
-            float c = 299792458000 * v_ratio;
-            float len = c * (td / 1000000000.);
-            sprintf(str, "net:%s td:%fNS len:(%.4fmm %.1fmil)\n", net.c_str(), td, len, len / 0.0254);
+            
+            if (first)
+            {
+                first = false;
+                velocity = velocity_avg;
+            }
+            float len = velocity * td;
+            sprintf(str, "net: \"%s\" td: %.4fNS len: (%.1fmil)\n", net.c_str(), td, len / 0.0254);
             info += str;
         }
         
@@ -210,7 +212,6 @@ int main(int argc, char **argv)
         
     }
     
-    printf("v_ratio:%f\nlen=c * v_ratio / td\n", v_ratio);
     printf("%s\n", info.c_str());
     if (oname == NULL)
     {

@@ -541,7 +541,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 
 
 bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum, float& velocity_avg)
 {
     std::string comment;
     std::string sub;
@@ -578,7 +578,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     
     ckt = comment + ckt;
     
-
+    float len = 0;
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
@@ -606,6 +606,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
                 sub += subckt;
                 ckt += buf;
                 td_sum += td;
+                len += _get_segment_len(s);
             }
         }
     }
@@ -624,12 +625,14 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
             sub += _gen_via_model_ckt(v, refs_mat, via_call, td);
         }
         td_sum += td;
+        len += _get_via_conn_len(v);
         ckt += via_call;
     }
 
     ckt += ".ends\n";
     ckt += sub;
     
+    velocity_avg = len / td_sum;
     return true;
 }
 
@@ -2007,6 +2010,34 @@ std::vector<std::string> kicad_pcb_sim::_get_via_conn_layers(const kicad_pcb_sim
     }
     return layers;
 }
+
+
+float kicad_pcb_sim::_get_via_conn_len(const kicad_pcb_sim::via& v)
+{
+    float min_z = 1;
+    float max_z = -1;
+    float len = 0;
+    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
+    {
+        const std::string& layer_name = conn_layers[i];
+        float z = _get_layer_z_axis(layer_name);
+        if (z < min_z)
+        {
+            min_z = z;
+        }
+        if (z > max_z)
+        {
+            max_z = z;
+        }
+    }
+    if (max_z > min_z)
+    {
+        len = max_z - min_z;
+    }
+    return len;
+}
+
 
 float kicad_pcb_sim::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {

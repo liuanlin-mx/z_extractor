@@ -124,7 +124,7 @@ public:
             std::string& ckt, std::set<std::string>& reference_value, std::string& call);
     
     bool gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum);
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum, float& velocity_avg);
                         
     bool gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call);
@@ -186,6 +186,7 @@ private:
     std::vector<std::string> _get_all_mask_layer();
     std::vector<std::string> _get_via_layers(const via& v);
     std::vector<std::string> _get_via_conn_layers(const via& v);
+    float _get_via_conn_len(const kicad_pcb_sim::via& v);
     
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
