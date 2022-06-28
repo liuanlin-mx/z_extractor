@@ -2436,7 +2436,11 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
         float x = x1 + l * cos(angle);
         float y = -(-y1 + l * sin(angle));
         
-        if (img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
+        std::int32_t img_y = _cvt_img_y(y);
+        std::int32_t img_x = _cvt_img_x(x);
+        if (img_y >= 0 && img_y < img.rows
+            && img_x >= 0 && img_x <= img.cols
+            && img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
         {
             if (!flag)
             {
@@ -3305,7 +3309,11 @@ float kicad_pcb_sim::_get_via_anti_pad_diameter(const kicad_pcb_sim::via& v,  co
         
         while (x < x_end)
         {
-            if (img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
+            std::int32_t img_y = _cvt_img_y(y);
+            std::int32_t img_x = _cvt_img_x(x);
+            if (!(img_y >= 0 && img_y < img.rows
+                    && img_x >= 0 && img_x < img.cols)
+                || img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
             {
                 float dist = _calc_dist(x, y, v.at.x, v.at.y);
                 if (dist * 2 < diameter)
@@ -3316,6 +3324,10 @@ float kicad_pcb_sim::_get_via_anti_pad_diameter(const kicad_pcb_sim::via& v,  co
             x += 0.01;
         }
         y += 0.01;
+    }
+    if (diameter <= v.size)
+    {
+        diameter = v.size * 2;
     }
     return diameter;
 }
