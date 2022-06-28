@@ -58,6 +58,8 @@ mmtl::~mmtl()
     remove((_tmp_name + ".result").c_str());
     remove((_tmp_name + ".dump").c_str());
     remove((_tmp_name + ".result_field_plot_data").c_str());
+    remove("nmmtl.dump");
+    
 }
 
 

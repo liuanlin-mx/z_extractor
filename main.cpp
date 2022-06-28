@@ -177,7 +177,7 @@ int main(int argc, char **argv)
             float velocity_avg = 0;
             pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td, velocity_avg);
             //printf("ckt:%s\n", ckt.c_str());
-            spice += ckt;
+            spice += "*" + call + ckt + "\n\n\n";
             
             if (first)
             {
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
             pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()), v_refs, ckt, reference_value, call);
     
             //printf("ckt:%s\n", ckt.c_str());
-            spice += ckt;
+            spice += "*" + call + ckt + "\n\n\n";
             
             //char str[4096] = {0};
             //float c = 299792458000 * v_ratio;

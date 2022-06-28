@@ -28,7 +28,7 @@ kicad_pcb_sim::kicad_pcb_sim()
     _via_tl_mode = false;
     _enable_openmp = true;
     
-    _img_ratio = 200;
+    _img_ratio = 1 / (0.0254 * 0.5);
     _pcb_top = 10000.;
     _pcb_bottom = 0;
     _pcb_left = 10000.;
@@ -3136,9 +3136,9 @@ bool kicad_pcb_sim::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2
     boy1 = bo[0].second;
     box2 = bo[1].first;
     boy2 = bo[1].second;
-    float alen = (aox2 - aox1) * (aox2 - aox1) + (aoy2 - aoy1) * (aoy2 - aoy1);
-    float blen = (box2 - box1) * (box2 - box1) + (boy2 - boy1) * (boy2 - boy1);
-    return fabs(alen - blen) < 0.0001;
+    float alen = hypot(aox2 - aox1, aoy2 - aoy1);
+    float blen = hypot(box2 - box1, boy2 - boy1);
+    return fabs(alen - blen) < 0.0005;
 }
                
     
