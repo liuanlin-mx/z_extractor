@@ -7,6 +7,9 @@ import subprocess
 import json
 import time
 import platform
+
+
+
 ###########################################################################
 ## Class z_extractor_base
 ###########################################################################
@@ -14,7 +17,7 @@ import platform
 class z_extractor_base ( wx.Dialog ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"z_extractor", pos = wx.DefaultPosition, size = wx.Size( 880,640 ), style = wx.DEFAULT_DIALOG_STYLE )
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"z_extractor", pos = wx.DefaultPosition, size = wx.Size( 969,640 ), style = wx.DEFAULT_DIALOG_STYLE )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -26,10 +29,18 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_listBoxNetClassesChoices = []
 		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_MULTIPLE|wx.LB_SORT )
-		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+
+		bSizer11 = wx.BoxSizer( wx.HORIZONTAL )
 
 		self.m_buttonRefresh = wx.Button( sbSizer1.GetStaticBox(), wx.ID_ANY, u"refresh", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer1.Add( self.m_buttonRefresh, 0, wx.ALL, 5 )
+		bSizer11.Add( self.m_buttonRefresh, 0, wx.ALL, 5 )
+
+		self.m_textCtrlNetClassesFilter = wx.TextCtrl( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer11.Add( self.m_textCtrlNetClassesFilter, 0, wx.ALL|wx.EXPAND, 5 )
+
+
+		sbSizer1.Add( bSizer11, 0, wx.EXPAND, 5 )
 
 
 		bSizer1.Add( sbSizer1, 1, wx.EXPAND, 5 )
@@ -40,11 +51,16 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_MULTIPLE )
 		sbSizer7.Add( self.m_listBoxTLine, 1, wx.ALL|wx.EXPAND, 5 )
 
+		bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
+
 		self.m_buttonTLineAdd = wx.Button( sbSizer7.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer7.Add( self.m_buttonTLineAdd, 0, wx.ALL, 5 )
+		bSizer9.Add( self.m_buttonTLineAdd, 0, wx.ALL, 5 )
 
 		self.m_buttonTLineDel = wx.Button( sbSizer7.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer7.Add( self.m_buttonTLineDel, 0, wx.ALL, 5 )
+		bSizer9.Add( self.m_buttonTLineDel, 0, wx.ALL, 5 )
+
+
+		sbSizer7.Add( bSizer9, 0, wx.EXPAND, 5 )
 
 
 		bSizer1.Add( sbSizer7, 1, wx.EXPAND, 5 )
@@ -59,28 +75,28 @@ class z_extractor_base ( wx.Dialog ):
 
 		bSizer6 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticText2 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Min Len:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText2 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Min Len (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText2.Wrap( -1 )
 
-		bSizer6.Add( self.m_staticText2, 0, wx.ALL, 5 )
+		bSizer6.Add( self.m_staticText2, 1, wx.ALL, 5 )
 
-		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.1", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlMinLen.SetMaxLength( 6 )
-		bSizer6.Add( self.m_textCtrlMinLen, 0, 0, 5 )
+		bSizer6.Add( self.m_textCtrlMinLen, 1, 0, 5 )
 
 
 		sbSizer71.Add( bSizer6, 1, wx.EXPAND, 5 )
 
 		bSizer7 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Max Dist:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Max Dist (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText1.Wrap( -1 )
 
-		bSizer7.Add( self.m_staticText1, 0, wx.ALL, 5 )
+		bSizer7.Add( self.m_staticText1, 1, wx.ALL, 5 )
 
-		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"2", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlMaxDist.SetMaxLength( 6 )
-		bSizer7.Add( self.m_textCtrlMaxDist, 0, 0, 5 )
+		bSizer7.Add( self.m_textCtrlMaxDist, 1, 0, 5 )
 
 
 		sbSizer71.Add( bSizer7, 1, wx.EXPAND, 5 )
@@ -91,10 +107,10 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer61 = wx.BoxSizer( wx.HORIZONTAL )
 
 		self.m_buttonCoupledAdd = wx.Button( sbSizer3.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer61.Add( self.m_buttonCoupledAdd, 0, wx.ALL, 5 )
+		bSizer61.Add( self.m_buttonCoupledAdd, 1, wx.ALL, 5 )
 
 		self.m_buttonCoupledDel = wx.Button( sbSizer3.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer61.Add( self.m_buttonCoupledDel, 0, wx.ALL, 5 )
+		bSizer61.Add( self.m_buttonCoupledDel, 1, wx.ALL, 5 )
 
 
 		sbSizer3.Add( bSizer61, 0, wx.EXPAND, 5 )
@@ -108,11 +124,16 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_MULTIPLE )
 		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.ALL|wx.EXPAND, 5 )
 
+		bSizer10 = wx.BoxSizer( wx.HORIZONTAL )
+
 		self.m_buttonRefNetAdd = wx.Button( sbSizer2.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer2.Add( self.m_buttonRefNetAdd, 0, wx.ALL, 5 )
+		bSizer10.Add( self.m_buttonRefNetAdd, 0, wx.ALL, 5 )
 
 		self.m_buttonRefNetDel = wx.Button( sbSizer2.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer2.Add( self.m_buttonRefNetDel, 0, wx.ALL, 5 )
+		bSizer10.Add( self.m_buttonRefNetDel, 0, wx.ALL, 5 )
+
+
+		sbSizer2.Add( bSizer10, 0, wx.EXPAND, 5 )
 
 
 		bSizer1.Add( sbSizer2, 1, wx.EXPAND, 5 )
@@ -123,35 +144,65 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_MULTIPLE )
 		sbSizer4.Add( self.m_listBoxCfg, 1, wx.ALL|wx.EXPAND, 5 )
 
+		gSizer1 = wx.GridSizer( 2, 2, 0, 0 )
+
 		self.m_buttonCfgAdd = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer4.Add( self.m_buttonCfgAdd, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgAdd, 0, wx.ALL, 5 )
 
 		self.m_buttonCfgDel = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer4.Add( self.m_buttonCfgDel, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgDel, 0, wx.ALL, 5 )
 
 		self.m_buttonCfgRename = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"rename", wx.DefaultPosition, wx.DefaultSize, 0 )
-		sbSizer4.Add( self.m_buttonCfgRename, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgRename, 0, wx.ALL, 5 )
+
+		self.m_buttonSave = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"save", wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer1.Add( self.m_buttonSave, 0, wx.ALL, 5 )
+
+
+		sbSizer4.Add( gSizer1, 0, wx.EXPAND, 5 )
 
 
 		bSizer1.Add( sbSizer4, 1, wx.EXPAND, 5 )
 
 
-		bSizer4.Add( bSizer1, 1, wx.EXPAND, 5 )
+		bSizer4.Add( bSizer1, 1, wx.FIXED_MINSIZE, 5 )
 
 		sbSizer6 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"options" ), wx.HORIZONTAL )
 
 		m_radioBoxSpiceFmtChoices = [ u"ngspice (txl)", u"ngspice (ltra)" ]
 		self.m_radioBoxSpiceFmt = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Spice Format", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSpiceFmtChoices, 1, wx.RA_SPECIFY_COLS )
 		self.m_radioBoxSpiceFmt.SetSelection( 0 )
-		sbSizer6.Add( self.m_radioBoxSpiceFmt, 0, wx.ALL, 5 )
+		sbSizer6.Add( self.m_radioBoxSpiceFmt, 1, wx.ALL, 5 )
+
+		m_radioBoxSolverChoices = [ u"mmtl", u"atlc" ]
+		self.m_radioBoxSolver = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Solver", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSolverChoices, 1, wx.RA_SPECIFY_COLS )
+		self.m_radioBoxSolver.SetSelection( 0 )
+		sbSizer6.Add( self.m_radioBoxSolver, 1, wx.ALL, 5 )
+
+		self.m_checkBoxLosslessTL = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Lossless TL", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_checkBoxLosslessTL.SetValue(True)
+		sbSizer6.Add( self.m_checkBoxLosslessTL, 1, wx.ALL, 5 )
+
+		bSizer71 = wx.BoxSizer( wx.HORIZONTAL )
+
+		self.m_staticTextStep = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Scan Step (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticTextStep.Wrap( -1 )
+
+		bSizer71.Add( self.m_staticTextStep, 0, wx.ALL, 5 )
+
+		self.m_textCtrlStep = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer71.Add( self.m_textCtrlStep, 0, 0, 5 )
+
+
+		sbSizer6.Add( bSizer71, 1, wx.EXPAND, 5 )
 
 		bSizer8 = wx.BoxSizer( wx.VERTICAL )
 
 		self.m_buttonExtract = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer8.Add( self.m_buttonExtract, 0, wx.ALL, 5 )
 
-		self.m_buttonSave = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"save", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_buttonSave, 0, wx.ALL, 5 )
+		self.m_checkBoxExtractAll = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract All", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer8.Add( self.m_checkBoxExtractAll, 0, wx.ALL, 5 )
 
 
 		sbSizer6.Add( bSizer8, 1, wx.EXPAND, 5 )
@@ -172,6 +223,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		# Connect Events
 		self.m_buttonRefresh.Bind( wx.EVT_BUTTON, self.m_buttonRefreshOnButtonClick )
+		self.m_textCtrlNetClassesFilter.Bind( wx.EVT_TEXT, self.m_textCtrlNetClassesFilterOnText )
 		self.m_buttonTLineAdd.Bind( wx.EVT_BUTTON, self.m_buttonTLineAddOnButtonClick )
 		self.m_buttonTLineDel.Bind( wx.EVT_BUTTON, self.m_buttonTLineDelOnButtonClick )
 		self.m_textCtrlMinLen.Bind( wx.EVT_TEXT, self.m_textCtrlMinLenOnText )
@@ -184,9 +236,12 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_buttonCfgAdd.Bind( wx.EVT_BUTTON, self.m_buttonCfgAddOnButtonClick )
 		self.m_buttonCfgDel.Bind( wx.EVT_BUTTON, self.m_buttonCfgDelOnButtonClick )
 		self.m_buttonCfgRename.Bind( wx.EVT_BUTTON, self.m_buttonCfgRenameOnButtonClick )
-		self.m_radioBoxSpiceFmt.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSpiceFmtOnRadioBox )
-		self.m_buttonExtract.Bind( wx.EVT_BUTTON, self.m_buttonExtractOnButtonClick )
 		self.m_buttonSave.Bind( wx.EVT_BUTTON, self.m_buttonSaveOnButtonClick )
+		self.m_radioBoxSpiceFmt.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSpiceFmtOnRadioBox )
+		self.m_radioBoxSolver.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSolverOnRadioBox )
+		self.m_checkBoxLosslessTL.Bind( wx.EVT_CHECKBOX, self.m_checkBoxLosslessTLOnCheckBox )
+		self.m_textCtrlStep.Bind( wx.EVT_TEXT, self.m_textCtrlStepOnText )
+		self.m_buttonExtract.Bind( wx.EVT_BUTTON, self.m_buttonExtractOnButtonClick )
 		self.Bind( wx.EVT_TIMER, self.m_timerOnTimer, id=wx.ID_ANY )
 
 	def __del__( self ):
@@ -195,6 +250,9 @@ class z_extractor_base ( wx.Dialog ):
 
 	# Virtual event handlers, override them in your derived class
 	def m_buttonRefreshOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_textCtrlNetClassesFilterOnText( self, event ):
 		event.Skip()
 
 	def m_buttonTLineAddOnButtonClick( self, event ):
@@ -233,29 +291,40 @@ class z_extractor_base ( wx.Dialog ):
 	def m_buttonCfgRenameOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_buttonSaveOnButtonClick( self, event ):
+		event.Skip()
+
 	def m_radioBoxSpiceFmtOnRadioBox( self, event ):
 		event.Skip()
 
-	def m_buttonExtractOnButtonClick( self, event ):
+	def m_radioBoxSolverOnRadioBox( self, event ):
 		event.Skip()
 
-	def m_buttonSaveOnButtonClick( self, event ):
+	def m_checkBoxLosslessTLOnCheckBox( self, event ):
+		event.Skip()
+
+	def m_textCtrlStepOnText( self, event ):
+		event.Skip()
+
+	def m_buttonExtractOnButtonClick( self, event ):
 		event.Skip()
 
 	def m_timerOnTimer( self, event ):
 		event.Skip()
 
 
-
 class z_config_item():
     def __init__(self):
         self.tline = []
-        self.ref_net = []
+        self.ref_net = ["GND"]
         self.coupled = []
         self.name = "newcfg"
         self.spice_fmt = 0
-        self.coupled_max_d = 2
+        self.coupled_max_d = 1
         self.coupled_min_len = 0.5
+        self.solver_type = 0
+        self.lossless_tl = True
+        self.scan_step = 0.5
         
 
 class z_extractor_gui(z_extractor_base):
@@ -292,7 +361,7 @@ class z_extractor_gui(z_extractor_base):
         self.update_coupled_ui()
         self.update_ref_net_ui()
         self.update_spice_fmt_ui();
-        self.Layout()
+        self.update_other_ui()
     
     def load_cfg(self):
         
@@ -308,13 +377,26 @@ class z_extractor_gui(z_extractor_base):
         
         for cfg in cfg_list:
             item = z_config_item()
-            item.name = cfg["name"]
-            item.tline = cfg["tline"]
-            item.coupled = cfg["coupled"]
-            item.ref_net = cfg["ref_net"]
-            item.coupled_max_d = cfg["coupled_max_d"]
-            item.coupled_min_len = cfg["coupled_min_len"]
-            item.spice_fmt = cfg["spice_fmt"]
+            if "name" in cfg:
+                item.name = cfg["name"]
+            if "tline" in cfg:
+                item.tline = cfg["tline"]
+            if "coupled" in cfg:
+                item.coupled = cfg["coupled"]
+            if "ref_net" in cfg :
+                item.ref_net = cfg["ref_net"]
+            if "coupled_max_d" in cfg:
+                item.coupled_max_d = cfg["coupled_max_d"]
+            if "coupled_min_len" in cfg:
+                item.coupled_min_len = cfg["coupled_min_len"]
+            if "spice_fmt" in cfg:
+                item.spice_fmt = cfg["spice_fmt"]
+            if "solver_type" in cfg:
+                item.solver_type = cfg["solver_type"]
+            if "lossless_tl" in cfg:
+                item.lossless_tl = cfg["lossless_tl"]
+            if "scan_step" in cfg:
+                item.scan_step = cfg["scan_step"]
             
             self.cfg_list.append(item)
         
@@ -323,9 +405,14 @@ class z_extractor_gui(z_extractor_base):
         
         self.cur_cfg = self.cfg_list[0]
         
-    def gen_cmd(self):
+    def gen_cmd(self, all = True):
         cmd = ""
-        for cfg in self.cfg_list:
+        if all:
+            cfg_list = self.cfg_list
+        else:
+            cfg_list = [self.cur_cfg]
+            
+        for cfg in cfg_list:
             cmd = cmd + "kicad_pcb_simulation -pcb " + self.board.GetFileName() + " "
             
             if len(cfg.ref_net) > 0:
@@ -352,7 +439,18 @@ class z_extractor_gui(z_extractor_base):
             elif cfg.spice_fmt == 1:
                 cmd = cmd + "-ltra 1 "
                 
-            cmd = cmd + "-mmtl 1 -o " + cfg.name + ";"
+            if cfg.solver_type == 0:
+                cmd = cmd + "-mmtl 1 "
+            elif cfg.solver_type == 1:
+                cmd = cmd + "-mmtl 0 "
+                
+            if cfg.lossless_tl:
+                cmd = cmd + "-lossless 1 "
+            else:
+                cmd = cmd + "-lossless 0 "
+            
+            cmd = cmd + "-step " + str(cfg.scan_step)
+            cmd = cmd + " -o " + cfg.name + ";"
         
         return  cmd.strip(';')
         
@@ -360,10 +458,16 @@ class z_extractor_gui(z_extractor_base):
         self.m_listBoxNetClasses.Clear()
         self.net_classes_list = []
         netcodes = self.board.GetNetsByNetcode()
+        key = self.m_textCtrlNetClassesFilter.GetValue()
         for netcode, net in netcodes.items():
-            if net.GetNetname() not in self.net_classes_list:
-                self.net_classes_list.append(net.GetNetname())
-                self.m_listBoxNetClasses.Append(net.GetNetname())
+            net_name = net.GetNetname()
+            
+            if len(key) > 0 and key.lower() not in net_name.lower():
+                continue
+                
+            if netcode != 0 and net_name not in self.net_classes_list:
+                self.net_classes_list.append(net_name)
+                self.m_listBoxNetClasses.Append(net_name)
         
         tracks = self.board.GetTracks()
         for track in tracks:
@@ -405,6 +509,15 @@ class z_extractor_gui(z_extractor_base):
         if self.cur_cfg.spice_fmt == 1:
             self.m_radioBoxSpiceFmt.Select(1)
         
+    def update_other_ui(self):
+        if self.cur_cfg.solver_type == 0:
+            self.m_radioBoxSolver.Select(0)
+        elif self.cur_cfg.solver_type == 1:
+            self.m_radioBoxSolver.Select(1)
+            
+        self.m_checkBoxLosslessTL.SetValue(self.cur_cfg.lossless_tl)
+        self.m_textCtrlStep.SetValue(str(self.cur_cfg.scan_step))
+        
         
     def is_in_coupled(self, net):
         for str in self.cur_cfg.coupled:
@@ -418,6 +531,9 @@ class z_extractor_gui(z_extractor_base):
     def m_buttonRefreshOnButtonClick( self, event ):
         self.update_net_classes_ui()
 
+    def m_textCtrlNetClassesFilterOnText( self, event ):
+        self.update_net_classes_ui()
+        
     def m_buttonTLineAddOnButtonClick( self, event ):
         selected = self.m_listBoxNetClasses.GetSelections()
         for n in selected:
@@ -504,6 +620,7 @@ class z_extractor_gui(z_extractor_base):
         self.update_coupled_ui()
         self.update_ref_net_ui()
         self.update_spice_fmt_ui();
+        self.update_other_ui()
         
     def m_buttonCfgAddOnButtonClick( self, event ):
         dlg = wx.TextEntryDialog(None, u"cfg name", u"name:")
@@ -557,6 +674,14 @@ class z_extractor_gui(z_extractor_base):
     def m_radioBoxSpiceFmtOnRadioBox( self, event ):
         self.cur_cfg.spice_fmt = self.m_radioBoxSpiceFmt.GetSelection()
         
+    def m_radioBoxSolverOnRadioBox( self, event ):
+        self.cur_cfg.solver_type = self.m_radioBoxSolver.GetSelection()
+            
+    def m_checkBoxLosslessTLOnCheckBox( self, event ):
+        self.cur_cfg.lossless_tl = self.m_checkBoxLosslessTL.GetValue()
+
+    def m_textCtrlStepOnText( self, event ):
+        self.cur_cfg.scan_step = float(self.m_textCtrlStep.GetValue())
 
     def m_buttonExtractOnButtonClick( self, event ):
         if self.m_buttonExtract.GetLabel() == "Terminate":
@@ -566,7 +691,7 @@ class z_extractor_gui(z_extractor_base):
             self.m_timer.Stop()
             return
             
-        cmd = self.gen_cmd()
+        cmd = self.gen_cmd(self.m_checkBoxExtractAll.GetValue())
         self.m_textCtrlOutput.AppendText("cmd: " + cmd + "\n\n")
         self.start_time = time.perf_counter()
         self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.output_path, env={"PATH": self.plugin_bin_path})

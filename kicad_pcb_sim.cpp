@@ -17,7 +17,7 @@
 #define DBG_IMG 0
 kicad_pcb_sim::kicad_pcb_sim()
 {
-    _Z0_setup = 0.5;
+    _Z0_step = 0.5;
     _Z0_w_ratio = 10;
     _Z0_h_ratio = 100;
     
@@ -2551,14 +2551,14 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
     std::vector<Z0_item> Z0s;
     
     
-    for (float i = 0; i < s_len; i += _Z0_setup)
+    for (float i = 0; i < s_len; i += _Z0_step)
     {
         Z0_item tmp;
         tmp.pos = i;
         Z0s.push_back(tmp);
     }
     
-    if (Z0s.size() > 1 && s_len - Z0s.back().pos < 0.5 * _Z0_setup)
+    if (Z0s.size() > 1 && s_len - Z0s.back().pos < 0.5 * _Z0_step)
     {
         Z0s.back().pos = s_len;
     }
@@ -2737,14 +2737,14 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     
     std::vector<Z0_item> ss_Z0s;
     
-    for (float i = 0; i < s_len; i += _Z0_setup)
+    for (float i = 0; i < s_len; i += _Z0_step)
     {
         Z0_item tmp;
         tmp.pos = i;
         ss_Z0s.push_back(tmp);
     }
     
-    if (ss_Z0s.size() > 1 && s_len - ss_Z0s.back().pos < 0.5 * _Z0_setup)
+    if (ss_Z0s.size() > 1 && s_len - ss_Z0s.back().pos < 0.5 * _Z0_step)
     {
         ss_Z0s.back().pos = s_len;
     }

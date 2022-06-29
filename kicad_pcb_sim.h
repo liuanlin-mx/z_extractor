@@ -133,7 +133,7 @@ public:
     
     void set_calc(std::uint32_t type = Z0_calc::Z0_CALC_MMTL);
     
-    void set_setup(float setup) { _Z0_setup = setup; }
+    void set_step(float step) { _Z0_step = step; }
     void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
@@ -297,7 +297,7 @@ private:
     
     std::vector<layer> _layers;
     
-    float _Z0_setup;
+    float _Z0_step;
     float _Z0_w_ratio;
     float _Z0_h_ratio;
     float _coupled_max_d;

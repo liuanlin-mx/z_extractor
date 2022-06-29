@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     bool lossless_tl = true;
     bool ltra = false;
     float conductivity = 5e7;
-    float setup = 0.5;
+    float step = 0.5;
     bool via_tl_mode = false;
     bool use_mmtl = true;
     bool enable_openmp = false;
@@ -109,9 +109,9 @@ int main(int argc, char **argv)
         {
             conductivity = atof(arg_next);
         }
-        else if (std::string(arg) == "-setup" && i < argc)
+        else if (std::string(arg) == "-step" && i < argc)
         {
-            setup = atof(arg_next);
+            step = atof(arg_next);
         }
         else if (std::string(arg) == "-via_tl_mode" && i < argc)
         {
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
     pcb.enable_via_tl_mode(via_tl_mode);
     pcb.enable_openmp(enable_openmp);
     pcb.set_conductivity(conductivity);
-    pcb.set_setup(setup);
+    pcb.set_step(step);
     pcb.set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);
     
     std::string spice;
