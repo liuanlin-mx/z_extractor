@@ -1,3 +1,6 @@
 [submodule "mmtl"]
 	path = mmtl
 	url = https://github.com/liuanlin-mx/mmtl.git
+[submodule "atlc"]
+	path = atlc
+	url = https://github.com/liuanlin-mx/atlc.git
