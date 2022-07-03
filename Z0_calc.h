@@ -1,6 +1,7 @@
 #ifndef __Z0_CALC_H__
 #define __Z0_CALC_H__
 
+#include <cstdint>
 #include <memory>
 
 class Z0_calc

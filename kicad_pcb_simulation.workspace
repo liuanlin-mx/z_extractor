@@ -18,5 +18,9 @@
       <Environment/>
       <Project Name="kicad_pcb_simulation" ConfigName="linux"/>
     </WorkspaceConfiguration>
+    <WorkspaceConfiguration Name="win64">
+      <Environment/>
+      <Project Name="kicad_pcb_simulation" ConfigName="win64"/>
+    </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

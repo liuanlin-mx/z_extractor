@@ -2,7 +2,7 @@
 <CodeLite_Project Name="kicad_pcb_simulation" Version="11000" InternalType="Console">
   <Plugins>
     <Plugin Name="qmake">
-      <![CDATA[00030001N0005Debug0000000000000001N0005linux0000000000000001N0012linux_static000000000000]]>
+      <![CDATA[00040001N0005Debug0000000000000001N0005linux0000000000000001N0012linux_static0000000000000001N0005win64000000000000]]>
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="plugin">
@@ -208,6 +208,49 @@
         <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_plugin/</Command>
         <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/z_extractor_plugin ~/.local/share/kicad/6.0/scripting/plugins</Command>
       </PostBuild>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="win64" CompilerType="MinGW 64bit ( MSYS2 64bit )" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-Os;-fopenmp;-Wall" C_Options="-Os;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1"/>
+      <Linker Options="-fopenmp;-static" Required="yes">
+        <Library Value="opencv_highgui3416"/>
+        <Library Value="opencv_imgcodecs3416"/>
+        <Library Value="opencv_imgproc3416"/>
+        <Library Value="opencv_core3416"/>
+        <Library Value="z"/>
+      </Linker>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName).exe" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="Default"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
         <CleanCommand/>

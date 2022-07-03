@@ -154,10 +154,10 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     float r2;
     float g2;
     
-    float Lodd;
-    float Leven;
-    float Codd;
-    float Ceven;
+    float Lodd = 0;
+    float Leven = 0;
+    float Codd = 0;
+    float Ceven = 0;
     
     r_matrix[0][1] = r_matrix[1][0] = 0;
     r_matrix[0][0] = 1.0 / (_wire_w * _wire_h * _wire_conductivity);
