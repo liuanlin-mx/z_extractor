@@ -12,11 +12,11 @@ atlc::atlc()
 {
     _last_img = cv::Mat(_unit2pix(_box_h), _unit2pix(_box_w), CV_8UC3, cv::Scalar(0, 0, 0));
     clean();
-    remove(_get_bmp_name().c_str());
 }
 
 atlc::~atlc()
 {
+    remove(_get_bmp_name().c_str());
 }
 
 void atlc::set_precision(float unit)
