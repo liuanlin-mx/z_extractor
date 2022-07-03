@@ -2,12 +2,12 @@
 
 import pcbnew
 import os
+import stat
 import wx
 import subprocess
 import json
 import time
 import platform
-
 
 
 ###########################################################################
@@ -49,7 +49,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_listBoxTLineChoices = []
 		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_MULTIPLE )
-		sbSizer7.Add( self.m_listBoxTLine, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer7.Add( self.m_listBoxTLine, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
 
@@ -69,7 +69,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_listBoxCoupledChoices = []
 		self.m_listBoxCoupled = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCoupledChoices, wx.LB_MULTIPLE )
-		sbSizer3.Add( self.m_listBoxCoupled, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer3.Add( self.m_listBoxCoupled, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		sbSizer71 = wx.StaticBoxSizer( wx.StaticBox( sbSizer3.GetStaticBox(), wx.ID_ANY, u"threshold" ), wx.VERTICAL )
 
@@ -122,7 +122,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_listBoxRefNetChoices = []
 		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_MULTIPLE )
-		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer10 = wx.BoxSizer( wx.HORIZONTAL )
 
@@ -142,7 +142,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_listBoxCfgChoices = []
 		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_MULTIPLE )
-		sbSizer4.Add( self.m_listBoxCfg, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer4.Add( self.m_listBoxCfg, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		gSizer1 = wx.GridSizer( 2, 2, 0, 0 )
 
@@ -350,6 +350,9 @@ class z_extractor_gui(z_extractor_base):
             self.plugin_bin_path = self.plugin_path + os.sep + "win"
         elif sys == "Linux":
             self.plugin_bin_path = self.plugin_path + os.sep + "linux"
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc", stat.S_IXUSR | stat.S_IRUSR | stat.S_IXGRP)
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "mmtl_bem", stat.S_IXUSR | stat.S_IRUSR | stat.S_IXGRP)
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "kicad_pcb_simulation", stat.S_IXUSR | stat.S_IRUSR | stat.S_IXGRP)
         else:
             pass
         
@@ -726,9 +729,9 @@ class z_extractor_gui(z_extractor_base):
         
 class z_extractor( pcbnew.ActionPlugin ):
     def defaults( self ):
-        self.name = "Impedance Extractor"
-        self.category = "Impedance Extractor"
-        self.description = "Impedance Extractor"
+        self.name = "Z Extractor"
+        self.category = "Z Extractor"
+        self.description = "Transmission Line Impedance Extraction"
         self.show_toolbar_button = True
 
     def Run( self ):
