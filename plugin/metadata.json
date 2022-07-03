@@ -1,0 +1,32 @@
+{
+    "$schema": "https://go.kicad.org/pcm/schemas/v1",
+    "name": "z extractor",
+    "description": "Transmission Line Impedance Extraction",
+    "description_full": "Transmission Line Impedance Extraction",
+    "identifier": "com.github.liuanlin-mx.kicad_pcb_simulation",
+    "type": "plugin",
+    "author": {
+        "name": "LiuAnLin",
+        "contact": {
+            "web": "https://github.com/liuanlin-mx/kicad_pcb_simulation"
+        }
+    },
+    "license": "Apache-2.0 license ",
+    "resources": {
+        "Github": "https://github.com/liuanlin-mx/kicad_pcb_simulation",
+    },
+    "tags": [
+        "pcbnew"
+    ],
+    "versions": [
+        {
+            "version": "0.1.0",
+            "status": "testing",
+            "kicad_version": "6.0",
+            "platforms": [
+                "linux",
+                "windows"
+            ]
+        }
+    ]
+}

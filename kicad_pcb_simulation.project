@@ -6,6 +6,7 @@
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="plugin">
+    <File Name="plugin/metadata.json"/>
     <File Name="plugin/__init__.py"/>
     <File Name="plugin/z_extractor.py"/>
   </VirtualDirectory>
@@ -201,12 +202,12 @@
       <PreBuild/>
       <PostBuild>
         <Command Enabled="yes">cd ${WORKSPACE_PATH}/atlc &amp;&amp; CFLAGS=-static LDFLAGS=-static ./configure &amp;&amp; make -j4</Command>
-        <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_plugin/linux</Command>
-        <Command Enabled="yes">cp ${WORKSPACE_PATH}/atlc/src/atlc ${WORKSPACE_PATH}/z_extractor_plugin/linux/</Command>
-        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/kicad_pcb_simulation ${WORKSPACE_PATH}/z_extractor_plugin/linux/</Command>
-        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/mmtl_bem ${WORKSPACE_PATH}/z_extractor_plugin/linux/</Command>
-        <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_plugin/</Command>
-        <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/z_extractor_plugin ~/.local/share/kicad/6.0/scripting/plugins</Command>
+        <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux</Command>
+        <Command Enabled="yes">cp ${WORKSPACE_PATH}/atlc/src/atlc ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
+        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/kicad_pcb_simulation ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
+        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/mmtl_bem ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
+        <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_pcm/plugins/</Command>
+        <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/metadata.json ${WORKSPACE_PATH}/z_extractor_pcm/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
