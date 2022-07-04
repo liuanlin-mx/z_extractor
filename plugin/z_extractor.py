@@ -17,9 +17,9 @@ import platform
 class z_extractor_base ( wx.Dialog ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"z_extractor", pos = wx.DefaultPosition, size = wx.Size( 969,640 ), style = wx.DEFAULT_DIALOG_STYLE )
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"z_extractor", pos = wx.DefaultPosition, size = wx.Size( 900,640 ), style = wx.DEFAULT_DIALOG_STYLE|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER )
 
-		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
+		self.SetSizeHints( wx.Size( 800,640 ), wx.DefaultSize )
 
 		bSizer4 = wx.BoxSizer( wx.VERTICAL )
 
@@ -28,16 +28,16 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer1 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Net Classes" ), wx.VERTICAL )
 
 		m_listBoxNetClassesChoices = []
-		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_MULTIPLE|wx.LB_SORT )
-		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE|wx.LB_SORT )
+		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND, 5 )
 
-		bSizer11 = wx.BoxSizer( wx.HORIZONTAL )
+		bSizer11 = wx.BoxSizer( wx.VERTICAL )
 
 		self.m_buttonRefresh = wx.Button( sbSizer1.GetStaticBox(), wx.ID_ANY, u"refresh", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer11.Add( self.m_buttonRefresh, 0, wx.ALL, 5 )
+		bSizer11.Add( self.m_buttonRefresh, 0, wx.EXPAND, 5 )
 
 		self.m_textCtrlNetClassesFilter = wx.TextCtrl( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer11.Add( self.m_textCtrlNetClassesFilter, 0, wx.ALL|wx.EXPAND, 5 )
+		bSizer11.Add( self.m_textCtrlNetClassesFilter, 0, wx.EXPAND, 5 )
 
 
 		sbSizer1.Add( bSizer11, 0, wx.EXPAND, 5 )
@@ -48,16 +48,16 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer7 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"T-Line" ), wx.VERTICAL )
 
 		m_listBoxTLineChoices = []
-		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_MULTIPLE )
-		sbSizer7.Add( self.m_listBoxTLine, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		sbSizer7.Add( self.m_listBoxTLine, 1, wx.EXPAND, 5 )
 
-		bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
+		bSizer9 = wx.BoxSizer( wx.VERTICAL )
 
 		self.m_buttonTLineAdd = wx.Button( sbSizer7.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer9.Add( self.m_buttonTLineAdd, 0, wx.ALL, 5 )
+		bSizer9.Add( self.m_buttonTLineAdd, 0, wx.EXPAND, 5 )
 
 		self.m_buttonTLineDel = wx.Button( sbSizer7.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer9.Add( self.m_buttonTLineDel, 0, wx.ALL, 5 )
+		bSizer9.Add( self.m_buttonTLineDel, 0, wx.EXPAND, 5 )
 
 
 		sbSizer7.Add( bSizer9, 0, wx.EXPAND, 5 )
@@ -68,35 +68,39 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer3 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Coupled" ), wx.VERTICAL )
 
 		m_listBoxCoupledChoices = []
-		self.m_listBoxCoupled = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCoupledChoices, wx.LB_MULTIPLE )
-		sbSizer3.Add( self.m_listBoxCoupled, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+		self.m_listBoxCoupled = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCoupledChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		sbSizer3.Add( self.m_listBoxCoupled, 1, wx.EXPAND, 5 )
 
 		sbSizer71 = wx.StaticBoxSizer( wx.StaticBox( sbSizer3.GetStaticBox(), wx.ID_ANY, u"threshold" ), wx.VERTICAL )
 
 		bSizer6 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticText2 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Min Len (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText2 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"MinLen:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText2.Wrap( -1 )
 
 		bSizer6.Add( self.m_staticText2, 1, wx.ALL, 5 )
 
 		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlMinLen.SetMaxLength( 6 )
-		bSizer6.Add( self.m_textCtrlMinLen, 1, 0, 5 )
+		self.m_textCtrlMinLen.SetToolTip( u"unit mm" )
+
+		bSizer6.Add( self.m_textCtrlMinLen, 0, wx.EXPAND, 5 )
 
 
 		sbSizer71.Add( bSizer6, 1, wx.EXPAND, 5 )
 
 		bSizer7 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"Max Dist (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"MaxDist:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText1.Wrap( -1 )
 
 		bSizer7.Add( self.m_staticText1, 1, wx.ALL, 5 )
 
-		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.Size( -1,-1 ), 0 )
 		self.m_textCtrlMaxDist.SetMaxLength( 6 )
-		bSizer7.Add( self.m_textCtrlMaxDist, 1, 0, 5 )
+		self.m_textCtrlMaxDist.SetToolTip( u"unit mm" )
+
+		bSizer7.Add( self.m_textCtrlMaxDist, 0, wx.EXPAND, 5 )
 
 
 		sbSizer71.Add( bSizer7, 1, wx.EXPAND, 5 )
@@ -107,10 +111,10 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer61 = wx.BoxSizer( wx.HORIZONTAL )
 
 		self.m_buttonCoupledAdd = wx.Button( sbSizer3.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer61.Add( self.m_buttonCoupledAdd, 1, wx.ALL, 5 )
+		bSizer61.Add( self.m_buttonCoupledAdd, 1, wx.EXPAND, 5 )
 
 		self.m_buttonCoupledDel = wx.Button( sbSizer3.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer61.Add( self.m_buttonCoupledDel, 1, wx.ALL, 5 )
+		bSizer61.Add( self.m_buttonCoupledDel, 1, wx.EXPAND, 5 )
 
 
 		sbSizer3.Add( bSizer61, 0, wx.EXPAND, 5 )
@@ -121,16 +125,16 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer2 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Ref Net" ), wx.VERTICAL )
 
 		m_listBoxRefNetChoices = []
-		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_MULTIPLE )
-		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.EXPAND, 5 )
 
-		bSizer10 = wx.BoxSizer( wx.HORIZONTAL )
+		bSizer10 = wx.BoxSizer( wx.VERTICAL )
 
 		self.m_buttonRefNetAdd = wx.Button( sbSizer2.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer10.Add( self.m_buttonRefNetAdd, 0, wx.ALL, 5 )
+		bSizer10.Add( self.m_buttonRefNetAdd, 0, wx.EXPAND, 5 )
 
 		self.m_buttonRefNetDel = wx.Button( sbSizer2.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer10.Add( self.m_buttonRefNetDel, 0, wx.ALL, 5 )
+		bSizer10.Add( self.m_buttonRefNetDel, 0, wx.EXPAND, 5 )
 
 
 		sbSizer2.Add( bSizer10, 0, wx.EXPAND, 5 )
@@ -141,22 +145,22 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer4 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"cfg" ), wx.VERTICAL )
 
 		m_listBoxCfgChoices = []
-		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_MULTIPLE )
-		sbSizer4.Add( self.m_listBoxCfg, 1, wx.ALL|wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		sbSizer4.Add( self.m_listBoxCfg, 1, wx.EXPAND, 5 )
 
 		gSizer1 = wx.GridSizer( 2, 2, 0, 0 )
 
 		self.m_buttonCfgAdd = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer1.Add( self.m_buttonCfgAdd, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgAdd, 0, wx.EXPAND, 5 )
 
 		self.m_buttonCfgDel = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer1.Add( self.m_buttonCfgDel, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgDel, 0, wx.EXPAND, 5 )
 
 		self.m_buttonCfgRename = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"rename", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer1.Add( self.m_buttonCfgRename, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonCfgRename, 0, wx.EXPAND, 5 )
 
 		self.m_buttonSave = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"save", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer1.Add( self.m_buttonSave, 0, wx.ALL, 5 )
+		gSizer1.Add( self.m_buttonSave, 0, wx.EXPAND, 5 )
 
 
 		sbSizer4.Add( gSizer1, 0, wx.EXPAND, 5 )
@@ -165,7 +169,7 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer1.Add( sbSizer4, 1, wx.EXPAND, 5 )
 
 
-		bSizer4.Add( bSizer1, 1, wx.FIXED_MINSIZE, 5 )
+		bSizer4.Add( bSizer1, 1, wx.EXPAND, 5 )
 
 		sbSizer6 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"options" ), wx.HORIZONTAL )
 
@@ -176,22 +180,24 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_radioBoxSolverChoices = [ u"mmtl", u"atlc" ]
 		self.m_radioBoxSolver = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Solver", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSolverChoices, 1, wx.RA_SPECIFY_COLS )
-		self.m_radioBoxSolver.SetSelection( 0 )
+		self.m_radioBoxSolver.SetSelection( 1 )
 		sbSizer6.Add( self.m_radioBoxSolver, 1, wx.ALL, 5 )
 
 		self.m_checkBoxLosslessTL = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Lossless TL", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_checkBoxLosslessTL.SetValue(True)
-		sbSizer6.Add( self.m_checkBoxLosslessTL, 1, wx.ALL, 5 )
+		sbSizer6.Add( self.m_checkBoxLosslessTL, 1, wx.ALL|wx.EXPAND, 5 )
 
 		bSizer71 = wx.BoxSizer( wx.HORIZONTAL )
 
 		self.m_staticTextStep = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Scan Step (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticTextStep.Wrap( -1 )
 
-		bSizer71.Add( self.m_staticTextStep, 0, wx.ALL, 5 )
+		bSizer71.Add( self.m_staticTextStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 		self.m_textCtrlStep = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer71.Add( self.m_textCtrlStep, 0, 0, 5 )
+		self.m_textCtrlStep.SetToolTip( u"unit mm" )
+
+		bSizer71.Add( self.m_textCtrlStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 
 		sbSizer6.Add( bSizer71, 1, wx.EXPAND, 5 )
@@ -199,13 +205,13 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer8 = wx.BoxSizer( wx.VERTICAL )
 
 		self.m_buttonExtract = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_buttonExtract, 0, wx.ALL, 5 )
+		bSizer8.Add( self.m_buttonExtract, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 		self.m_checkBoxExtractAll = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract All", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_checkBoxExtractAll, 0, wx.ALL, 5 )
+		bSizer8.Add( self.m_checkBoxExtractAll, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 
-		sbSizer6.Add( bSizer8, 1, wx.EXPAND, 5 )
+		sbSizer6.Add( bSizer8, 1, wx.ALL|wx.EXPAND, 5 )
 
 
 		bSizer4.Add( sbSizer6, 0, wx.EXPAND, 5 )
