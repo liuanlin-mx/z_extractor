@@ -28,7 +28,7 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer1 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Net Classes" ), wx.VERTICAL )
 
 		m_listBoxNetClassesChoices = []
-		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE|wx.LB_SORT )
+		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_SORT )
 		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND, 5 )
 
 		bSizer11 = wx.BoxSizer( wx.VERTICAL )
@@ -48,7 +48,7 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer7 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"T-Line" ), wx.VERTICAL )
 
 		m_listBoxTLineChoices = []
-		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		self.m_listBoxTLine = wx.ListBox( sbSizer7.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxTLineChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
 		sbSizer7.Add( self.m_listBoxTLine, 1, wx.EXPAND, 5 )
 
 		bSizer9 = wx.BoxSizer( wx.VERTICAL )
@@ -68,7 +68,7 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer3 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Coupled" ), wx.VERTICAL )
 
 		m_listBoxCoupledChoices = []
-		self.m_listBoxCoupled = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCoupledChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		self.m_listBoxCoupled = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCoupledChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
 		sbSizer3.Add( self.m_listBoxCoupled, 1, wx.EXPAND, 5 )
 
 		sbSizer71 = wx.StaticBoxSizer( wx.StaticBox( sbSizer3.GetStaticBox(), wx.ID_ANY, u"threshold" ), wx.VERTICAL )
@@ -125,7 +125,7 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer2 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Ref Net" ), wx.VERTICAL )
 
 		m_listBoxRefNetChoices = []
-		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		self.m_listBoxRefNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxRefNetChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
 		sbSizer2.Add( self.m_listBoxRefNet, 1, wx.EXPAND, 5 )
 
 		bSizer10 = wx.BoxSizer( wx.VERTICAL )
@@ -145,7 +145,7 @@ class z_extractor_base ( wx.Dialog ):
 		sbSizer4 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"cfg" ), wx.VERTICAL )
 
 		m_listBoxCfgChoices = []
-		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_MULTIPLE )
+		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
 		sbSizer4.Add( self.m_listBoxCfg, 1, wx.EXPAND, 5 )
 
 		gSizer1 = wx.GridSizer( 2, 2, 0, 0 )
