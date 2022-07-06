@@ -1859,43 +1859,37 @@ std::string kicad_pcb_sim::_get_tstamp_short(const std::string& tstamp)
 }
 
 
+std::string kicad_pcb_sim::_format_net(const std::string& name)
+{
+    std::string tmp = name;
+    for (auto& c: tmp)
+    {
+        if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && c != '_' && c != '-')
+        {
+            c = '_';
+        }
+    }
+    return tmp;
+}
+
 std::string kicad_pcb_sim::_pos2net(float x, float y, const std::string& layer)
 {
     char buf[128] = {0};
     sprintf(buf, "%d_%d", std::int32_t(x * 1000), std::int32_t(y * 1000));
     
-    std::string tmp = layer;
-    return std::string(buf) + tmp.replace(tmp.find('.'), 1, "_");
+    return std::string(buf) + _format_net(layer);
 }
 
 
 std::string kicad_pcb_sim::_format_net_name(const std::string& net_name)
 {
-    std::string tmp = net_name;
-    std::size_t pos = tmp.find('-');
-    
-    if ((pos = tmp.find('(')) != tmp.npos)
-    {
-        tmp.replace(pos, 1, "_");
-    }
-    
-    if ((pos = tmp.find(')')) != tmp.npos)
-    {
-        tmp.replace(pos, 1, "_");
-    }
-    
-    while ((pos = tmp.find('/')) != tmp.npos)
-    {
-        tmp.replace(pos, 1, "_");
-    }
-    
-    return "NET_" + tmp;
+    return "NET_" + _format_net(net_name);
 }
 
 
 std::string kicad_pcb_sim::_format_layer_name(std::string layer_name)
 {
-    return layer_name.substr(0, layer_name.find('.'));
+    return _format_net(layer_name);
 }
 
 

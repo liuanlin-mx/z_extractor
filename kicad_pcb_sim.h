@@ -176,6 +176,7 @@ private:
     
     void _get_pad_pos(pad& p, float& x, float& y);
     std::string _get_tstamp_short(const std::string& tstamp);
+    static std::string _format_net(const std::string& name);
     std::string _pos2net(float x, float y, const std::string& layer);
     static std::string _format_net_name(const std::string& net_name);
     std::string _format_layer_name(std::string layer_name);
