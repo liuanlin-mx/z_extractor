@@ -545,6 +545,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
 {
     std::string comment;
     std::string sub;
+    std::string pad_ckt;
     char buf[512] = {0};
     
     std::list<pad> pads = get_pads(net_id);
@@ -561,7 +562,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         float x;
         float y;
         _get_pad_pos(p, x, y);
-        sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+        std::vector<std::string> layers = _get_pad_conn_layers(p);
+        sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
         call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
@@ -569,14 +571,22 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         
         comment += p.reference_value + ":" + _nets[net_id] + " ";
         reference_value.insert(p.reference_value);
+        
+        for (std::uint32_t i = 1; i < layers.size(); i++)
+        {
+            sprintf(buf, "R%s%d %s %s 0\n", _get_tstamp_short(p.tstamp).c_str(), i,
+                    _pos2net(x, y, layers.front()).c_str(), _pos2net(x, y, layers[i]).c_str());
+            pad_ckt += buf;
+        }
     }
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
     call += "\n";
-    
+
     comment += "\n";
+    ckt = comment + ckt + pad_ckt;
     
-    ckt = comment + ckt;
+    
     
     float len = 0;
     /* 生成走线参数 */
@@ -749,6 +759,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     std::string sub;
     std::string tmp;
     std::string comment;
+    std::string pad_ckt;
     
     char buf[512] = {0};
     std::uint32_t net_ids[2] = {net_id0, net_id1};
@@ -778,7 +789,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             float x;
             float y;
             _get_pad_pos(p, x, y);
-            sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+            std::vector<std::string> layers = _get_pad_conn_layers(p);
+            sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
             ckt += buf;
             call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
@@ -787,6 +799,13 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             comment += p.reference_value + ":" + _nets[net_id];
             comment += " ";
             reference_value.insert(p.reference_value);
+            
+            for (std::uint32_t i = 1; i < layers.size(); i++)
+            {
+                sprintf(buf, "R%s%d %s %s 0\n", _get_tstamp_short(p.tstamp).c_str(), i,
+                        _pos2net(x, y, layers.front()).c_str(), _pos2net(x, y, layers[i]).c_str());
+                pad_ckt += buf;
+            }
         }
     }
     
@@ -794,7 +813,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     call += tmp;
     call += "\n";
     
-    ckt = comment + "\n" + ckt;
+    ckt = comment + "\n" + ckt + pad_ckt;
     
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
@@ -1835,7 +1854,7 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
 }
 
 
-void kicad_pcb_sim::_get_pad_pos(pad& p, float& x, float& y)
+void kicad_pcb_sim::_get_pad_pos(const pad& p, float& x, float& y)
 {
     float angle = p.ref_at_angle * M_PI / 180;
     float at_x = p.at.x;
@@ -1864,7 +1883,10 @@ std::string kicad_pcb_sim::_format_net(const std::string& name)
     std::string tmp = name;
     for (auto& c: tmp)
     {
-        if ((c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && c != '_' && c != '-')
+        if ((c < 'a' || c > 'z')
+            && (c < 'A' || c > 'Z')
+            && (c < '0' || c > '9')
+            && c != '_' && c != '-')
         {
             c = '_';
         }
@@ -2032,6 +2054,46 @@ float kicad_pcb_sim::_get_via_conn_len(const kicad_pcb_sim::via& v)
     return len;
 }
 
+
+std::vector<std::string> kicad_pcb_sim::_get_pad_conn_layers(const kicad_pcb_sim::pad& p)
+{
+    float x;
+    float y;
+    _get_pad_pos(p, x, y);
+    
+    std::set<std::string> layer_set;
+    std::list<kicad_pcb_sim::segment> segments = get_segments(p.net);
+    for (const auto& s: segments)
+    {
+        if (_point_equal(s.start.x, s.start.y, x, y) || _point_equal(s.end.x, s.end.y, x, y))
+        {
+            layer_set.insert(s.layer_name);
+        }
+    }
+    
+    std::vector<std::string> layers;
+    std::vector<std::string> layers_tmp;
+    for (const auto& layer: p.layers)
+    {
+        if (layer.find("*") != layer.npos)
+        {
+            layers_tmp = _get_all_cu_layer();
+        }
+        else
+        {
+            layers_tmp.push_back(layer);
+        }
+    }
+    
+    for (const auto& layer_name: layers_tmp)
+    {
+        if (layer_set.count(layer_name))
+        {
+            layers.push_back(layer_name);
+        }
+    }
+    return layers;
+}
 
 float kicad_pcb_sim::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {

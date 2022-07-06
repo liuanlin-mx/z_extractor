@@ -174,7 +174,7 @@ private:
     const char *_parse_edge(const char *str);
     
     
-    void _get_pad_pos(pad& p, float& x, float& y);
+    void _get_pad_pos(const pad& p, float& x, float& y);
     std::string _get_tstamp_short(const std::string& tstamp);
     static std::string _format_net(const std::string& name);
     std::string _pos2net(float x, float y, const std::string& layer);
@@ -189,6 +189,7 @@ private:
     std::vector<std::string> _get_via_conn_layers(const via& v);
     float _get_via_conn_len(const kicad_pcb_sim::via& v);
     
+    std::vector<std::string> _get_pad_conn_layers(const pad& p);
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float _get_layer_thickness(const std::string& layer_name);
