@@ -361,6 +361,21 @@ void mmtl::_add_elec(float x, float y, float w, float thickness, float er)
 
 void mmtl::_build()
 {
+    float offset = 0;
+    for (const auto& it: _map)
+    {
+        if (it.second.type == ITEM_TYPE_GND || it.second.type == ITEM_TYPE_COND)
+        {
+            float x = it.second.x - it.second.w * 0.5;
+            if (x < offset)
+            {
+                offset = x;
+            }
+        }
+    }
+    
+    offset = -offset;
+    
     _xsctn = base_xsctn;
     while (!_map.empty())
     {
@@ -371,11 +386,11 @@ void mmtl::_build()
         {
             if (it->second.type == ITEM_TYPE_GND)
             {
-                _add_ground(it->second.x, 0, it->second.w, it->second.h);
+                _add_ground(it->second.x + offset, 0, it->second.w, it->second.h);
             }
             else if (it->second.type == ITEM_TYPE_COND)
             {
-                _add_wire(it->second.x, 0, it->second.w, it->second.h, it->second.conductivity);
+                _add_wire(it->second.x + offset, 0, it->second.w, it->second.h, it->second.conductivity);
             }
             it++;
         }
