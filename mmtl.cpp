@@ -376,7 +376,7 @@ bool mmtl::_build()
     float offset = 0;
     for (const auto& it: _map)
     {
-        if (it.second.type == ITEM_TYPE_GND || it.second.type == ITEM_TYPE_COND)
+        if (it.second.type == ITEM_TYPE_COND)
         {
             float x = it.second.x - it.second.w * 0.5;
             if (x < offset)
