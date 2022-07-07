@@ -454,9 +454,9 @@ class z_extractor_gui(z_extractor_base):
                 cmd = cmd + "-mmtl 0 "
                 
             if cfg.lossless_tl:
-                cmd = cmd + "-lossless 1 "
+                cmd = cmd + "-lossless_tl 1 "
             else:
-                cmd = cmd + "-lossless 0 "
+                cmd = cmd + "-lossless_tl 0 "
             
             cmd = cmd + "-step " + str(cfg.scan_step)
             cmd = cmd + " -o " + cfg.name + ";"
