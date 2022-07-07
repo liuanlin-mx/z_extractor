@@ -154,6 +154,8 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     float r2;
     float g2;
     
+    float tmp;
+    
     float Lodd = 0;
     float Leven = 0;
     float Codd = 0;
@@ -173,7 +175,27 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     }
     
     _last_img = _img;
+    
+    // 计算电容
     cv::Mat img = _img.clone();
+    for (std::int32_t i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
+            if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
+            {
+                pix[0] = pix[2] = 0;
+                pix[1] = 255;
+            }
+        }
+    }
+    cv::imwrite(_get_bmp_name(), img);
+    //cv::imshow(_get_bmp_name(), img);
+    _calc_Z0(img, z1, v1, c1, tmp, r1, g1);
+    
+    //计算电感 
+    img = _img.clone();
     for (std::int32_t i = 0; i < img.rows; i++)
     {
         for (int j = 0; j < img.cols; j++)
@@ -189,12 +211,38 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     
     cv::imwrite(_get_bmp_name(), img);
     //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z1, v1, c1, l1, r1, g1);
+    _calc_Z0(img, z1, v1, tmp, l1, r1, g1);
     
     //printf("z1:%f, v1:%f, c1:%f, l1:%f, r1:%f, g1:%f\n", z1, v1, c1, l1, r1, g1);
     //cv::waitKey();
     
     
+    // 计算电容
+    img = _img.clone();
+    for (std::int32_t i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++)
+        {
+            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
+            if (pix[0] == 0 && pix[1] == 0 && pix[2] == 255)
+            {
+                pix[0] = pix[2] = 0;
+                pix[1] = 255;
+            }
+            else if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
+            {
+                pix[0] = 0;
+                pix[1] = 0;
+                pix[2] = 255;
+            }
+        }
+    }
+    cv::imwrite(_get_bmp_name(), img);
+    //cv::imshow(_get_bmp_name(), img);
+    _calc_Z0(img, z2, v2, c2, tmp, r2, g2);
+    
+    
+    //计算电感 
     img = _img.clone();
     for (std::int32_t i = 0; i < img.rows; i++)
     {
@@ -213,11 +261,9 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
             }
         }
     }
-    
-    
     cv::imwrite(_get_bmp_name(), img);
     //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z2, v2, c2, l2, r2, g2);
+    _calc_Z0(img, z2, v2, tmp, l2, r2, g2);
     
     //printf("z2:%f, v2:%f, c2:%f, l2:%f, r2:%f, g2:%f\n", z2, v2, c2, l2, r2, g2);
     

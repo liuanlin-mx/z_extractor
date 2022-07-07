@@ -137,8 +137,8 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="" IntermediateDirectory="" Command="$(WorkspacePath)/cmake-build-$(WorkspaceConfiguration)/output/$(ProjectName)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testarc/testarc.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/TN:/TP&quot; -coupled_max_d 2.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -o newcfg" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/testarc/testarc.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/TN:/TP&quot; -coupled_max_d 2.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -o newcfg" WorkingDirectory="$(WorkspacePath)/cmake-build-$(WorkspaceConfiguration)/output" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
-      <BuildSystem Name="CMake"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/桌面/test/test.kicad_pcb -ref &quot;GND&quot; -net &quot;/S1&quot; -coupled &quot;/SN:/SP&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 0 -lossless 1 -step 0.5 -o newcfg" UseSeparateDebugArgs="no" DebugArguments=" -pcb /home/mx/桌面/test/test.kicad_pcb -ref &quot;GND&quot; -net &quot;/S1&quot; -coupled &quot;/SN:/SP&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 0 -lossless 1 -step 0.5 -o newcfg" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
       </Environment>
