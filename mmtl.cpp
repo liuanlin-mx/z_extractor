@@ -178,6 +178,7 @@ void mmtl::add_elec(float x, float y, float w, float thickness, float er)
 
 bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
 {
+    Z0 = v = c = l = r = g = 0;
     char buf[1024] = {0};
     if (_is_some())
     {
@@ -192,7 +193,11 @@ bool mmtl::calc_Z0(float& Z0, float& v, float& c, float& l, float& r, float& g)
     
     _last_img = _img;
     
-    _build();
+    if (_build() == false)
+    {
+        return false;
+    }
+    
     FILE *fp = fopen((_tmp_name + ".xsctn").c_str(), "wb");
     if (fp)
     {
@@ -225,7 +230,11 @@ bool mmtl::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
 {
     char cmd[512] = {0};
     char buf[1024] = {0};
-    g_matrix[0][0] = g_matrix[0][1] = g_matrix[1][0] = g_matrix[1][1];
+    Zodd = Zeven = 0.;
+    c_matrix[0][0] = c_matrix[0][1] = c_matrix[1][0] = c_matrix[1][1] = 0.;
+    l_matrix[0][0] = l_matrix[0][1] = l_matrix[1][0] = l_matrix[1][1] = 0.;
+    c_matrix[0][0] = c_matrix[0][1] = c_matrix[1][0] = c_matrix[1][1] = 0.;
+    r_matrix[0][0] = r_matrix[0][1] = r_matrix[1][0] = r_matrix[1][1] = 0.;
     
     if (_is_some())
     {
@@ -239,7 +248,10 @@ bool mmtl::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     }
     
     _last_img = _img;
-    _build();
+    if (_build() == false)
+    {
+        return false;
+    }
     sprintf(buf, "%s.xsctn", _tmp_name.c_str());
     FILE *fp = fopen(buf, "wb");
     if (fp)
@@ -359,7 +371,7 @@ void mmtl::_add_elec(float x, float y, float w, float thickness, float er)
 }
 
 
-void mmtl::_build()
+bool mmtl::_build()
 {
     float offset = 0;
     for (const auto& it: _map)
@@ -382,17 +394,34 @@ void mmtl::_build()
         auto it = _map.begin();
         std::size_t cnt = _map.count(it->first);
         auto it2 = it;
+        std::list<std::pair<float, float> > ground_list;
+        std::list<std::pair<float, float> > wire_list;
         for (std::size_t i = 0; i < cnt; i++)
         {
             if (it->second.type == ITEM_TYPE_GND)
             {
+                ground_list.push_back(std::pair<float, float>(it->second.x - it->second.w * 0.5, it->second.x + it->second.w * 0.5));
                 _add_ground(it->second.x + offset, 0, it->second.w, it->second.h);
             }
             else if (it->second.type == ITEM_TYPE_COND)
             {
+                wire_list.push_back(std::pair<float, float>(it->second.x - it->second.w * 0.5, it->second.x + it->second.w * 0.5));
                 _add_wire(it->second.x + offset, 0, it->second.w, it->second.h, it->second.conductivity);
             }
             it++;
+        }
+        
+        for (const auto& wire: wire_list)
+        {
+            for (const auto& ground: ground_list)
+            {
+                if ((wire.first >= ground.first && wire.first <= ground.second)
+                    || (wire.second >= ground.first && wire.second <= ground.second))
+                {
+                    // 导体跟地交叠 不能运行mmtl 否则mmtl会内存泄耗光主机内存
+                    return false;
+                }
+            }
         }
         
         for (std::size_t i = 0; i < cnt; i++)
@@ -404,6 +433,7 @@ void mmtl::_build()
             it2 = _map.erase(it2);
         }
     }
+    return true;
 }
 
 

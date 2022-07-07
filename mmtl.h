@@ -57,7 +57,7 @@ private:
     void _add_wire(float x, float y, float w, float thickness, float conductivity);
     void _add_elec(float x, float y, float w, float thickness, float er = 4.6);
     
-    void _build();
+    bool _build();
     void _read_value(float & Z0, float & v, float & c, float & l, float& r, float& g);
     void _read_value(float& Zodd, float& Zeven, float c_matrix[2][2], float l_matrix[2][2], float r_matrix[2][2], float g_matrix[2][2]);
     
