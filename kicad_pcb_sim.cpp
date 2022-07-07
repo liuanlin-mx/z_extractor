@@ -2265,7 +2265,7 @@ float kicad_pcb_sim::_get_cu_min_thickness()
 
 bool kicad_pcb_sim::_float_equal(float a, float b)
 {
-    return fabs(a - b) < 0.00001;
+    return fabs(a - b) < _float_epsilon;
 }
 
 
@@ -3105,7 +3105,7 @@ float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, f
     {
         angle = (float)M_PI - angle;
     }
-    if (fabs(angle - (float)M_PI_2) < 0.00001)
+    if (fabs(angle - (float)M_PI_2) < _float_epsilon)
     {
         return d;
     }
@@ -3194,7 +3194,7 @@ bool kicad_pcb_sim::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2
     boy2 = bo[1].second;
     float alen = hypot(aox2 - aox1, aoy2 - aoy1);
     float blen = hypot(box2 - box1, boy2 - boy1);
-    return fabs(alen - blen) < 0.0005;
+    return fabs(alen - blen) < _float_epsilon;
 }
                
     
@@ -3429,7 +3429,7 @@ bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pc
     float a1 = _calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
     float a2 = _calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
     float a22 = _calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
-    if (fabs(a1 - a2) > 0.0001 && fabs(a1 - a22) > 0.0001)
+    if (fabs(a1 - a2) > _float_epsilon && fabs(a1 - a22) > _float_epsilon)
     {
         return false;
     }
