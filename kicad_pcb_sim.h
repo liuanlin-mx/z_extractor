@@ -328,6 +328,7 @@ private:
     const float _Z0_threshold = 0.5;
     /* td小于该值的传输线 只导出无损模型 */
     const float _td_threshold = 0.001;
+    /* 仅仅是坐标精度 */
     const float _float_epsilon = 0.00005;
     float _conductivity;
 };

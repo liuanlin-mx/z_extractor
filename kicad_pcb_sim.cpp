@@ -1,8 +1,9 @@
-#include "kicad_pcb_sim.h"
+#include <float.h>
 #include <math.h>
+#include <omp.h>
+#include "kicad_pcb_sim.h"
 #include <opencv2/opencv.hpp>
 #include <fasthenry.h>
-#include <omp.h>
 #include "atlc.h"
 #include "Z0_calc.h"
 
@@ -3105,7 +3106,7 @@ float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, f
     {
         angle = (float)M_PI - angle;
     }
-    if (fabs(angle - (float)M_PI_2) < _float_epsilon)
+    if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
     {
         return d;
     }
@@ -3118,15 +3119,43 @@ bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, floa
     float line_angle = _calc_angle(x1, y1, x2, y2);
     float angle = _calc_angle(x2, y2, x, y, x1, y1);
     float d = hypot(x - x1, y - y1);
-    float line_d = hypot(x2 - x1, y2 - y1);
+    float line_len = hypot(x2 - x1, y2 - y1);
     
     if (angle > (float)M_PI_2)
     {
         return false;
     }
-    float len = cos(angle) * d;
-    if (len > line_d)
+    
+    if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
     {
+        ix = x1;
+        iy = y1;
+        return true;
+    }
+    
+    float len = cos(angle) * d;
+    if (len > line_len)
+    {
+        // 当线段很长且点到线段的垂直距离很短时 由于计算误差会误进入该分支 这里重新计算一次
+        angle = _calc_angle(x1, y1, x, y, x2, y2);
+        if (angle > (float)M_PI_2)
+        {
+            return false;
+        }
+        if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
+        {
+            ix = x2;
+            iy = y2;
+            return true;
+        }
+        d = hypot(x - x2, y - y2);
+        len = cos(angle) * d;
+        if (len < line_len)
+        {
+            ix = x1 + len * cos(line_angle);
+            iy = -(-y1 + len * sin(line_angle));
+            return true;
+        }
         return false;
     }
     
