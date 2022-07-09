@@ -739,6 +739,7 @@ class z_extractor( pcbnew.ActionPlugin ):
         self.category = "Z Extractor"
         self.description = "Transmission Line Impedance Extraction"
         self.show_toolbar_button = True
+        self.icon_file_name = os.path.join(os.path.dirname(__file__), 'icon.png')
 
     def Run( self ):
         dig = z_extractor_gui()
