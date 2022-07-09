@@ -171,11 +171,11 @@
       </Completion>
     </Configuration>
     <Configuration Name="linux_static" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-O2;-fopenmp;-Wall" C_Options="-O2;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-O2;-fopenmp;-Wall;-ffunction-sections;-fdata-sections" C_Options="-O2;-fopenmp;-Wall;-ffunction-sections;-fdata-sections" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="."/>
         <IncludePath Value="/home/mx/.local_static/include/"/>
       </Compiler>
-      <Linker Options="-static;-s;-fopenmp" Required="yes">
+      <Linker Options="-static;-s;-fopenmp;-Wl,--gc-sections" Required="yes">
         <LibraryPath Value="/home/mx/.local_static/lib"/>
         <Library Value="opencv_highgui"/>
         <Library Value="opencv_imgcodecs"/>
@@ -229,8 +229,8 @@
       </Completion>
     </Configuration>
     <Configuration Name="win64" CompilerType="MinGW 64bit ( MSYS2 64bit )" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-Os;-fopenmp;-Wall" C_Options="-Os;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1"/>
-      <Linker Options="-fopenmp;-static" Required="yes">
+      <Compiler Options="-Os;-fopenmp;-Wall;-ffunction-sections;-fdata-sections" C_Options="-Os;-fopenmp;-Wall;-ffunction-sections;-fdata-sections" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1"/>
+      <Linker Options="-static;-fopenmp;-Wl,--gc-sections" Required="yes">
         <Library Value="opencv_highgui3416"/>
         <Library Value="opencv_imgcodecs3416"/>
         <Library Value="opencv_imgproc3416"/>

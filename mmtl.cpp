@@ -1,4 +1,5 @@
 #include <string.h>
+#include <list>
 #include "mmtl.h"
 
 static const char *base_xsctn = "package require csdl\n\n"
