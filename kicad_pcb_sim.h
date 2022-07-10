@@ -243,6 +243,9 @@ private:
     
     /* ACB 计算点C为中心点的夹角 */
     float _calc_angle(float ax, float ay, float bx, float by, float cx, float cy);
+    /* 计算三角形的三个夹角 */
+    void _calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C);
+    
     /* 计算点到线段或其延长线的垂直距离 */
     float _calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y);
     

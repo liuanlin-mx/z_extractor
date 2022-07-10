@@ -3081,21 +3081,24 @@ std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<st
 
 float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
 {
-    ay = -ay;
-    by = -by;
-    cy = -cy;
+    float a = hypot(bx - cx, by - cy);
+    float b = hypot(ax - cx, ay - cy);
+    float c = hypot(ax - bx, ay - by);
     
-    float theta = atan2(ax - cx, ay - cy) - atan2(bx - cx, by - cy);
-    if (theta > M_PI)
-    {
-        theta -= 2 * M_PI;
-    }
-    if (theta < -M_PI)
-    {
-        theta += 2 * M_PI;
-    }
-    return fabs(theta);
+    return acos((a * a + b * b - c * c) / (2. * a * b));
 }
+
+void kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C)
+{
+    float a = hypot(bx - cx, by - cy);
+    float b = hypot(ax - cx, ay - cy);
+    float c = hypot(ax - bx, ay - by);
+    
+    A = acos((b * b + c * c - a * a) / (2. * b * c));
+    B = acos((a * a + c * c - b * b) / (2. * a * c));
+    C = acos((a * a + b * b - c * c) / (2. * a * b));
+}
+
 
 float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
 {
@@ -3116,51 +3119,44 @@ float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, f
 
 bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy)
 {
-    float line_angle = _calc_angle(x1, y1, x2, y2);
-    float angle = _calc_angle(x2, y2, x, y, x1, y1);
-    float d = hypot(x - x1, y - y1);
-    float line_len = hypot(x2 - x1, y2 - y1);
+    float A = 0.;
+    float B = 0.;
+    float C = 0.;
     
-    if (angle > (float)M_PI_2)
+    _calc_angle(x1, y1, x2, y2, x, y, A, B, C);
+    if (A > (float)M_PI_2 || B > (float)M_PI_2)
     {
         return false;
     }
     
-    if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
+    if (fabs(A - (float)M_PI_2) < FLT_EPSILON)
     {
         ix = x1;
         iy = y1;
         return true;
     }
-    
-    float len = cos(angle) * d;
-    if (len > line_len)
+    else if (fabs(B - (float)M_PI_2) < FLT_EPSILON)
     {
-        // 当线段很长且点到线段的垂直距离很短时 由于计算误差会误进入该分支 这里重新计算一次
-        angle = _calc_angle(x1, y1, x, y, x2, y2);
-        if (angle > (float)M_PI_2)
-        {
-            return false;
-        }
-        if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
-        {
-            ix = x2;
-            iy = y2;
-            return true;
-        }
-        d = hypot(x - x2, y - y2);
-        len = cos(angle) * d;
-        if (len < line_len)
-        {
-            ix = x1 + len * cos(line_angle);
-            iy = -(-y1 + len * sin(line_angle));
-            return true;
-        }
-        return false;
+        ix = x2;
+        iy = y2;
+        return true;
     }
     
-    ix = x1 + len * cos(line_angle);
-    iy = -(-y1 + len * sin(line_angle));
+    float line_len = hypot(x2 - x1, y2 - y1);
+    float line_angle = _calc_angle(x1, y1, x2, y2);
+    float d = hypot(x - x1, y - y1);
+    float len = cos(A) * d;
+    if (len > line_len)
+    {
+        ix = x2;
+        iy = y2;
+    }
+    else
+    {
+        ix = x1 + len * cos(line_angle);
+        iy = -(-y1 + len * sin(line_angle));
+    }
+    
     return true;
 }
 
@@ -3181,30 +3177,58 @@ bool kicad_pcb_sim::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2
         ao.push_back(std::pair<float, float>(ax1, ay1));
         bo.push_back(std::pair<float, float>(x, y));
     }
-    else
-    {
-        /* 计算过点(bx1, by1)到线段a垂线的交点 */
-        if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx1, by1, x, y))
-        {
-            bo.push_back(std::pair<float, float>(bx1, by1));
-            ao.push_back(std::pair<float, float>(x, y));
-        }
-    }
     
-    
-    /* 计算过点(ax2, ay2)到线段b垂线的交点 */
+
     if (_calc_p2line_intersection(bx1, by1, bx2, by2, ax2, ay2, x, y))
     {
         ao.push_back(std::pair<float, float>(ax2, ay2));
         bo.push_back(std::pair<float, float>(x, y));
     }
-    else
+    
+    /* 计算过点(bx1, by1)到线段a垂线的交点 */
+    if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx1, by1, x, y))
     {
-        /* 计算过点(bx2, by2)到线段a垂线的交点 */
-        if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx2, by2, x, y))
+        bo.push_back(std::pair<float, float>(bx1, by1));
+        ao.push_back(std::pair<float, float>(x, y));
+    }
+        
+    if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx2, by2, x, y))
+    {
+        bo.push_back(std::pair<float, float>(bx2, by2));
+        ao.push_back(std::pair<float, float>(x, y));
+    }
+    
+    for (std::uint32_t i = 0; i < ao.size(); i++)
+    {
+        for (std::uint32_t j = i + 1; j < ao.size();)
         {
-            bo.push_back(std::pair<float, float>(bx2, by2));
-            ao.push_back(std::pair<float, float>(x, y));
+            float d = hypot(ao[i].first - ao[j].first, ao[i].second - ao[j].second);
+            if (d < _float_epsilon)
+            {
+                ao[j] = ao.back();
+                ao.pop_back();
+            }
+            else
+            {
+                j++;
+            }
+        }
+    }
+    
+    for (std::uint32_t i = 0; i < bo.size(); i++)
+    {
+        for (std::uint32_t j = i + 1; j < bo.size();)
+        {
+            float d = hypot(bo[i].first - bo[j].first, bo[i].second - bo[j].second);
+            if (d < _float_epsilon)
+            {
+                bo[j] = bo.back();
+                bo.pop_back();
+            }
+            else
+            {
+                j++;
+            }
         }
     }
     
