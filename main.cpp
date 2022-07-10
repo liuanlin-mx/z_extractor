@@ -173,9 +173,10 @@ int main(int argc, char **argv)
             std::string ckt;
             std::string call;
             std::set<std::string> reference_value;
+            float Z0_avg = 0;
             float td = 0;
             float velocity_avg = 0;
-            pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, td, velocity_avg);
+            pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg);
             //printf("ckt:%s\n", ckt.c_str());
             spice += "*" + call + ckt + "\n\n\n";
             
@@ -185,7 +186,7 @@ int main(int argc, char **argv)
                 velocity = velocity_avg;
             }
             float len = velocity * td;
-            sprintf(str, "net: \"%s\" td: %.4fNS len: (%.1fmil)\n", net.c_str(), td, len / 0.0254);
+            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", net.c_str(), Z0_avg, td, len / 0.0254);
             info += str;
         }
         

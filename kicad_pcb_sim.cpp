@@ -542,7 +542,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 
 
 bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& td_sum, float& velocity_avg)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg)
 {
     std::string comment;
     std::string sub;
@@ -590,6 +590,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     
     
     float len = 0;
+    std::vector<std::pair<float, float> > v_Z0_td;
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
@@ -606,7 +607,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
             float td = 0;
-            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            std::vector<std::pair<float, float> > v_Z0_td_;
+            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td, v_Z0_td_);
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -618,6 +620,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
                 ckt += buf;
                 td_sum += td;
                 len += _get_segment_len(s);
+                v_Z0_td.insert(v_Z0_td.end(), v_Z0_td_.begin(), v_Z0_td_.end());
             }
         }
     }
@@ -644,6 +647,14 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     ckt += sub;
     
     velocity_avg = len / td_sum;
+    float product_sum = 0.;
+    float sum = 0.;
+    for (auto& Z0: v_Z0_td)
+    {
+        product_sum += Z0.first * Z0.second * Z0.second;
+        sum += Z0.second * Z0.second;
+    }
+    Z0_avg = product_sum / sum;
     return true;
 }
 
@@ -864,7 +875,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             std::string tstamp = _get_tstamp_short(s.tstamp);
             float td = 0;
             std::string subckt;
-            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td);
+            std::vector<std::pair<float, float> > v_Z0_td;
+            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td, v_Z0_td);
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -2568,7 +2580,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum, std::vector<std::pair<float, float> >& v_Z0_td)
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -2705,6 +2717,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
                 r = 0;
             }
             
+            v_Z0_td.push_back(std::pair<float, float>(begin.Z0, td));
         #if 0
             if (td >= 0.001)
             {
