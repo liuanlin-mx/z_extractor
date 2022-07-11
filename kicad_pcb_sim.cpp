@@ -570,6 +570,11 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         float y;
         _get_pad_pos(p, x, y);
         std::vector<std::string> layers = _get_pad_conn_layers(p);
+        if (layers.size() == 0)
+        {
+            printf("%s.%s no connection\n", p.reference_value.c_str(), p.pad_number.c_str());
+            return false;
+        }
         sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
@@ -811,6 +816,11 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             float y;
             _get_pad_pos(p, x, y);
             std::vector<std::string> layers = _get_pad_conn_layers(p);
+            if (layers.size() == 0)
+            {
+                printf("%s.%s no connection\n", p.reference_value.c_str(), p.pad_number.c_str());
+                return false;
+            }
             sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
             ckt += buf;

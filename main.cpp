@@ -184,7 +184,10 @@ int main(int argc, char **argv)
             float Z0_avg = 0;
             float td = 0;
             float velocity_avg = 0;
-            pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg);
+            if (!pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg))
+            {
+                continue;
+            }
             //printf("ckt:%s\n", ckt.c_str());
             spice += "*" + call + ckt + "\n\n\n";
             
@@ -210,9 +213,12 @@ int main(int argc, char **argv)
             float velocity_avg[2] = {0., 0.};
             float Zodd_avg = 0.;
             float Zeven_avg = 0.;
-            pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()),
+            if (!pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()),
                                         v_refs, ckt, reference_value, call,
-                                        Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg);
+                                        Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg))
+            {
+                continue;
+            }
     
             //printf("ckt:%s\n", ckt.c_str());
             spice += "*" + call + ckt + "\n\n\n";
