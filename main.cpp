@@ -197,11 +197,33 @@ int main(int argc, char **argv)
             std::string call;
             std::set<std::string> reference_value;
             //float td = 0;
-            
-            pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()), v_refs, ckt, reference_value, call);
+            float Z0_avg[2] = {0., 0.};
+            float td_sum[2] = {0., 0.};
+            float velocity_avg[2] = {0., 0.};
+            float Zodd_avg = 0.;
+            float Zeven_avg = 0.;
+            pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()),
+                                        v_refs, ckt, reference_value, call,
+                                        Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg);
     
             //printf("ckt:%s\n", ckt.c_str());
             spice += "*" + call + ckt + "\n\n\n";
+            
+            if (first)
+            {
+                first = false;
+                velocity = velocity_avg[0];
+            }
+            
+            sprintf(str, "net: \"%s:%s\" Zodd:%.1f Zeven:%.f Zdiff:%.1f Zcomm:%.1f\n",
+                coupled.first.c_str(), coupled.second.c_str(),
+                Zodd_avg, Zeven_avg, Zodd_avg * 2., Zeven_avg * 0.5);
+            info += str;
+            
+            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", coupled.first.c_str(), Z0_avg[0], td_sum[0], velocity * td_sum[0] / 0.0254);
+            info += str;
+            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", coupled.second.c_str(), Z0_avg[1], td_sum[1], velocity * td_sum[1] / 0.0254);
+            info += str;
             
             //char str[4096] = {0};
             //float c = 299792458000 * v_ratio;

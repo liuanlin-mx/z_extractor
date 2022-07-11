@@ -606,9 +606,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
             kicad_pcb_sim::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
-            float td = 0;
             std::vector<std::pair<float, float> > v_Z0_td_;
-            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td, v_Z0_td_);
+            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, v_Z0_td_);
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -618,9 +617,12 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
             {
                 sub += subckt;
                 ckt += buf;
-                td_sum += td;
                 len += _get_segment_len(s);
                 v_Z0_td.insert(v_Z0_td.end(), v_Z0_td_.begin(), v_Z0_td_.end());
+                for (const auto& Z0_td: v_Z0_td_)
+                {
+                    td_sum += Z0_td.second;
+                }
             }
         }
     }
@@ -660,7 +662,8 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
 
 
 bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call)
+                        std::string& ckt, std::set<std::string>& reference_value, std::string& call,
+                        float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg)
 {
     
     std::list<pad> pads0 = get_pads(net_id0);
@@ -827,6 +830,12 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     
     ckt = comment + "\n" + ckt + pad_ckt;
     
+    
+    float len[2] = {0, 0};
+    std::vector<std::pair<float, float> > v_Z0_td[2];
+    std::vector<std::pair<float, float> > v_Zodd_td;
+    std::vector<std::pair<float, float> > v_Zeven_td;
+    
     /* 生成走线参数 */
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
@@ -843,7 +852,10 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         kicad_pcb_sim::segment& s0 = v_coupler_segment[i].first;
         kicad_pcb_sim::segment& s1 = v_coupler_segment[i].second;
         
-        std::string subckt = _gen_segment_coupled_Z0_ckt_openmp(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat);
+        std::vector<std::pair<float, float> > v_Z0_td_[2];
+        std::vector<std::pair<float, float> > v_Zodd_td_;
+        std::vector<std::pair<float, float> > v_Zeven_td_;
+        std::string subckt = _gen_segment_coupled_Z0_ckt_openmp(("CPL" + _get_tstamp_short(s0.tstamp)).c_str(), s0, s1, refs_mat, v_Z0_td_, v_Zodd_td_, v_Zeven_td_);
         
         
         char buf[512] = {0};
@@ -857,6 +869,21 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
         {
             sub += subckt;
             ckt += buf;
+            len[0] += _get_segment_len(s0);
+            len[1] += _get_segment_len(s1);
+            
+            v_Z0_td[0].insert(v_Z0_td[0].end(), v_Z0_td_[0].begin(), v_Z0_td_[0].end());
+            v_Z0_td[1].insert(v_Z0_td[1].end(), v_Z0_td_[1].begin(), v_Z0_td_[1].end());
+            v_Zodd_td.insert(v_Zodd_td.end(), v_Zodd_td_.begin(), v_Zodd_td_.end());
+            v_Zeven_td.insert(v_Zeven_td.end(), v_Zeven_td_.begin(), v_Zeven_td_.end());
+            
+            for (std::uint32_t i = 0; i < sizeof(net_ids) / sizeof(net_ids[0]); i++)
+            {
+                for (const auto& Z0_td: v_Z0_td_[i])
+                {
+                    td_sum[i] += Z0_td.second;
+                }
+            }
         }
     }
     
@@ -873,10 +900,11 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             char buf[512];
             kicad_pcb_sim::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
-            float td = 0;
             std::string subckt;
-            std::vector<std::pair<float, float> > v_Z0_td;
-            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, td, v_Z0_td);
+            std::vector<std::pair<float, float> > v_Z0_td_;
+            
+            std::uint32_t idx = (s.net == net_id0)? 0: 1;
+            subckt = _gen_segment_Z0_ckt_openmp(("ZO" + _get_tstamp_short(s.tstamp)).c_str(), s, refs_mat, v_Z0_td_);
             
             sprintf(buf, "X%s %s %s ZO%s\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
@@ -887,15 +915,21 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             {
                 sub += subckt;
                 ckt += buf;
+                len[idx] += _get_segment_len(s);
+                v_Z0_td[idx].insert(v_Z0_td[idx].end(), v_Z0_td_.begin(), v_Z0_td_.end());
+                for (const auto& Z0_td: v_Z0_td_)
+                {
+                    td_sum[idx] += Z0_td.second;
+                }
             }
         }
     }
     
     
     /* 生成过孔参数 */
-    for (auto& net_id: net_ids)
+    for (std::uint32_t i = 0; i < sizeof(net_ids) / sizeof(net_ids[0]); i++)
     {
-        std::list<via> vias = get_vias(net_id);
+        std::list<via> vias = get_vias(net_ids[i]);
     
         for (auto& v: vias)
         {
@@ -909,12 +943,51 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             {
                 sub += _gen_via_model_ckt(v, refs_mat, via_call, td);
             }
+            
+            td_sum[i] += td;
+            len[i] += _get_via_conn_len(v);
             ckt += via_call;
         }
     }
     
     ckt += ".ends\n";
     ckt += sub;
+    
+    velocity_avg[0] = len[0] / td_sum[0];
+    velocity_avg[1] = len[1] / td_sum[1];
+    
+    for (std::uint32_t i = 0; i < sizeof(net_ids) / sizeof(net_ids[0]); i++)
+    {
+        float product_sum = 0.;
+        float sum = 0.;
+        for (auto& Z0: v_Z0_td[i])
+        {
+            product_sum += Z0.first * Z0.second * Z0.second;
+            sum += Z0.second * Z0.second;
+        }
+        Z0_avg[i] = product_sum / sum;
+    }
+    
+    {
+        float product_sum = 0.;
+        float sum = 0.;
+        for (auto& Zodd: v_Zodd_td)
+        {
+            product_sum += Zodd.first * Zodd.second * Zodd.second;
+            sum += Zodd.second * Zodd.second;
+        }
+        Zodd_avg = product_sum / sum;
+    }
+    {
+        float product_sum = 0.;
+        float sum = 0.;
+        for (auto& Zeven: v_Zeven_td)
+        {
+            product_sum += Zeven.first * Zeven.second * Zeven.second;
+            sum += Zeven.second * Zeven.second;
+        }
+        Zeven_avg = product_sum / sum;
+    }
     return true;
 }
 
@@ -2580,7 +2653,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, float& td_sum, std::vector<std::pair<float, float> >& v_Z0_td)
+std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, std::vector<std::pair<float, float> >& v_Z0_td)
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -2710,7 +2783,6 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
             float dist = (end.pos - begin.pos);
             log_debug("dist:%g Z0:%g\n", dist, begin.Z0);
             float td = dist * 1000000 / begin.v;
-            td_sum += td;
             float r = begin.r;
             if (td < _td_threshold || _lossless_tl)
             {
@@ -2764,7 +2836,10 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
 
 
 
-std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat)
+std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
+                                                                std::vector<std::pair<float, float> > v_Z0_td[2],
+                                                                std::vector<std::pair<float, float> >& v_Zodd_td,
+                                                                std::vector<std::pair<float, float> >& v_Zeven_td)
 {
     std::string cir;
     if (_calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > _calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
@@ -2923,10 +2998,26 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     float Zodd = sqrt((l_matrix[0][0] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
                 + sqrt((l_matrix[1][1] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
     Zodd = Zodd * 0.5;
+    float td_Zodd = sqrt((l_matrix[0][0] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1e-9 * (c_matrix[0][0] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5) * 1e-12)
+                + sqrt((l_matrix[1][1] - (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1e-9 * (c_matrix[1][1] - (c_matrix[0][1] + c_matrix[1][0]) * 0.5) * 1e-12);
+    td_Zodd = s_len * 1000000 * td_Zodd * 0.5;
     
     float Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5))
                 + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1000 / (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5));
     Zeven = Zeven * 0.5;
+    float td_Zeven = sqrt((l_matrix[0][0] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1e-9 * (c_matrix[0][0] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5) * 1e-12)
+                + sqrt((l_matrix[1][1] + (l_matrix[0][1] + l_matrix[1][0]) * 0.5) * 1e-9 * (c_matrix[1][1] + (c_matrix[0][1] + c_matrix[1][0]) * 0.5) * 1e-12);
+    td_Zeven = s_len * 1000000 * td_Zeven * 0.5;
+    
+    v_Zodd_td.push_back(std::pair<float, float>(Zodd, td_Zodd));
+    v_Zeven_td.push_back(std::pair<float, float>(Zeven, td_Zeven));
+    
+    float Z0_s0 = sqrt(l_matrix[0][0] * 1000 / c_matrix[0][0]);
+    float td_s0 = s_len * 1000000 * sqrt(l_matrix[0][0] * 1e-9 * c_matrix[0][0] * 1e-12);
+    float Z0_s1 = sqrt(l_matrix[1][1] * 1000 / c_matrix[1][1]);
+    float td_s1 = s_len * 1000000 * sqrt(l_matrix[1][1] * 1e-9 * c_matrix[1][1] * 1e-12);
+    v_Z0_td[0].push_back(std::pair<float, float>(Z0_s0, td_s0));
+    v_Z0_td[1].push_back(std::pair<float, float>(Z0_s1, td_s1));
     
     if (_lossless_tl)
     {
