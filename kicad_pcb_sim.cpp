@@ -119,6 +119,12 @@ bool kicad_pcb_sim::parse(const char *str)
         }
         str++;
     }
+    
+    if (_pcb_top > _pcb_bottom || _pcb_left > _pcb_right)
+    {
+        printf("not found pcb edge\n");
+        return false;
+    }
     return true;
 }
 
@@ -1798,12 +1804,14 @@ const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
     {
         if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
         {
+            printf("not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
             l.epsilon_r  = 3.8;
         }
         
         if (l.thickness == 0)
         {
-            l.thickness = 1;
+            printf("not found thickness (%s). use default 0.1.\n", l.name.c_str());
+            l.thickness = 0.1;
         }
         
         _layers.push_back(l);

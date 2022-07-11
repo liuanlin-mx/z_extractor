@@ -11,8 +11,8 @@
 static void _parse_net(const char *str, std::list<std::string>& nets)
 {
     char *save_ptr = NULL;
-    static char str_[8192];
-    strncpy(str_, str, sizeof(str_));
+    static char str_[4096];
+    strncpy(str_, str, sizeof(str_) - 1);
     const char *p = strtok_r(str_, ",", &save_ptr);
     while (p)
     {
@@ -140,10 +140,18 @@ int main(int argc, char **argv)
         return 0;
     }
     
-    fread(buf, 1, sizeof(buf), fp);
+    if (0 >= fread(buf, 1, sizeof(buf), fp))
+    {
+        fclose(fp);
+        return 0;
+    }
     fclose(fp);
     
-    pcb.parse(buf);
+    if (!pcb.parse(buf))
+    {
+        return 0;
+    }
+    
     pcb.set_coupled_max_d(coupled_max_d);
     pcb.set_coupled_min_len(coupled_min_len);
     pcb.enable_lossless_tl(lossless_tl);
@@ -186,7 +194,7 @@ int main(int argc, char **argv)
                 velocity = velocity_avg;
             }
             float len = velocity * td;
-            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", net.c_str(), Z0_avg, td, len / 0.0254);
+            sprintf(str, "net: \"%s\"  Z0:%.1f  td:%.4fNS  len:(%.1fmil)\n", net.c_str(), Z0_avg, td, len / 0.0254);
             info += str;
         }
         
@@ -215,14 +223,14 @@ int main(int argc, char **argv)
                 velocity = velocity_avg[0];
             }
             
-            sprintf(str, "net: \"%s:%s\" Zodd:%.1f Zeven:%.f Zdiff:%.1f Zcomm:%.1f\n",
+            sprintf(str, "net: \"%s:%s\"  Zodd:%.1f  Zeven:%.f  Zdiff:%.1f  Zcomm:%.1f\n",
                 coupled.first.c_str(), coupled.second.c_str(),
                 Zodd_avg, Zeven_avg, Zodd_avg * 2., Zeven_avg * 0.5);
             info += str;
             
-            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", coupled.first.c_str(), Z0_avg[0], td_sum[0], velocity * td_sum[0] / 0.0254);
+            sprintf(str, "net: \"%s\"  Z0:%.1f  td:%.4fNS  len:(%.1fmil)\n", coupled.first.c_str(), Z0_avg[0], td_sum[0], velocity * td_sum[0] / 0.0254);
             info += str;
-            sprintf(str, "net: \"%s\" Z0(avg):%.1f td:%.4fNS len:(%.1fmil)\n", coupled.second.c_str(), Z0_avg[1], td_sum[1], velocity * td_sum[1] / 0.0254);
+            sprintf(str, "net: \"%s\"  Z0:%.1f  td:%.4fNS  len:(%.1fmil)\n", coupled.second.c_str(), Z0_avg[1], td_sum[1], velocity * td_sum[1] / 0.0254);
             info += str;
             
             //char str[4096] = {0};
