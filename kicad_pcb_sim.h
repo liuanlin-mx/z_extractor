@@ -207,7 +207,8 @@ private:
     
     /* 找到下一个连接到(x, y)的走线 */
     bool _segments_get_next(std::list<segment>& segments, kicad_pcb_sim::segment& s, float x, float y, const std::string& layer_name);
-    
+    /* 检测是否有未连接的走线 */
+    bool _check_segments(std::uint32_t net_id);
     
     /* 单位 欧 */
     float _calc_segment_r(const segment& s);

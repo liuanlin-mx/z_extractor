@@ -122,7 +122,7 @@ bool kicad_pcb_sim::parse(const char *str)
     
     if (_pcb_top > _pcb_bottom || _pcb_left > _pcb_right)
     {
-        printf("not found pcb edge\n");
+        printf("err: not found pcb edge.\n");
         return false;
     }
     return true;
@@ -555,11 +555,15 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     std::string pad_ckt;
     char buf[512] = {0};
     
+    if (_check_segments(net_id) == false)
+    {
+        return false;
+    }
+    
     std::list<pad> pads = get_pads(net_id);
     std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
     std::list<via> vias = get_vias(net_id);
     
-
     /* 生成子电路参数和调用 */
     ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
     call = "X" + _format_net_name(_nets[net_id]) + " ";
@@ -572,7 +576,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
         std::vector<std::string> layers = _get_pad_conn_layers(p);
         if (layers.size() == 0)
         {
-            printf("%s.%s no connection\n", p.reference_value.c_str(), p.pad_number.c_str());
+            printf("err: %s.%s no connection.\n", p.reference_value.c_str(), p.pad_number.c_str());
             return false;
         }
         sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
@@ -676,6 +680,11 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg)
 {
+    
+    if (_check_segments(net_id0) == false || _check_segments(net_id1) == false)
+    {
+        return false;
+    }
     
     std::list<pad> pads0 = get_pads(net_id0);
     std::vector<std::list<kicad_pcb_sim::segment> > v_segments0 = get_segments_sort(net_id0);
@@ -818,7 +827,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
             std::vector<std::string> layers = _get_pad_conn_layers(p);
             if (layers.size() == 0)
             {
-                printf("%s.%s no connection\n", p.reference_value.c_str(), p.pad_number.c_str());
+                printf("err: %s.%s no connection.\n", p.reference_value.c_str(), p.pad_number.c_str());
                 return false;
             }
             sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
@@ -1814,13 +1823,13 @@ const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
     {
         if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
         {
-            printf("not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
+            printf("warn: not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
             l.epsilon_r  = 3.8;
         }
         
         if (l.thickness == 0)
         {
-            printf("not found thickness (%s). use default 0.1.\n", l.name.c_str());
+            printf("warn: not found thickness (%s). use default 0.1.\n", l.name.c_str());
             l.thickness = 0.1;
         }
         
@@ -2401,6 +2410,161 @@ bool kicad_pcb_sim::_segments_get_next(std::list<kicad_pcb_sim::segment>& segmen
 }
 
 
+bool kicad_pcb_sim::_check_segments(std::uint32_t net_id)
+{
+    std::list<kicad_pcb_sim::segment> segments = get_segments(net_id);
+    std::list<kicad_pcb_sim::pad> pads = get_pads(net_id);
+    std::list<kicad_pcb_sim::via> vias = get_vias(net_id);
+    
+    std::list<kicad_pcb_sim::segment> no_conn;
+    std::list<kicad_pcb_sim::segment> conn;
+    
+    while (!segments.empty())
+    {
+        kicad_pcb_sim::segment s = segments.front();
+        segments.pop_front();
+        bool start = false;
+        bool end = false;
+        for (const auto& it: segments)
+        {
+            if (it.layer_name != s.layer_name)
+            {
+                continue;
+            }
+            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
+                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
+            {
+                start = true;
+            }
+            
+            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
+                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
+            {
+                end = true;
+            }
+        }
+        
+        for (const auto& it: conn)
+        {
+            if (it.layer_name != s.layer_name)
+            {
+                continue;
+            }
+            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
+                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
+            {
+                start = true;
+            }
+            
+            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
+                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
+            {
+                end = true;
+            }
+        }
+        
+        for (const auto& it: no_conn)
+        {
+            if (it.layer_name != s.layer_name)
+            {
+                continue;
+            }
+            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
+                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
+            {
+                start = true;
+            }
+            
+            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
+                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
+            {
+                end = true;
+            }
+        }
+        
+        for (const auto&p: pads)
+        {
+            std::vector<std::string> layers = _get_pad_conn_layers(p);
+            bool brk = true;
+            for (const auto& l: layers)
+            {
+                if (l == s.layer_name)
+                {
+                    brk = false;
+                    break;
+                }
+            }
+            
+            if (brk)
+            {
+                continue;
+            }
+            
+            float x;
+            float y;
+            _get_pad_pos(p, x, y);
+            
+            if (_point_equal(s.start.x, s.start.y, x, y))
+            {
+                start = true;
+            }
+            
+            if (_point_equal(s.end.x, s.end.y, x, y))
+            {
+                end = true;
+            }
+        }
+        
+        
+        for (const auto&v: vias)
+        {
+            std::vector<std::string> layers = _get_via_conn_layers(v);
+            bool brk = true;
+            for (const auto& l: layers)
+            {
+                if (l == s.layer_name)
+                {
+                    brk = false;
+                    break;
+                }
+            }
+            if (brk)
+            {
+                continue;
+            }
+            
+            if (_point_equal(s.start.x, s.start.y, v.at.x, v.at.y))
+            {
+                start = true;
+            }
+            
+            if (_point_equal(s.end.x, s.end.y, v.at.x, v.at.y))
+            {
+                end = true;
+            }
+        }
+        
+        if (start && end)
+        {
+            conn.push_back(s);
+        }
+        else
+        {
+            if (!start)
+            {
+                printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.net).c_str(), s.start.x, s.start.y);
+            }
+            if (!end)
+            {
+                printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.net).c_str(), s.end.x, s.end.y);
+            }
+            
+            no_conn.push_back(s);
+        }
+    }
+    
+    return no_conn.empty();
+}
 
 float kicad_pcb_sim::_calc_segment_r(const segment& s)
 {
