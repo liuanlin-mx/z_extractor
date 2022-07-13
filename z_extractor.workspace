@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<CodeLite_Workspace Name="kicad_pcb_simulation" Database="" Version="10000">
-  <Project Name="kicad_pcb_simulation" Path="kicad_pcb_simulation.project" Active="Yes"/>
+<CodeLite_Workspace Name="z_extractor" Database="" Version="10000">
+  <Project Name="z_extractor" Path="z_extractor.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug">
       <Environment/>
-      <Project Name="kicad_pcb_simulation" ConfigName="Debug"/>
+      <Project Name="z_extractor" ConfigName="Debug"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release">
       <Environment/>
-      <Project Name="kicad_pcb_simulation" ConfigName="Release"/>
+      <Project Name="z_extractor" ConfigName="Release"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="linux_static">
       <Environment/>
-      <Project Name="kicad_pcb_simulation" ConfigName="linux_static"/>
+      <Project Name="z_extractor" ConfigName="linux_static"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="linux">
       <Environment/>
-      <Project Name="kicad_pcb_simulation" ConfigName="linux"/>
+      <Project Name="z_extractor" ConfigName="linux"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="win64">
       <Environment/>
-      <Project Name="kicad_pcb_simulation" ConfigName="win64"/>
+      <Project Name="z_extractor" ConfigName="win64"/>
     </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

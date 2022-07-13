@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<CodeLite_Project Name="kicad_pcb_simulation" Version="11000" InternalType="Console">
+<CodeLite_Project Name="z_extractor" Version="11000" InternalType="Console">
   <Plugins>
     <Plugin Name="qmake">
       <![CDATA[00040001N0005Debug0000000000000001N0005linux0000000000000001N0012linux_static0000000000000001N0005win64000000000000]]>
@@ -10,19 +10,19 @@
     <File Name="plugin/__init__.py"/>
     <File Name="plugin/z_extractor.py"/>
   </VirtualDirectory>
-  <VirtualDirectory Name="kicad_pcb_simulation">
+  <VirtualDirectory Name="z_extractor">
+    <File Name="z_extractor.cpp"/>
+    <File Name="z_extractor.h"/>
     <File Name="README.md"/>
     <File Name="mmtl.h"/>
     <File Name="mmtl.cpp"/>
     <File Name="Z0_calc.cpp"/>
     <File Name="Z0_calc.h"/>
     <File Name="fasthenry.h"/>
-    <File Name="kicad_pcb_sim.h"/>
     <File Name="make_cir.h"/>
     <File Name="atlc.cpp"/>
     <File Name="fasthenry.cpp"/>
     <File Name="atlc.h"/>
-    <File Name="kicad_pcb_sim.cpp"/>
     <File Name="make_cir.cpp"/>
     <File Name="main.cpp"/>
   </VirtualDirectory>
@@ -198,7 +198,7 @@
         <Command Enabled="yes">cd ${WORKSPACE_PATH}/atlc &amp;&amp; CFLAGS=-static LDFLAGS=-static ./configure &amp;&amp; make -j4</Command>
         <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux</Command>
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/atlc/src/atlc ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
-        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/kicad_pcb_simulation ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
+        <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/z_extractor ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
         <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/mmtl_bem ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
         <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_pcm/plugins/</Command>
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/metadata.json ${WORKSPACE_PATH}/z_extractor_pcm/</Command>
