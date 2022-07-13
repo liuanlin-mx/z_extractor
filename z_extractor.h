@@ -151,7 +151,6 @@ public:
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg);
     
-    
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points);
     
     
@@ -166,6 +165,7 @@ public:
     void enable_openmp(bool b) { _enable_openmp = b; }
     void dump();
     
+    
     static std::string format_net_name(const std::string& net_name) { return _format_net_name(net_name); }
     static std::string gen_pad_net_name(const std::string& reference_value, const std::string& net_name)
     {
@@ -173,6 +173,9 @@ public:
     }
     
 private:
+    bool _float_equal(float a, float b);
+    bool _point_equal(float x1, float y1, float x2, float y2);
+    
     void _get_pad_pos(const pad& p, float& x, float& y);
     std::string _get_tstamp_short(const std::string& tstamp);
     static std::string _format_net(const std::string& name);
@@ -180,6 +183,7 @@ private:
     static std::string _format_net_name(const std::string& net_name);
     std::string _format_layer_name(std::string layer_name);
     static std::string _gen_pad_net_name(const std::string& reference_value, const std::string& net_name);
+    
     
     std::vector<std::string> _get_all_cu_layer();
     std::vector<std::string> _get_all_dielectric_layer();
@@ -189,6 +193,7 @@ private:
     float _get_via_conn_len(const z_extractor::via& v);
     
     std::vector<std::string> _get_pad_conn_layers(const pad& p);
+    
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float _get_layer_thickness(const std::string& layer_name);
@@ -200,13 +205,40 @@ private:
     float _get_cu_min_thickness();
     
     
-    bool _float_equal(float a, float b);
-    bool _point_equal(float x1, float y1, float x2, float y2);
+    
+    /* 获取走线长度 */
+    float _get_segment_len(const z_extractor::segment& s);
+    /* 获取从起点向终点前进指定offset后的坐标 */
+    void _get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y);
+    
+    /* 获取过从起点向终点前进指定offset后的点且垂直与走线的一条线段 长度为 w 线段中点与走线相交 */
+    void _get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right);
     
     /* 找到下一个连接到(x, y)的走线 */
     bool _segments_get_next(std::list<segment>& segments, z_extractor::segment& s, float x, float y, const std::string& layer_name);
     /* 检测是否有未连接的走线 */
     bool _check_segments(std::uint32_t net_id);
+    
+    
+    
+    
+    void _get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points);
+    
+    void _draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r);
+    
+    void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat);
+    
+    /* 提取走线附近的参考平面横界面参数 */
+    std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
+    
+    /* 获取走线在offset位置处的参考平面的截面 */
+    std::list<std::pair<float/*中心点*/, float/*宽度*/> > _get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w);
+    
+    /* 获取过孔反焊盘直径 */
+    float _get_via_anti_pad_diameter(const z_extractor::via& v, const std::map<std::string, cv::Mat>& refs_mat, std::string layer);
+    
+    
+    
     
     /* 单位 欧 */
     float _calc_segment_r(const segment& s);
@@ -215,13 +247,10 @@ private:
     /* 单位 nH */
     float _calc_via_l(const via& s, const std::string& layer_name1, const std::string& layer_name2);
     
-    void _get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points);
     
-    void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat);
-    void _draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r);
+    bool _is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len);
+    void _split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2);
     
-    /* 提取走线附近的参考平面横界面参数 */
-    std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
     std::string _gen_segment_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s, const std::map<std::string, cv::Mat>& refs_mat,
                                             std::vector<std::pair<float, float> >& v_Z0_td);
     std::string _gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s0, z_extractor::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
@@ -233,22 +262,6 @@ private:
     std::string _gen_via_model_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
     
     
-    /* 获取走线长度 */
-    float _get_segment_len(const z_extractor::segment& s);
-    /* 获取从起点向终点前进指定offset后的坐标 */
-    void _get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y);
-    
-    /* 获取过从起点向终点前进指定offset后的点且垂直与走线的一条线段 长度为 w 线段中点与走线相交 */
-    void _get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right);
-    
-    /* 获取走线在offset位置处的参考平面的截面 */
-    std::list<std::pair<float/*中心点*/, float/*宽度*/> > _get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w);
-    
-    /* 获取过孔反焊盘直径 */
-    float _get_via_anti_pad_diameter(const z_extractor::via& v, const std::map<std::string, cv::Mat>& refs_mat, std::string layer);
-    
-    bool _is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len);
-    void _split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2);
     
     float _cvt_img_x(float x) { return round((x - _pcb_left) * _img_ratio); }
     float _cvt_img_y(float y) { return round((y - _pcb_top) * _img_ratio); }

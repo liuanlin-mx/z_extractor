@@ -1134,6 +1134,17 @@ void z_extractor::dump()
     }
 }
 
+bool z_extractor::_float_equal(float a, float b)
+{
+    return fabs(a - b) < _float_epsilon;
+}
+
+
+bool z_extractor::_point_equal(float x1, float y1, float x2, float y2)
+{
+    return _float_equal(x1, x2) && _float_equal(y1, y2);
+}
+
 
 void z_extractor::_get_pad_pos(const pad& p, float& x, float& y)
 {
@@ -1544,17 +1555,97 @@ float z_extractor::_get_cu_min_thickness()
     return thickness;
 }
 
-bool z_extractor::_float_equal(float a, float b)
+
+float z_extractor::_get_segment_len(const z_extractor::segment& s)
 {
-    return fabs(a - b) < _float_epsilon;
+    if (s.is_arc())
+    {
+        float cx;
+        float cy;
+        float radius;
+        float angle;
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
+        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
+        return calc_arc_len(radius, angle);
+    }
+    else
+    {
+        return hypot(s.end.x - s.start.x, s.end.y - s.start.y);
+    }
+}
+
+void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y)
+{
+    if (s.is_arc())
+    {
+        float cx;
+        float cy;
+        float arc_radius;
+        float arc_angle;
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
+        float arc_len = calc_arc_len(arc_radius, arc_angle);
+        
+        float angle = arc_angle * offset / arc_len;
+        
+        float x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
+        float y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
+    
+        x = cx + x1;
+        y = cy - y1;
+    }
+    else
+    {
+        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        x = s.start.x + offset * cos(angle);
+        y = -(-s.start.y + offset * sin(angle));
+    }
 }
 
 
-bool z_extractor::_point_equal(float x1, float y1, float x2, float y2)
+void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
 {
-    return _float_equal(x1, x2) && _float_equal(y1, y2);
+    if (s.is_arc())
+    {
+        float x = 0;
+        float y = 0;
+        float cx;
+        float cy;
+        float arc_radius;
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        
+        _get_segment_pos(s, offset, x, y);
+        
+        float rad_left = calc_angle(cx, cy, x, y);
+        float rad_right = rad_left - (float)M_PI;
+        
+        /* >0 弧线为逆时针方向 */
+        if ((s.mid.x - s.start.x) * (-s.end.y - -s.mid.y) - (-s.mid.y - -s.start.y) * (s.end.x - s.mid.x) > 0)
+        {
+            std::swap(rad_left, rad_right);
+        }
+        
+        x_left = x + w * 0.5 * cos(rad_left);
+        y_left = -(-y + w * 0.5 * sin(rad_left));
+        x_right = x + w * 0.5 * cos(rad_right);
+        y_right = -(-y + w * 0.5 * sin(rad_right));
+    }
+    else
+    {
+        float x = 0;
+        float y = 0;
+        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        float rad_left = angle + (float)M_PI_2;
+        float rad_right = angle - (float)M_PI_2;
+        
+        _get_segment_pos(s, offset, x, y);
+        
+        x_left = x + w * 0.5 * cos(rad_left);
+        y_left = -(-y + w * 0.5 * sin(rad_left));
+        x_right = x + w * 0.5 * cos(rad_right);
+        y_right = -(-y + w * 0.5 * sin(rad_right));
+    }
 }
-
 
 bool z_extractor::_segments_get_next(std::list<z_extractor::segment>& segments, z_extractor::segment& s, float x, float y, const std::string& layer_name)
 {
@@ -1734,29 +1825,6 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
     return no_conn.empty();
 }
 
-float z_extractor::_calc_segment_r(const segment& s)
-{
-    //R = ρ * l / (w * h)  ρ:电导率(cu:0.0172) l:长度(m) w:线宽(mm) h:线厚度(mm) R:电阻(欧姆)
-    float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
-    
-    return _resistivity * l * 0.001 / (s.width * _get_layer_thickness(s.layer_name));
-}
-
-
-float z_extractor::_calc_segment_l(const segment& s)
-{
-    float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
-    return 2 * l * (log(2 * l / s.width) + 0.5 + 0.2235 * s.width / l);
-}
-
-
-float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
-{
-    float h = _get_layer_distance(layer_name1, layer_name2);
-    return h / 5 * (1 + log(4.0 * h / v.drill));
-}
-
-
 
 #define IMG_RATIO (10.0)
 #define IMG_RATIO_R (0.1)
@@ -1845,6 +1913,37 @@ void z_extractor::_get_zone_cond(const z_extractor::zone& z, std::list<cond>& co
 }
 
 
+
+void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
+{
+    if (s.is_arc())
+    {
+        float s_len = _get_segment_len(s);
+        for (float i = 0; i <= s_len - 0.01; i += 0.01)
+        {
+            float x1 = 0;
+            float y1 = 0;
+            float x2 = 0;
+            float y2 = 0;
+            _get_segment_pos(s, i, x1, y1);
+            _get_segment_pos(s, i + 0.01, x2, y2);
+            
+            cv::line(img,
+                cv::Point(_cvt_img_x(x1), _cvt_img_y(y1)),
+                cv::Point(_cvt_img_x(x2), _cvt_img_y(y2)),
+                cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
+        }
+    }
+    else
+    {
+        cv::line(img,
+            cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
+            cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
+            cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
+    }
+}
+
+
 void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat)
 {
     for (auto ref_id: refs_id)
@@ -1904,35 +2003,6 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
     
 }
 
-
-void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
-{
-    if (s.is_arc())
-    {
-        float s_len = _get_segment_len(s);
-        for (float i = 0; i <= s_len - 0.01; i += 0.01)
-        {
-            float x1 = 0;
-            float y1 = 0;
-            float x2 = 0;
-            float y2 = 0;
-            _get_segment_pos(s, i, x1, y1);
-            _get_segment_pos(s, i + 0.01, x2, y2);
-            
-            cv::line(img,
-                cv::Point(_cvt_img_x(x1), _cvt_img_y(y1)),
-                cv::Point(_cvt_img_x(x2), _cvt_img_y(y2)),
-                cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
-        }
-    }
-    else
-    {
-        cv::line(img,
-            cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)),
-            cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)),
-            cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
-    }
-}
 std::list<std::pair<float, float> > z_extractor::_get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2)
 {
     std::list<std::pair<float, float> > tmp;
@@ -2000,6 +2070,194 @@ std::list<std::pair<float, float> > z_extractor::_get_mat_line(const cv::Mat& im
     }
     
     return tmp;
+}
+
+
+std::list<std::pair<float, float> > z_extractor::_get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w)
+{
+    float x_left = 0;
+    float y_left = 0;
+    float x_right = 0;
+    float y_right = 0;
+    
+    _get_segment_perpendicular(s, offset, w, x_left, y_left, x_right, y_right);
+    return _get_mat_line(ref, x_left, y_left, x_right, y_right);
+}
+
+
+float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
+{
+    float diameter = v.size * 5;
+    if (refs_mat.count(layer) == 0)
+    {
+        return diameter;
+    }
+    const cv::Mat& img = refs_mat.find(layer)->second;
+    
+    float y = v.at.y - diameter * 0.5;
+    float y_end = v.at.y + diameter * 0.5;
+    while (y < y_end)
+    {
+        
+        float x = v.at.x - diameter * 0.5;
+        float x_end = v.at.x + diameter * 0.5;
+        
+        while (x < x_end)
+        {
+            std::int32_t img_y = _cvt_img_y(y);
+            std::int32_t img_x = _cvt_img_x(x);
+            if (!(img_y >= 0 && img_y < img.rows
+                    && img_x >= 0 && img_x < img.cols)
+                || img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
+            {
+                float dist = calc_dist(x, y, v.at.x, v.at.y);
+                if (dist * 2 < diameter)
+                {
+                    diameter = dist * 2;
+                }
+            }
+            x += 0.01;
+        }
+        y += 0.01;
+    }
+    if (diameter <= v.size)
+    {
+        diameter = v.size * 2;
+    }
+    return diameter;
+}
+
+
+
+float z_extractor::_calc_segment_r(const segment& s)
+{
+    //R = ρ * l / (w * h)  ρ:电导率(cu:0.0172) l:长度(m) w:线宽(mm) h:线厚度(mm) R:电阻(欧姆)
+    float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
+    
+    return _resistivity * l * 0.001 / (s.width * _get_layer_thickness(s.layer_name));
+}
+
+
+float z_extractor::_calc_segment_l(const segment& s)
+{
+    float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
+    return 2 * l * (log(2 * l / s.width) + 0.5 + 0.2235 * s.width / l);
+}
+
+
+float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
+{
+    float h = _get_layer_distance(layer_name1, layer_name2);
+    return h / 5 * (1 + log(4.0 * h / v.drill));
+}
+
+
+bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len)
+{
+    if (s1.is_arc() || s2.is_arc())
+    {
+        return false;
+    }
+    
+    float a1 = calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
+    float a2 = calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
+    float a22 = calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
+    if (fabs(a1 - a2) > _float_epsilon && fabs(a1 - a22) > _float_epsilon)
+    {
+        return false;
+    }
+    float dist = calc_p2line_dist(s1.start.x, s1.start.y, s1.end.x, s1.end.y, s2.start.x, s2.start.y);
+    if (dist > coupled_max_d)
+    {
+        return false;
+    }
+    
+    float ovlen = calc_parallel_lines_overlap_len(s1.start.x, s1.start.y, s1.end.x, s1.end.y,
+                                        s2.start.x, s2.start.y, s2.end.x, s2.end.y);
+    if (ovlen < coupled_min_len)
+    {
+        return false;
+    }
+    return true;
+}
+
+
+
+void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2)
+{
+    float d1 = calc_dist(x1, y1, s.start.x, s.start.y);
+    float d2 = calc_dist(x2, y2, s.start.x, s.start.y);
+    
+    float limit = 0.0254;
+    
+    std::uint32_t idx = 0;
+    std::vector<pcb_point> ps;
+    ps.push_back(s.start);
+    if (d1 < d2)
+    {
+        if (d1 > limit)
+        {
+            pcb_point p;
+            p.x = x1;
+            p.y = y1;
+            ps.push_back(p);
+            idx = 1;
+        }
+        else
+        {
+            idx = 0;
+        }
+        float d = calc_dist(x2, y2, s.end.x, s.end.y);
+        if (d > limit)
+        {
+            pcb_point p;
+            p.x = x2;
+            p.y = y2;
+            ps.push_back(p);
+        }
+    }
+    else
+    {
+        if (d2 > limit)
+        {
+            pcb_point p;
+            p.x = x2;
+            p.y = y2;
+            ps.push_back(p);
+            idx = 1;
+        }
+        else
+        {
+            idx = 0;
+        }
+        float d = calc_dist(x1, y1, s.end.x, s.end.y);
+        if (d > limit)
+        {
+            pcb_point p;
+            p.x = x1;
+            p.y = y1;
+            ps.push_back(p);
+        }
+    }
+    
+    ps.push_back(s.end);
+    
+    const char *str[] = {"0", "1", "2", "3", "4"};
+    for (std::uint32_t i = 0; i < ps.size() - 1; i++)
+    {
+        z_extractor::segment tmp = s;
+        tmp.tstamp = str[i] + tmp.tstamp;
+        tmp.start = ps[i];
+        tmp.end = ps[i + 1];
+        if (i == idx)
+        {
+            ss.push_front(tmp);
+        }
+        else
+        {
+            ss.push_back(tmp);
+        }
+    }
 }
 
 
@@ -2533,258 +2791,3 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
     return ckt + ".ends\n";
 }
 
-
-
-float z_extractor::_get_segment_len(const z_extractor::segment& s)
-{
-    if (s.is_arc())
-    {
-        float cx;
-        float cy;
-        float radius;
-        float angle;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
-        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
-        return calc_arc_len(radius, angle);
-    }
-    else
-    {
-        return hypot(s.end.x - s.start.x, s.end.y - s.start.y);
-    }
-}
-
-void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y)
-{
-    if (s.is_arc())
-    {
-        float cx;
-        float cy;
-        float arc_radius;
-        float arc_angle;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
-        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
-        float arc_len = calc_arc_len(arc_radius, arc_angle);
-        
-        float angle = arc_angle * offset / arc_len;
-        
-        float x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
-        float y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
-    
-        x = cx + x1;
-        y = cy - y1;
-    }
-    else
-    {
-        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-        x = s.start.x + offset * cos(angle);
-        y = -(-s.start.y + offset * sin(angle));
-    }
-}
-
-
-void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
-{
-    if (s.is_arc())
-    {
-        float x = 0;
-        float y = 0;
-        float cx;
-        float cy;
-        float arc_radius;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
-        
-        _get_segment_pos(s, offset, x, y);
-        
-        float rad_left = calc_angle(cx, cy, x, y);
-        float rad_right = rad_left - (float)M_PI;
-        
-        /* >0 弧线为逆时针方向 */
-        if ((s.mid.x - s.start.x) * (-s.end.y - -s.mid.y) - (-s.mid.y - -s.start.y) * (s.end.x - s.mid.x) > 0)
-        {
-            std::swap(rad_left, rad_right);
-        }
-        
-        x_left = x + w * 0.5 * cos(rad_left);
-        y_left = -(-y + w * 0.5 * sin(rad_left));
-        x_right = x + w * 0.5 * cos(rad_right);
-        y_right = -(-y + w * 0.5 * sin(rad_right));
-    }
-    else
-    {
-        float x = 0;
-        float y = 0;
-        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-        float rad_left = angle + (float)M_PI_2;
-        float rad_right = angle - (float)M_PI_2;
-        
-        _get_segment_pos(s, offset, x, y);
-        
-        x_left = x + w * 0.5 * cos(rad_left);
-        y_left = -(-y + w * 0.5 * sin(rad_left));
-        x_right = x + w * 0.5 * cos(rad_right);
-        y_right = -(-y + w * 0.5 * sin(rad_right));
-    }
-}
-
-
-std::list<std::pair<float, float> > z_extractor::_get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w)
-{
-    float x_left = 0;
-    float y_left = 0;
-    float x_right = 0;
-    float y_right = 0;
-    
-    _get_segment_perpendicular(s, offset, w, x_left, y_left, x_right, y_right);
-    return _get_mat_line(ref, x_left, y_left, x_right, y_right);
-}
-
-
-float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
-{
-    float diameter = v.size * 5;
-    if (refs_mat.count(layer) == 0)
-    {
-        return diameter;
-    }
-    const cv::Mat& img = refs_mat.find(layer)->second;
-    
-    float y = v.at.y - diameter * 0.5;
-    float y_end = v.at.y + diameter * 0.5;
-    while (y < y_end)
-    {
-        
-        float x = v.at.x - diameter * 0.5;
-        float x_end = v.at.x + diameter * 0.5;
-        
-        while (x < x_end)
-        {
-            std::int32_t img_y = _cvt_img_y(y);
-            std::int32_t img_x = _cvt_img_x(x);
-            if (!(img_y >= 0 && img_y < img.rows
-                    && img_x >= 0 && img_x < img.cols)
-                || img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
-            {
-                float dist = calc_dist(x, y, v.at.x, v.at.y);
-                if (dist * 2 < diameter)
-                {
-                    diameter = dist * 2;
-                }
-            }
-            x += 0.01;
-        }
-        y += 0.01;
-    }
-    if (diameter <= v.size)
-    {
-        diameter = v.size * 2;
-    }
-    return diameter;
-}
-
-bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len)
-{
-    if (s1.is_arc() || s2.is_arc())
-    {
-        return false;
-    }
-    
-    float a1 = calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
-    float a2 = calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
-    float a22 = calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
-    if (fabs(a1 - a2) > _float_epsilon && fabs(a1 - a22) > _float_epsilon)
-    {
-        return false;
-    }
-    float dist = calc_p2line_dist(s1.start.x, s1.start.y, s1.end.x, s1.end.y, s2.start.x, s2.start.y);
-    if (dist > coupled_max_d)
-    {
-        return false;
-    }
-    
-    float ovlen = calc_parallel_lines_overlap_len(s1.start.x, s1.start.y, s1.end.x, s1.end.y,
-                                        s2.start.x, s2.start.y, s2.end.x, s2.end.y);
-    if (ovlen < coupled_min_len)
-    {
-        return false;
-    }
-    return true;
-}
-
-
-
-void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2)
-{
-    float d1 = calc_dist(x1, y1, s.start.x, s.start.y);
-    float d2 = calc_dist(x2, y2, s.start.x, s.start.y);
-    
-    float limit = 0.0254;
-    
-    std::uint32_t idx = 0;
-    std::vector<pcb_point> ps;
-    ps.push_back(s.start);
-    if (d1 < d2)
-    {
-        if (d1 > limit)
-        {
-            pcb_point p;
-            p.x = x1;
-            p.y = y1;
-            ps.push_back(p);
-            idx = 1;
-        }
-        else
-        {
-            idx = 0;
-        }
-        float d = calc_dist(x2, y2, s.end.x, s.end.y);
-        if (d > limit)
-        {
-            pcb_point p;
-            p.x = x2;
-            p.y = y2;
-            ps.push_back(p);
-        }
-    }
-    else
-    {
-        if (d2 > limit)
-        {
-            pcb_point p;
-            p.x = x2;
-            p.y = y2;
-            ps.push_back(p);
-            idx = 1;
-        }
-        else
-        {
-            idx = 0;
-        }
-        float d = calc_dist(x1, y1, s.end.x, s.end.y);
-        if (d > limit)
-        {
-            pcb_point p;
-            p.x = x1;
-            p.y = y1;
-            ps.push_back(p);
-        }
-    }
-    
-    ps.push_back(s.end);
-    
-    const char *str[] = {"0", "1", "2", "3", "4"};
-    for (std::uint32_t i = 0; i < ps.size() - 1; i++)
-    {
-        z_extractor::segment tmp = s;
-        tmp.tstamp = str[i] + tmp.tstamp;
-        tmp.start = ps[i];
-        tmp.end = ps[i + 1];
-        if (i == idx)
-        {
-            ss.push_front(tmp);
-        }
-        else
-        {
-            ss.push_back(tmp);
-        }
-    }
-}
