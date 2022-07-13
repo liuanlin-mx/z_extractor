@@ -11,6 +11,10 @@
     <File Name="plugin/z_extractor.py"/>
   </VirtualDirectory>
   <VirtualDirectory Name="z_extractor">
+    <File Name="calc.cpp"/>
+    <File Name="calc.h"/>
+    <File Name="kicad_pcb_parser.h"/>
+    <File Name="kicad_pcb_parser.cpp"/>
     <File Name="z_extractor.cpp"/>
     <File Name="z_extractor.h"/>
     <File Name="README.md"/>

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "z_extractor.h"
+#include "kicad_pcb_parser.h"
 #include <opencv2/opencv.hpp>
 #include "make_cir.h"
 
@@ -41,7 +42,9 @@ static void _parse_coupled_net(const char *str, std::list<std::pair<std::string,
 
 int main(int argc, char **argv)
 {
-    z_extractor pcb;
+    std::shared_ptr<z_extractor> z_extr(new z_extractor);
+    
+    kicad_pcb_parser parser;
     static char buf[16 * 1024 * 1024];
     std::list<std::string> nets;
     std::list<std::pair<std::string, std::string> > coupled_nets;
@@ -134,33 +137,20 @@ int main(int argc, char **argv)
         return 0;
     }
     
-    FILE *fp = fopen(pcb_file, "rb");
-    if (fp == NULL)
+    if (!parser.parse(pcb_file, z_extr))
     {
         return 0;
     }
     
-    if (0 >= fread(buf, 1, sizeof(buf), fp))
-    {
-        fclose(fp);
-        return 0;
-    }
-    fclose(fp);
-    
-    if (!pcb.parse(buf))
-    {
-        return 0;
-    }
-    
-    pcb.set_coupled_max_d(coupled_max_d);
-    pcb.set_coupled_min_len(coupled_min_len);
-    pcb.enable_lossless_tl(lossless_tl);
-    pcb.enable_ltra_model(ltra);
-    pcb.enable_via_tl_mode(via_tl_mode);
-    pcb.enable_openmp(enable_openmp);
-    pcb.set_conductivity(conductivity);
-    pcb.set_step(step);
-    pcb.set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);
+    z_extr->set_coupled_max_d(coupled_max_d);
+    z_extr->set_coupled_min_len(coupled_min_len);
+    z_extr->enable_lossless_tl(lossless_tl);
+    z_extr->enable_ltra_model(ltra);
+    z_extr->enable_via_tl_mode(via_tl_mode);
+    z_extr->enable_openmp(enable_openmp);
+    z_extr->set_conductivity(conductivity);
+    z_extr->set_step(step);
+    z_extr->set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);
     
     std::string spice;
     std::string info;
@@ -170,7 +160,7 @@ int main(int argc, char **argv)
         
         for (const auto& net: refs)
         {
-            v_refs.push_back(pcb.get_net_id(net.c_str()));
+            v_refs.push_back(z_extr->get_net_id(net.c_str()));
         }
         
         bool first = true;
@@ -184,7 +174,7 @@ int main(int argc, char **argv)
             float Z0_avg = 0;
             float td = 0;
             float velocity_avg = 0;
-            if (!pcb.gen_subckt_zo(pcb.get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg))
+            if (!z_extr->gen_subckt_zo(z_extr->get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg))
             {
                 continue;
             }
@@ -213,7 +203,7 @@ int main(int argc, char **argv)
             float velocity_avg[2] = {0., 0.};
             float Zodd_avg = 0.;
             float Zeven_avg = 0.;
-            if (!pcb.gen_subckt_coupled_tl(pcb.get_net_id(coupled.first.c_str()), pcb.get_net_id(coupled.second.c_str()),
+            if (!z_extr->gen_subckt_coupled_tl(z_extr->get_net_id(coupled.first.c_str()), z_extr->get_net_id(coupled.second.c_str()),
                                         v_refs, ckt, reference_value, call,
                                         Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg))
             {

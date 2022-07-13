@@ -6,6 +6,7 @@
 #include <fasthenry.h>
 #include "atlc.h"
 #include "Z0_calc.h"
+#include "calc.h"
 
 #if 0
 #define log_debug(fmt, args...) printf(fmt, ##args)
@@ -54,81 +55,56 @@ z_extractor::~z_extractor()
 }
 
 
-bool z_extractor::parse(const char *str)
+bool z_extractor::add_net(std::uint32_t id, std::string name)
 {
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "kicad_pcb")
-            {
-                continue;
-            }
-            else if (label == "net")
-            {
-                std::uint32_t id = 0;
-                std::string name;
-                str = _parse_net(str, id, name);
-                _nets.emplace(id, name);
-                continue;
-            }
-            else if (label == "segment" || label == "arc")
-            {
-                segment s;
-                str = _parse_segment(str, s);
-                _segments.emplace(s.net, s);
-                continue;
-            }
-            else if (label == "gr_line" || label == "gr_circle" || label == "gr_rect" || label == "gr_arc")
-            {
-                str = _parse_edge(str);
-                continue;
-            }
-            else if (label == "via")
-            {
-                via v;
-                str = _parse_via(str, v);
-                _vias.emplace(v.net, v);
-                continue;
-            }
-            else if (label == "footprint")
-            {
-                str = _parse_footprint(str);
-                continue;
-            }
-            else if (label == "setup")
-            {
-                str = _parse_setup(str);
-                continue;
-            }
-            else if (label == "zone")
-            {
-                std::vector<zone> zones;
-                str = _parse_zone(str, zones);
-                for (auto& z: zones)
-                {
-                    _zones.emplace(z.net, z);
-                }
-                continue;
-            }
-            
-            str = _skip(str + 1);
-            continue;
-        }
-        str++;
-    }
-    
-    if (_pcb_top > _pcb_bottom || _pcb_left > _pcb_right)
-    {
-        printf("err: not found pcb edge.\n");
-        return false;
-    }
-    return true;
+    _nets.emplace(id, name);
+    return 0;
 }
 
 
+bool z_extractor::add_segment(const segment& s)
+{
+    _segments.emplace(s.net, s);
+    return 0;
+}
+
+
+bool z_extractor::add_via(const via& v)
+{
+    _vias.emplace(v.net, v);
+    return 0;
+}
+
+
+bool z_extractor::add_zone(const zone& z)
+{
+    _zones.emplace(z.net, z);
+    return 0;
+}
+
+
+bool z_extractor::add_pad(const pad& p)
+{
+    _pads.emplace(p.net, p);
+    return 0;
+}
+
+
+bool z_extractor::add_layers(const layer& l)
+{
+    _layers.push_back(l);
+    return 0;
+}
+
+
+void z_extractor::set_edge(float top, float bottom, float left, float right)
+{
+    _pcb_top = top;
+    _pcb_bottom = bottom;
+    _pcb_left = left;
+    _pcb_right = right;
+}
+    
 
 std::list<z_extractor::segment> z_extractor::get_segments(std::uint32_t net_id)
 {
@@ -722,7 +698,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                         float box2;
                         float boy2;
                         
-                        if (_calc_parallel_lines_overlap(s0.start.x, s0.start.y, s0.end.x, s0.end.y,
+                        if (calc_parallel_lines_overlap(s0.start.x, s0.start.y, s0.end.x, s0.end.y,
                                                         s1.start.x, s1.start.y, s1.end.x, s1.end.y,
                                                         aox1, aoy1, aox2, aoy2,
                                                         box1, boy1, box2, boy2))
@@ -731,7 +707,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                             std::list<z_extractor::segment> ss1;
                             _split_segment(s0, ss0, aox1, aoy1, aox2, aoy2);
                             _split_segment(s1, ss1, box1, boy1, box2, boy2);
-                            float couple_len = _calc_dist(aox1, aoy1, aox2, aoy2);
+                            float couple_len = calc_dist(aox1, aoy1, aox2, aoy2);
                             coupler_segment.emplace(1.0 / couple_len, std::pair<z_extractor::segment, z_extractor::segment>(ss0.front(), ss1.front()));
                             
                             ss0.pop_front();
@@ -1156,814 +1132,6 @@ void z_extractor::dump()
             }
         }
     }
-}
-
-
-const char *z_extractor::_parse_label(const char *str, std::string& label)
-{
-    while (*str != ' ' && *str != '\r' && *str != '\n')
-    {
-        label += *str;
-        str++;
-    }
-    return str;
-}
-
-const char *z_extractor::_skip(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-        }
-        if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-const char *z_extractor::_parse_zone(const char *str, std::vector<zone>& zones)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    zone z;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                z.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, z.tstamp);
-            }
-            else if (label == "filled_polygon")
-            {
-                str = _parse_filled_polygon(str, z);
-                zones.push_back(z);
-                z.pts.clear();
-                z.layer_name.clear();
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_filled_polygon(const char *str, zone& z)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, z.layer_name);
-            }
-            else if (label == "xy")
-            {
-                pcb_point p;
-                str = _parse_postion(str, p.x, p.y);
-                z.pts.push_back(p);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_net(const char *str, std::uint32_t& id, std::string& name)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '"')
-        {
-            str = _parse_string(str, name);
-            continue;
-        }
-        else if (*str >= '0' && *str <= '9')
-        {
-            float num = 0;
-            str = _parse_number(str, num);
-            id = num;
-            continue;
-        }
-        else if (*str == '(')
-        {
-            left++;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_segment(const char *str, segment& s)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "start")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.start.x = x;
-                s.start.y = y;
-            }
-            else if (label == "mid")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.mid.x = x;
-                s.mid.y = y;
-            }
-            else if (label == "end")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.end.x = x;
-                s.end.y = y;
-            }
-            else if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, s.layer_name);
-            }
-            else if (label == "width")
-            {
-                float w;
-                str = _parse_number(str, w);
-                s.width = w;
-            }
-            else if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                s.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, s.tstamp);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-const char *z_extractor::_parse_via(const char *str, via& v)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "at")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                v.at.x = x;
-                v.at.y = y;
-            }
-            else if (label == "size")
-            {
-                float size;
-                str = _parse_number(str, size);
-                v.size = size;
-            }
-            else if (label == "drill")
-            {
-                float drill;
-                str = _parse_number(str, drill);
-                v.drill = drill;
-            }
-            else if (label == "layers")
-            {
-                str = _parse_layers(str, v.layers);
-            }
-            else if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                v.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, v.tstamp);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_number(const char *str, float &num)
-{
-    char tmp[32] = {0};
-    std::uint32_t i = 0;
-    
-    while (*str == ' ') str++;
-    
-    while (((*str >= '0' && *str <= '9') || *str == '.' || *str == '-') && i < sizeof(tmp) - 1)
-    {
-        tmp[i++] = *str;
-        str++;
-    }
-    tmp[i] = 0;
-    sscanf(tmp, "%f", &num);
-    return str;
-}
-
-
-const char *z_extractor::_parse_string(const char *str, std::string& text)
-{
-    if (*str == '"')
-    {
-        str++;
-        while (*str != '"')
-        {
-            text += *str;
-            str++;
-        }
-        return str + 1;
-    }
-    else
-    {
-        while (*str != ' ' && *str != ')')
-        {
-            text += *str;
-            str++;
-        }
-        return str;
-    }
-}
-
-
-const char *z_extractor::_parse_postion(const char *str, float &x, float& y)
-{
-    while (*str == ' ') str++;
-    str = _parse_number(str, x);
-    while (*str == ' ') str++;
-    str = _parse_number(str, y);
-    return str;
-}
-
-
-
-const char *z_extractor::_parse_tstamp(const char *str, std::string& tstamp)
-{
-    while (*str == ' ') str++;
-    while (*str != ')')
-    {
-        tstamp += *str;
-        str++;
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_layers(const char *str, std::list<std::string>& layers)
-{
-    while (*str != ')')
-    {
-        std::string text;
-        while (*str == ' ') str++;
-        str = _parse_string(str, text);
-        if (text.npos != text.find(".Cu"))
-        {
-            layers.push_back(text);
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_footprint(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    std::string reference_value;
-    float x;
-    float y;
-    float angle;
-                
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "at")
-            {
-                str = _parse_at(str, x, y, angle);
-            }
-            else if (label == "fp_text")
-            {
-                std::string label;
-                while (*str == ' ') str++;
-                str = _parse_label(str, label);
-                if (label == "reference")
-                {
-                    str = _parse_reference(str, reference_value);
-                }
-                str = _skip(str);
-                right++;
-            }
-            else if (label == "pad")
-            {
-                pad p;
-                p.ref_at.x = x;
-                p.ref_at.y = y;
-                p.ref_at_angle = angle;
-                p.net = 0xffffffff;
-                p.reference_value = reference_value;
-                str = _parse_pad(str, p);
-                if (p.net != 0xffffffff)
-                {
-                    _pads.emplace(p.net, p);
-                }
-                right++;
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_at(const char *str, float &x, float& y, float& angle)
-{
-    while (*str == ' ') str++;
-    str = _parse_number(str, x);
-    while (*str == ' ') str++;
-    str = _parse_number(str, y);
-    
-    while (*str == ' ') str++;
-    if (*str == ')')
-    {
-        angle = 0.0;
-        return str;
-    }
-    
-    str = _parse_number(str, angle);
-    return str;
-}
-
-
-
-const char *z_extractor::_parse_reference(const char *str, std::string& footprint_name)
-{
-    while (*str == ' ') str++;
-    str = _parse_string(str, footprint_name);
-    return str;
-}
-
-
-const char *z_extractor::_parse_pad(const char *str, pad& p)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    float x = 0.;
-    float y = 0.;
-    float angle = 0.;
-    while (*str)
-    {
-        if (*str == '"')
-        {
-            str = _parse_string(str, p.pad_number);
-            continue;
-        }
-        else if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "at")
-            {
-                str = _parse_at(str, x, y, angle);
-                p.at.x = x;
-                p.at.y = y;
-                p.at_angle = angle;
-            }
-            else if (label == "net")
-            {
-                str = _parse_net(str, p.net, p.net_name);
-                right++;
-            }
-            else if (label == "tstamp")
-            {
-                std::string tstamp;
-                str = _parse_tstamp(str, p.tstamp);
-            }
-            else if (label == "layers")
-            {
-                str = _parse_layers(str, p.layers);
-            }
-            else
-            {
-                str = _skip(str + 1);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_setup(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-                
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "stackup")
-            {
-                str = _parse_stackup(str);
-                right++;
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_stackup(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-                
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "layer")
-            {
-                str = _parse_stackup_layer(str);
-                right++;
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-const char *z_extractor::_parse_stackup_layer(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    layer l;
-    
-    while (*str != '"') str++;
-    str = _parse_string(str, l.name);
-    
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "type")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, l.type);
-            }
-            else if (label == "thickness")
-            {
-                while (*str == ' ') str++;
-                str = _parse_number(str, l.thickness);
-            }
-            else if (label == "epsilon_r")
-            {
-                while (*str == ' ') str++;
-                str = _parse_number(str, l.epsilon_r);
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    
-    if (l.type == "copper"
-        || l.type == "core"
-        || l.type == "prepreg"
-        || l.type == "Top Solder Mask"
-        || l.type == "Bottom Solder Mask")
-    {
-        if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
-        {
-            printf("warn: not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
-            l.epsilon_r  = 3.8;
-        }
-        
-        if (l.thickness == 0)
-        {
-            printf("warn: not found thickness (%s). use default 0.1.\n", l.name.c_str());
-            l.thickness = 0.1;
-        }
-        
-        _layers.push_back(l);
-        log_debug("layer name:%s type:%s t:%f e:%f\n", l.name.c_str(), l.type.c_str(), l.thickness, l.epsilon_r);
-    }
-    return str;
-}
-
-
-const char *z_extractor::_parse_edge(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    pcb_point start;
-    pcb_point mid;
-    pcb_point end;
-    pcb_point center;
-    std::string layer_name;
-    
-    bool is_arc = false;
-    bool is_circle = false;
-    
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "start")
-            {
-                str = _parse_postion(str, start.x, start.y);
-                
-            }
-            else if (label == "end")
-            {
-                str = _parse_postion(str, end.x, end.y);
-                
-            }
-            else if (label == "mid")
-            {
-                str = _parse_postion(str, mid.x, mid.y);
-                is_arc = true;
-            }
-            else if (label == "center")
-            {
-                str = _parse_postion(str, center.x, center.y);
-                is_circle = true;
-            }
-            else if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, layer_name);
-            }
-            else if (label == "width")
-            {
-                float w;
-                str = _parse_number(str, w);
-            }
-            else if (label == "tstamp")
-            {
-                std::string tstamp;
-                str = _parse_tstamp(str, tstamp);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    
-    if (layer_name == "Edge.Cuts")
-    {
-        float left = _pcb_left;
-        float right = _pcb_right;
-        float top = _pcb_top;
-        float bottom = _pcb_bottom;
-            
-        if (is_arc)
-        {
-            float r;
-            _calc_arc_center_radius(start.x, start.y, mid.x, mid.y, end.x, end.y, center.x, center.y, r);
-            is_circle = true;
-            is_arc = false;
-        }
-        
-        if (is_circle)
-        {
-            float r = _calc_dist(center.x, center.y, end.x, end.y);
-            left = center.x - r;
-            right = center.x + r;
-            top = center.y - r;
-            bottom = center.y + r;
-        }
-        else
-        {
-            
-            left = std::min(start.x, end.x);
-            right = std::max(start.x, end.x);
-            top = std::min(start.y, end.y);
-            bottom = std::max(start.y, end.y);
-            
-        }
-        
-        if (left < _pcb_left)
-        {
-            _pcb_left = left;
-        }
-            
-        if (right > _pcb_right)
-        {
-            _pcb_right = right;
-        }
-            
-        if (top < _pcb_top)
-        {
-            _pcb_top = top;
-        }
-            
-        if (bottom > _pcb_bottom)
-        {
-            _pcb_bottom = bottom;
-        }
-        
-    }
-                
-    return str;
 }
 
 
@@ -2780,7 +1948,7 @@ std::list<std::pair<float, float> > z_extractor::_get_mat_line(const cv::Mat& im
     cv::waitKey();
 #endif
     float len = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-    float angle = _calc_angle(x1, y1, x2, y2);
+    float angle = calc_angle(x1, y1, x2, y2);
     
     bool flag = false;
     float start = 0;
@@ -3024,7 +2192,7 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
                                                                 std::vector<std::pair<float, float> >& v_Zeven_td)
 {
     std::string cir;
-    if (_calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > _calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
+    if (calc_dist(s0.start.x, s0.start.y, s1.start.x, s1.start.y) > calc_dist(s0.start.x, s0.start.y, s1.end.x, s1.end.y))
     {
         std::swap(s1.start, s1.end);
     }
@@ -3034,7 +2202,7 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
     s.start.y = (s0.start.y + s1.start.y) * 0.5;
     s.end.x = (s0.end.x + s1.end.x) * 0.5;
     s.end.y = (s0.end.y + s1.end.y) * 0.5;
-    s.width = _calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
+    s.width = calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
     
     float s_len = _get_segment_len(s);
     bool s0_is_left = ((s.start.y - s.end.y) * s0.start.x + (s.end.x - s.start.x) * s0.start.y + s.start.x * s.end.y - s.end.x * s.start.y) > 0;
@@ -3365,251 +2533,6 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
     return ckt + ".ends\n";
 }
 
-float z_extractor::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
-{
-    float a = hypot(bx - cx, by - cy);
-    float b = hypot(ax - cx, ay - cy);
-    float c = hypot(ax - bx, ay - by);
-    
-    return acos((a * a + b * b - c * c) / (2. * a * b));
-}
-
-void z_extractor::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C)
-{
-    float a = hypot(bx - cx, by - cy);
-    float b = hypot(ax - cx, ay - cy);
-    float c = hypot(ax - bx, ay - by);
-    
-    A = acos((b * b + c * c - a * a) / (2. * b * c));
-    B = acos((a * a + c * c - b * b) / (2. * a * c));
-    C = acos((a * a + b * b - c * c) / (2. * a * b));
-}
-
-
-float z_extractor::_calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
-{
-    float angle = _calc_angle(x2, y2, x, y, x1, y1);
-    
-    float d = hypot(x - x1, y - y1);
-    if (angle > (float)M_PI_2)
-    {
-        angle = (float)M_PI - angle;
-    }
-    if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
-    {
-        return d;
-    }
-    return sin(angle) * d;
-}
-
-
-bool z_extractor::_calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy)
-{
-    float A = 0.;
-    float B = 0.;
-    float C = 0.;
-    
-    _calc_angle(x1, y1, x2, y2, x, y, A, B, C);
-    if (A > (float)M_PI_2 || B > (float)M_PI_2)
-    {
-        return false;
-    }
-    
-    if (fabs(A - (float)M_PI_2) < FLT_EPSILON)
-    {
-        ix = x1;
-        iy = y1;
-        return true;
-    }
-    else if (fabs(B - (float)M_PI_2) < FLT_EPSILON)
-    {
-        ix = x2;
-        iy = y2;
-        return true;
-    }
-    
-    float line_len = hypot(x2 - x1, y2 - y1);
-    float line_angle = _calc_angle(x1, y1, x2, y2);
-    float d = hypot(x - x1, y - y1);
-    float len = cos(A) * d;
-    if (len > line_len)
-    {
-        ix = x2;
-        iy = y2;
-    }
-    else
-    {
-        ix = x1 + len * cos(line_angle);
-        iy = -(-y1 + len * sin(line_angle));
-    }
-    
-    return true;
-}
-
-bool z_extractor::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
-                                                float bx1, float by1, float bx2, float by2,
-                                                float& aox1, float& aoy1, float& aox2, float& aoy2,
-                                                float& box1, float& boy1, float& box2, float& boy2)
-{
-    std::vector<std::pair<float, float> > ao;
-    std::vector<std::pair<float, float> > bo;
-    
-    float x;
-    float y;
-    
-    /* 计算过点(ax1, ay1)到线段b垂线的交点 */
-    if (_calc_p2line_intersection(bx1, by1, bx2, by2, ax1, ay1, x, y))
-    {
-        ao.push_back(std::pair<float, float>(ax1, ay1));
-        bo.push_back(std::pair<float, float>(x, y));
-    }
-    
-
-    if (_calc_p2line_intersection(bx1, by1, bx2, by2, ax2, ay2, x, y))
-    {
-        ao.push_back(std::pair<float, float>(ax2, ay2));
-        bo.push_back(std::pair<float, float>(x, y));
-    }
-    
-    /* 计算过点(bx1, by1)到线段a垂线的交点 */
-    if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx1, by1, x, y))
-    {
-        bo.push_back(std::pair<float, float>(bx1, by1));
-        ao.push_back(std::pair<float, float>(x, y));
-    }
-        
-    if (_calc_p2line_intersection(ax1, ay1, ax2, ay2, bx2, by2, x, y))
-    {
-        bo.push_back(std::pair<float, float>(bx2, by2));
-        ao.push_back(std::pair<float, float>(x, y));
-    }
-    
-    for (std::uint32_t i = 0; i < ao.size(); i++)
-    {
-        for (std::uint32_t j = i + 1; j < ao.size();)
-        {
-            float d = hypot(ao[i].first - ao[j].first, ao[i].second - ao[j].second);
-            if (d < _float_epsilon)
-            {
-                ao[j] = ao.back();
-                ao.pop_back();
-            }
-            else
-            {
-                j++;
-            }
-        }
-    }
-    
-    for (std::uint32_t i = 0; i < bo.size(); i++)
-    {
-        for (std::uint32_t j = i + 1; j < bo.size();)
-        {
-            float d = hypot(bo[i].first - bo[j].first, bo[i].second - bo[j].second);
-            if (d < _float_epsilon)
-            {
-                bo[j] = bo.back();
-                bo.pop_back();
-            }
-            else
-            {
-                j++;
-            }
-        }
-    }
-    
-    if (ao.size() != 2 || bo.size() != 2)
-    {
-        return false;
-    }
-    aox1 = ao[0].first;
-    aoy1 = ao[0].second;
-    aox2 = ao[1].first;
-    aoy2 = ao[1].second;
-    
-    box1 = bo[0].first;
-    boy1 = bo[0].second;
-    box2 = bo[1].first;
-    boy2 = bo[1].second;
-    float alen = hypot(aox2 - aox1, aoy2 - aoy1);
-    float blen = hypot(box2 - box1, boy2 - boy1);
-    return fabs(alen - blen) < _float_epsilon;
-}
-               
-    
-float z_extractor::_calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
-                                                    float bx1, float by1, float bx2, float by2)
-{
-    float aox1;
-    float aoy1;
-    float aox2;
-    float aoy2;
-    float box1;
-    float boy1;
-    float box2;
-    float boy2;
-    if (_calc_parallel_lines_overlap(ax1, ay1, ax2, ay2,
-                                    bx1, by1, bx2, by2,
-                                    aox1, aoy1, aox2, aoy2,
-                                    box1, boy1, box2, boy2))
-    {
-        return hypot(aox2 - aox1, aoy2 - aoy1);
-    }
-    return 0;
-}
-
-void z_extractor::_calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius)
-{
-    y1 = -y1;
-    y2 = -y2;
-    y3 = -y3;
-    
-    float a = x1 - x2;
-    float b = y1 - y2;
-    float c = x1 - x3;
-    float d = y1 - y3;
-    float e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) * 0.5;
-    float f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) * 0.5;
-    float det = b * c - a * d;
-    if (fabs(det) < 1e-5)
-    {
-        radius = -1;
-        x = 0;
-        y = 0;
-    }
-
-    x = -(d * e - b * f) / det;
-    y = -(a * f - c * e) / det;
-    radius = hypot(x1 - x, y1 - y);
-    y = -y;
-}
-
-/* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
-void z_extractor::_calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle)
-{
-    y1 = -y1;
-    y2 = -y2;
-    y3 = -y3;
-    y = -y;
-    
-    float a = hypot(x2 - x1, y2 - y1) * 0.5;
-    float angle1 = asin(a / radius) * 2;
-    
-    a = hypot(x3 - x2, y3 - y2) * 0.5;
-    float angle2 = asin(a / radius) * 2;
-    angle = angle1 + angle2;
-    
-    /* <0 为顺时针方向 */
-    if ((x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2) < 0)
-    {
-        angle = -angle;
-    }
-}
-
-float z_extractor::_calc_arc_len(float radius, float angle)
-{
-    return radius * fabs(angle);
-}
 
 
 float z_extractor::_get_segment_len(const z_extractor::segment& s)
@@ -3620,9 +2543,9 @@ float z_extractor::_get_segment_len(const z_extractor::segment& s)
         float cy;
         float radius;
         float angle;
-        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
-        _calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
-        return _calc_arc_len(radius, angle);
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
+        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
+        return calc_arc_len(radius, angle);
     }
     else
     {
@@ -3638,9 +2561,9 @@ void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, 
         float cy;
         float arc_radius;
         float arc_angle;
-        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
-        _calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
-        float arc_len = _calc_arc_len(arc_radius, arc_angle);
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
+        float arc_len = calc_arc_len(arc_radius, arc_angle);
         
         float angle = arc_angle * offset / arc_len;
         
@@ -3652,7 +2575,7 @@ void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, 
     }
     else
     {
-        float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
         x = s.start.x + offset * cos(angle);
         y = -(-s.start.y + offset * sin(angle));
     }
@@ -3668,11 +2591,11 @@ void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, floa
         float cx;
         float cy;
         float arc_radius;
-        _calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
+        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
         
         _get_segment_pos(s, offset, x, y);
         
-        float rad_left = _calc_angle(cx, cy, x, y);
+        float rad_left = calc_angle(cx, cy, x, y);
         float rad_right = rad_left - (float)M_PI;
         
         /* >0 弧线为逆时针方向 */
@@ -3690,7 +2613,7 @@ void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, floa
     {
         float x = 0;
         float y = 0;
-        float angle = _calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
+        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
         float rad_left = angle + (float)M_PI_2;
         float rad_right = angle - (float)M_PI_2;
         
@@ -3741,7 +2664,7 @@ float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const 
                     && img_x >= 0 && img_x < img.cols)
                 || img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) > 0)
             {
-                float dist = _calc_dist(x, y, v.at.x, v.at.y);
+                float dist = calc_dist(x, y, v.at.x, v.at.y);
                 if (dist * 2 < diameter)
                 {
                     diameter = dist * 2;
@@ -3765,20 +2688,20 @@ bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor:
         return false;
     }
     
-    float a1 = _calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
-    float a2 = _calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
-    float a22 = _calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
+    float a1 = calc_angle(s1.start.x, s1.start.y, s1.end.x, s1.end.y);
+    float a2 = calc_angle(s2.start.x, s2.start.y, s2.end.x, s2.end.y);
+    float a22 = calc_angle(s2.end.x, s2.end.y, s2.start.x, s2.start.y);
     if (fabs(a1 - a2) > _float_epsilon && fabs(a1 - a22) > _float_epsilon)
     {
         return false;
     }
-    float dist = _calc_p2line_dist(s1.start.x, s1.start.y, s1.end.x, s1.end.y, s2.start.x, s2.start.y);
+    float dist = calc_p2line_dist(s1.start.x, s1.start.y, s1.end.x, s1.end.y, s2.start.x, s2.start.y);
     if (dist > coupled_max_d)
     {
         return false;
     }
     
-    float ovlen = _calc_parallel_lines_overlap_len(s1.start.x, s1.start.y, s1.end.x, s1.end.y,
+    float ovlen = calc_parallel_lines_overlap_len(s1.start.x, s1.start.y, s1.end.x, s1.end.y,
                                         s2.start.x, s2.start.y, s2.end.x, s2.end.y);
     if (ovlen < coupled_min_len)
     {
@@ -3791,8 +2714,8 @@ bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor:
 
 void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2)
 {
-    float d1 = _calc_dist(x1, y1, s.start.x, s.start.y);
-    float d2 = _calc_dist(x2, y2, s.start.x, s.start.y);
+    float d1 = calc_dist(x1, y1, s.start.x, s.start.y);
+    float d2 = calc_dist(x2, y2, s.start.x, s.start.y);
     
     float limit = 0.0254;
     
@@ -3813,7 +2736,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
         {
             idx = 0;
         }
-        float d = _calc_dist(x2, y2, s.end.x, s.end.y);
+        float d = calc_dist(x2, y2, s.end.x, s.end.y);
         if (d > limit)
         {
             pcb_point p;
@@ -3836,7 +2759,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
         {
             idx = 0;
         }
-        float d = _calc_dist(x1, y1, s.end.x, s.end.y);
+        float d = calc_dist(x1, y1, s.end.x, s.end.y);
         if (d > limit)
         {
             pcb_point p;
