@@ -1,6 +1,6 @@
 #include "make_cir.h"
 #include <vector>
-#include "kicad_pcb_sim.h"
+#include "z_extractor.h"
 
 make_cir::make_cir()
 {
@@ -72,7 +72,7 @@ std::string make_cir::make(const char *cir_file, const std::set<std::string>& ne
                     if (net_names.count(v[i]))
                     {
                         const std::string& net_name = v[i];
-                        sprintf(buf, "%s ", kicad_pcb_sim::gen_pad_net_name(v[0], kicad_pcb_sim::format_net_name(net_name)).c_str());
+                        sprintf(buf, "%s ", z_extractor::gen_pad_net_name(v[0], z_extractor::format_net_name(net_name)).c_str());
                         cir += buf;
                     }
                     else

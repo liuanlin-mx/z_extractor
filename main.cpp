@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <math.h>
-#include "kicad_pcb_sim.h"
+#include "z_extractor.h"
 #include <opencv2/opencv.hpp>
 #include "make_cir.h"
 
@@ -41,7 +41,7 @@ static void _parse_coupled_net(const char *str, std::list<std::pair<std::string,
 
 int main(int argc, char **argv)
 {
-    kicad_pcb_sim pcb;
+    z_extractor pcb;
     static char buf[16 * 1024 * 1024];
     std::list<std::string> nets;
     std::list<std::pair<std::string, std::string> > coupled_nets;

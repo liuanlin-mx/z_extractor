@@ -1,7 +1,7 @@
 #include <float.h>
 #include <math.h>
 #include <omp.h>
-#include "kicad_pcb_sim.h"
+#include "z_extractor.h"
 #include <opencv2/opencv.hpp>
 #include <fasthenry.h>
 #include "atlc.h"
@@ -16,7 +16,7 @@
 #define log_info(fmt, args...) printf(fmt, ##args)
 
 #define DBG_IMG 0
-kicad_pcb_sim::kicad_pcb_sim()
+z_extractor::z_extractor()
 {
     _Z0_step = 0.5;
     _Z0_w_ratio = 10;
@@ -49,12 +49,12 @@ kicad_pcb_sim::kicad_pcb_sim()
     }
 }
 
-kicad_pcb_sim::~kicad_pcb_sim()
+z_extractor::~z_extractor()
 {
 }
 
 
-bool kicad_pcb_sim::parse(const char *str)
+bool z_extractor::parse(const char *str)
 {
     while (*str)
     {
@@ -130,7 +130,7 @@ bool kicad_pcb_sim::parse(const char *str)
 
 
 
-std::list<kicad_pcb_sim::segment> kicad_pcb_sim::get_segments(std::uint32_t net_id)
+std::list<z_extractor::segment> z_extractor::get_segments(std::uint32_t net_id)
 {
     std::list<segment> segments;
     auto v = _segments.equal_range(net_id);
@@ -145,7 +145,7 @@ std::list<kicad_pcb_sim::segment> kicad_pcb_sim::get_segments(std::uint32_t net_
 }
 
 
-std::list<kicad_pcb_sim::pad> kicad_pcb_sim::get_pads(std::uint32_t net_id)
+std::list<z_extractor::pad> z_extractor::get_pads(std::uint32_t net_id)
 {
     std::list<pad> pads;
     auto p = _pads.equal_range(net_id);
@@ -160,7 +160,7 @@ std::list<kicad_pcb_sim::pad> kicad_pcb_sim::get_pads(std::uint32_t net_id)
 }
 
 
-std::list<kicad_pcb_sim::via> kicad_pcb_sim::get_vias(std::uint32_t net_id)
+std::list<z_extractor::via> z_extractor::get_vias(std::uint32_t net_id)
 {
     std::list<via> vias;
     auto v = _vias.equal_range(net_id);
@@ -175,7 +175,7 @@ std::list<kicad_pcb_sim::via> kicad_pcb_sim::get_vias(std::uint32_t net_id)
 }
 
 
-std::list<kicad_pcb_sim::zone> kicad_pcb_sim::get_zones(std::uint32_t net_id)
+std::list<z_extractor::zone> z_extractor::get_zones(std::uint32_t net_id)
 {
     std::list<zone> zones;
     auto z = _zones.equal_range(net_id);
@@ -190,18 +190,18 @@ std::list<kicad_pcb_sim::zone> kicad_pcb_sim::get_zones(std::uint32_t net_id)
 }
 
 
-std::vector<std::list<kicad_pcb_sim::segment> > kicad_pcb_sim::get_segments_sort(std::uint32_t net_id)
+std::vector<std::list<z_extractor::segment> > z_extractor::get_segments_sort(std::uint32_t net_id)
 {
-    std::vector<std::list<kicad_pcb_sim::segment> > v_segments;
-    std::list<kicad_pcb_sim::segment> segments = get_segments(net_id);
+    std::vector<std::list<z_extractor::segment> > v_segments;
+    std::list<z_extractor::segment> segments = get_segments(net_id);
     while (segments.size())
     {
-        std::list<kicad_pcb_sim::segment> s_list;
-        kicad_pcb_sim::segment first = segments.front();
+        std::list<z_extractor::segment> s_list;
+        z_extractor::segment first = segments.front();
         segments.pop_front();
         s_list.push_back(first);
-        kicad_pcb_sim::segment tmp = first;
-        kicad_pcb_sim::segment next;
+        z_extractor::segment tmp = first;
+        z_extractor::segment next;
         
         while (_segments_get_next(segments, next, tmp.start.x, tmp.start.y, tmp.layer_name))
         {
@@ -239,7 +239,7 @@ std::vector<std::list<kicad_pcb_sim::segment> > kicad_pcb_sim::get_segments_sort
     return v_segments;
 }
 
-std::string kicad_pcb_sim::get_net_name(std::uint32_t net_id)
+std::string z_extractor::get_net_name(std::uint32_t net_id)
 {
     if (_nets.count(net_id))
     {
@@ -248,7 +248,7 @@ std::string kicad_pcb_sim::get_net_name(std::uint32_t net_id)
     return "";
 }
 
-std::uint32_t kicad_pcb_sim::get_net_id(std::string name)
+std::uint32_t z_extractor::get_net_id(std::string name)
 {
     for (const auto& net: _nets)
     {
@@ -261,13 +261,13 @@ std::uint32_t kicad_pcb_sim::get_net_id(std::string name)
 }
 
 
-bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call)
+bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
     std::string sub;
     char buf[512] = {0};
     
     std::list<pad> pads = get_pads(net_id);
-    std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
+    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
     std::list<via> vias = get_vias(net_id);
     
 
@@ -362,7 +362,7 @@ bool kicad_pcb_sim::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<
     return true;
 }
 
-bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
+bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
             std::string& ckt, std::set<std::string>& reference_value, std::string& call)
 {
     std::string sub;
@@ -410,7 +410,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
     //构建fasthenry
     for (auto& net_id: net_ids)
     {
-        std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
+        std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
         
         for (auto& s_list: v_segments)
         {
@@ -459,7 +459,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
         std::string call_param;
         for (auto& net_id: net_ids)
         {
-            std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
+            std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
             for (auto& s_list: v_segments)
             {
                 for (auto& s: s_list)
@@ -487,7 +487,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
     /* 计算走线参数 并生成电路*/
     for (auto& net_id: net_ids)
     {
-        std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
+        std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
         for (auto& s_list: v_segments)
         {
             std::string ckt_net_name;
@@ -547,7 +547,7 @@ bool kicad_pcb_sim::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<s
 
 
 
-bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
+bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg)
 {
     std::string comment;
@@ -561,7 +561,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     }
     
     std::list<pad> pads = get_pads(net_id);
-    std::vector<std::list<kicad_pcb_sim::segment> > v_segments = get_segments_sort(net_id);
+    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
     std::list<via> vias = get_vias(net_id);
     
     /* 生成子电路参数和调用 */
@@ -612,13 +612,13 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
     for (auto& s_list: v_segments)
     {
         std::string ckt_net_name;
-        std::vector<kicad_pcb_sim::segment> v_list(s_list.begin(), s_list.end());
+        std::vector<z_extractor::segment> v_list(s_list.begin(), s_list.end());
         
         #pragma omp parallel for
         for (std::uint32_t i = 0; i < v_list.size(); i++)
         {
             char buf[512];
-            kicad_pcb_sim::segment& s = v_list[i];
+            z_extractor::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
             std::vector<std::pair<float, float> > v_Z0_td_;
@@ -676,7 +676,7 @@ bool kicad_pcb_sim::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_
 }
 
 
-bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
+bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& reference_value, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg)
 {
@@ -687,18 +687,18 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     }
     
     std::list<pad> pads0 = get_pads(net_id0);
-    std::vector<std::list<kicad_pcb_sim::segment> > v_segments0 = get_segments_sort(net_id0);
+    std::vector<std::list<z_extractor::segment> > v_segments0 = get_segments_sort(net_id0);
     std::list<via> vias0 = get_vias(net_id0);
     
     std::list<pad> pads1 = get_pads(net_id1);
-    std::vector<std::list<kicad_pcb_sim::segment> > v_segments1 = get_segments_sort(net_id1);
+    std::vector<std::list<z_extractor::segment> > v_segments1 = get_segments_sort(net_id1);
     std::list<via> vias1 = get_vias(net_id1);
     
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC3, cv::Scalar(0, 0, 0));
 #endif
 
-    std::multimap<float, std::pair<kicad_pcb_sim::segment, kicad_pcb_sim::segment> > coupler_segment;
+    std::multimap<float, std::pair<z_extractor::segment, z_extractor::segment> > coupler_segment;
     /* 找到符合耦合条件的走线 */
     for (auto& s_list0: v_segments0)
     {
@@ -727,12 +727,12 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
                                                         aox1, aoy1, aox2, aoy2,
                                                         box1, boy1, box2, boy2))
                         {
-                            std::list<kicad_pcb_sim::segment> ss0;
-                            std::list<kicad_pcb_sim::segment> ss1;
+                            std::list<z_extractor::segment> ss0;
+                            std::list<z_extractor::segment> ss1;
                             _split_segment(s0, ss0, aox1, aoy1, aox2, aoy2);
                             _split_segment(s1, ss1, box1, boy1, box2, boy2);
                             float couple_len = _calc_dist(aox1, aoy1, aox2, aoy2);
-                            coupler_segment.emplace(1.0 / couple_len, std::pair<kicad_pcb_sim::segment, kicad_pcb_sim::segment>(ss0.front(), ss1.front()));
+                            coupler_segment.emplace(1.0 / couple_len, std::pair<z_extractor::segment, z_extractor::segment>(ss0.front(), ss1.front()));
                             
                             ss0.pop_front();
                             ss1.pop_front();
@@ -865,7 +865,7 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
     
-    std::vector<std::pair<kicad_pcb_sim::segment, kicad_pcb_sim::segment> > v_coupler_segment;
+    std::vector<std::pair<z_extractor::segment, z_extractor::segment> > v_coupler_segment;
     for (auto& ss_item: coupler_segment)
     {
         v_coupler_segment.push_back(ss_item.second);
@@ -874,8 +874,8 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     #pragma omp parallel for
     for (std::uint32_t i = 0; i < v_coupler_segment.size(); i++)
     {
-        kicad_pcb_sim::segment& s0 = v_coupler_segment[i].first;
-        kicad_pcb_sim::segment& s1 = v_coupler_segment[i].second;
+        z_extractor::segment& s0 = v_coupler_segment[i].first;
+        z_extractor::segment& s1 = v_coupler_segment[i].second;
         
         std::vector<std::pair<float, float> > v_Z0_td_[2];
         std::vector<std::pair<float, float> > v_Zodd_td_;
@@ -917,13 +917,13 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
     for (auto& s_list: v_segments0)
     {
         std::string ckt_net_name;
-        std::vector<kicad_pcb_sim::segment> v_list(s_list.begin(), s_list.end());
+        std::vector<z_extractor::segment> v_list(s_list.begin(), s_list.end());
         
         #pragma omp parallel for
         for (std::uint32_t i = 0; i < v_list.size(); i++)
         {
             char buf[512];
-            kicad_pcb_sim::segment& s = v_list[i];
+            z_extractor::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
             std::vector<std::pair<float, float> > v_Z0_td_;
@@ -1017,16 +1017,16 @@ bool kicad_pcb_sim::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t n
 }
 
 
-std::string kicad_pcb_sim::gen_zone_fasthenry(std::uint32_t net_id, std::set<kicad_pcb_sim::pcb_point>& points)
+std::string z_extractor::gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points)
 {
     std::string text;
     char buf[512];
-    std::list<kicad_pcb_sim::zone> zones = get_zones(net_id);
+    std::list<z_extractor::zone> zones = get_zones(net_id);
     std::uint32_t i = 0;
     points.clear();
     for (auto& z: zones)
     {
-        std::list<kicad_pcb_sim::cond> conds;
+        std::list<z_extractor::cond> conds;
         
         _get_zone_cond(z, conds, points);
         std::string name = _format_layer_name(z.layer_name);
@@ -1057,7 +1057,7 @@ std::string kicad_pcb_sim::gen_zone_fasthenry(std::uint32_t net_id, std::set<kic
 }
 
 
-void kicad_pcb_sim::set_calc(std::uint32_t type)
+void z_extractor::set_calc(std::uint32_t type)
 {
     if (type == Z0_calc::Z0_CALC_MMTL)
     {
@@ -1088,7 +1088,7 @@ void kicad_pcb_sim::set_calc(std::uint32_t type)
 }
 
 
-void kicad_pcb_sim::dump()
+void z_extractor::dump()
 {
     for (auto& i : _nets)
     {
@@ -1159,7 +1159,7 @@ void kicad_pcb_sim::dump()
 }
 
 
-const char *kicad_pcb_sim::_parse_label(const char *str, std::string& label)
+const char *z_extractor::_parse_label(const char *str, std::string& label)
 {
     while (*str != ' ' && *str != '\r' && *str != '\n')
     {
@@ -1169,7 +1169,7 @@ const char *kicad_pcb_sim::_parse_label(const char *str, std::string& label)
     return str;
 }
 
-const char *kicad_pcb_sim::_skip(const char *str)
+const char *z_extractor::_skip(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1192,7 +1192,7 @@ const char *kicad_pcb_sim::_skip(const char *str)
     return str;
 }
 
-const char *kicad_pcb_sim::_parse_zone(const char *str, std::vector<zone>& zones)
+const char *z_extractor::_parse_zone(const char *str, std::vector<zone>& zones)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1238,7 +1238,7 @@ const char *kicad_pcb_sim::_parse_zone(const char *str, std::vector<zone>& zones
 }
 
 
-const char *kicad_pcb_sim::_parse_filled_polygon(const char *str, zone& z)
+const char *z_extractor::_parse_filled_polygon(const char *str, zone& z)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1276,7 +1276,7 @@ const char *kicad_pcb_sim::_parse_filled_polygon(const char *str, zone& z)
 }
 
 
-const char *kicad_pcb_sim::_parse_net(const char *str, std::uint32_t& id, std::string& name)
+const char *z_extractor::_parse_net(const char *str, std::uint32_t& id, std::string& name)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1313,7 +1313,7 @@ const char *kicad_pcb_sim::_parse_net(const char *str, std::uint32_t& id, std::s
 }
 
 
-const char *kicad_pcb_sim::_parse_segment(const char *str, segment& s)
+const char *z_extractor::_parse_segment(const char *str, segment& s)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1384,7 +1384,7 @@ const char *kicad_pcb_sim::_parse_segment(const char *str, segment& s)
     return str;
 }
 
-const char *kicad_pcb_sim::_parse_via(const char *str, via& v)
+const char *z_extractor::_parse_via(const char *str, via& v)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1445,7 +1445,7 @@ const char *kicad_pcb_sim::_parse_via(const char *str, via& v)
 }
 
 
-const char *kicad_pcb_sim::_parse_number(const char *str, float &num)
+const char *z_extractor::_parse_number(const char *str, float &num)
 {
     char tmp[32] = {0};
     std::uint32_t i = 0;
@@ -1463,7 +1463,7 @@ const char *kicad_pcb_sim::_parse_number(const char *str, float &num)
 }
 
 
-const char *kicad_pcb_sim::_parse_string(const char *str, std::string& text)
+const char *z_extractor::_parse_string(const char *str, std::string& text)
 {
     if (*str == '"')
     {
@@ -1487,7 +1487,7 @@ const char *kicad_pcb_sim::_parse_string(const char *str, std::string& text)
 }
 
 
-const char *kicad_pcb_sim::_parse_postion(const char *str, float &x, float& y)
+const char *z_extractor::_parse_postion(const char *str, float &x, float& y)
 {
     while (*str == ' ') str++;
     str = _parse_number(str, x);
@@ -1498,7 +1498,7 @@ const char *kicad_pcb_sim::_parse_postion(const char *str, float &x, float& y)
 
 
 
-const char *kicad_pcb_sim::_parse_tstamp(const char *str, std::string& tstamp)
+const char *z_extractor::_parse_tstamp(const char *str, std::string& tstamp)
 {
     while (*str == ' ') str++;
     while (*str != ')')
@@ -1510,7 +1510,7 @@ const char *kicad_pcb_sim::_parse_tstamp(const char *str, std::string& tstamp)
 }
 
 
-const char *kicad_pcb_sim::_parse_layers(const char *str, std::list<std::string>& layers)
+const char *z_extractor::_parse_layers(const char *str, std::list<std::string>& layers)
 {
     while (*str != ')')
     {
@@ -1526,7 +1526,7 @@ const char *kicad_pcb_sim::_parse_layers(const char *str, std::list<std::string>
 }
 
 
-const char *kicad_pcb_sim::_parse_footprint(const char *str)
+const char *z_extractor::_parse_footprint(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1596,7 +1596,7 @@ const char *kicad_pcb_sim::_parse_footprint(const char *str)
 }
 
 
-const char *kicad_pcb_sim::_parse_at(const char *str, float &x, float& y, float& angle)
+const char *z_extractor::_parse_at(const char *str, float &x, float& y, float& angle)
 {
     while (*str == ' ') str++;
     str = _parse_number(str, x);
@@ -1616,7 +1616,7 @@ const char *kicad_pcb_sim::_parse_at(const char *str, float &x, float& y, float&
 
 
 
-const char *kicad_pcb_sim::_parse_reference(const char *str, std::string& footprint_name)
+const char *z_extractor::_parse_reference(const char *str, std::string& footprint_name)
 {
     while (*str == ' ') str++;
     str = _parse_string(str, footprint_name);
@@ -1624,7 +1624,7 @@ const char *kicad_pcb_sim::_parse_reference(const char *str, std::string& footpr
 }
 
 
-const char *kicad_pcb_sim::_parse_pad(const char *str, pad& p)
+const char *z_extractor::_parse_pad(const char *str, pad& p)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1685,7 +1685,7 @@ const char *kicad_pcb_sim::_parse_pad(const char *str, pad& p)
 }
 
 
-const char *kicad_pcb_sim::_parse_setup(const char *str)
+const char *z_extractor::_parse_setup(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1725,7 +1725,7 @@ const char *kicad_pcb_sim::_parse_setup(const char *str)
 }
 
 
-const char *kicad_pcb_sim::_parse_stackup(const char *str)
+const char *z_extractor::_parse_stackup(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1764,7 +1764,7 @@ const char *kicad_pcb_sim::_parse_stackup(const char *str)
     return str;
 }
 
-const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
+const char *z_extractor::_parse_stackup_layer(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1840,7 +1840,7 @@ const char *kicad_pcb_sim::_parse_stackup_layer(const char *str)
 }
 
 
-const char *kicad_pcb_sim::_parse_edge(const char *str)
+const char *z_extractor::_parse_edge(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -1967,7 +1967,7 @@ const char *kicad_pcb_sim::_parse_edge(const char *str)
 }
 
 
-void kicad_pcb_sim::_get_pad_pos(const pad& p, float& x, float& y)
+void z_extractor::_get_pad_pos(const pad& p, float& x, float& y)
 {
     float angle = p.ref_at_angle * M_PI / 180;
     float at_x = p.at.x;
@@ -1980,7 +1980,7 @@ void kicad_pcb_sim::_get_pad_pos(const pad& p, float& x, float& y)
     y = p.ref_at.y - y1;
 }
 
-std::string kicad_pcb_sim::_get_tstamp_short(const std::string& tstamp)
+std::string z_extractor::_get_tstamp_short(const std::string& tstamp)
 {
     size_t pos = tstamp.find('-');
     if (pos != tstamp.npos)
@@ -1991,7 +1991,7 @@ std::string kicad_pcb_sim::_get_tstamp_short(const std::string& tstamp)
 }
 
 
-std::string kicad_pcb_sim::_format_net(const std::string& name)
+std::string z_extractor::_format_net(const std::string& name)
 {
     std::string tmp = name;
     for (auto& c: tmp)
@@ -2007,7 +2007,7 @@ std::string kicad_pcb_sim::_format_net(const std::string& name)
     return tmp;
 }
 
-std::string kicad_pcb_sim::_pos2net(float x, float y, const std::string& layer)
+std::string z_extractor::_pos2net(float x, float y, const std::string& layer)
 {
     char buf[128] = {0};
     sprintf(buf, "%d_%d", std::int32_t(x * 1000), std::int32_t(y * 1000));
@@ -2016,19 +2016,19 @@ std::string kicad_pcb_sim::_pos2net(float x, float y, const std::string& layer)
 }
 
 
-std::string kicad_pcb_sim::_format_net_name(const std::string& net_name)
+std::string z_extractor::_format_net_name(const std::string& net_name)
 {
     return "NET_" + _format_net(net_name);
 }
 
 
-std::string kicad_pcb_sim::_format_layer_name(std::string layer_name)
+std::string z_extractor::_format_layer_name(std::string layer_name)
 {
     return _format_net(layer_name);
 }
 
 
-std::string kicad_pcb_sim::_gen_pad_net_name(const std::string& reference_value, const std::string& net_name)
+std::string z_extractor::_gen_pad_net_name(const std::string& reference_value, const std::string& net_name)
 {
     char buf[256] = {0};
     sprintf(buf, "%s_%s", reference_value.c_str(), net_name.c_str());
@@ -2036,7 +2036,7 @@ std::string kicad_pcb_sim::_gen_pad_net_name(const std::string& reference_value,
 }
 
 
-std::vector<std::string> kicad_pcb_sim::_get_all_cu_layer()
+std::vector<std::string> z_extractor::_get_all_cu_layer()
 {
     std::vector<std::string> layers;
     for (auto& l: _layers)
@@ -2050,7 +2050,7 @@ std::vector<std::string> kicad_pcb_sim::_get_all_cu_layer()
     return layers;
 }
 
-std::vector<std::string> kicad_pcb_sim::_get_all_dielectric_layer()
+std::vector<std::string> z_extractor::_get_all_dielectric_layer()
 {
     std::vector<std::string> layers;
     for (auto& l: _layers)
@@ -2067,7 +2067,7 @@ std::vector<std::string> kicad_pcb_sim::_get_all_dielectric_layer()
     return layers;
 }
 
-std::vector<std::string> kicad_pcb_sim::_get_all_mask_layer()
+std::vector<std::string> z_extractor::_get_all_mask_layer()
 {
     std::vector<std::string> layers;
     for (auto& l: _layers)
@@ -2082,7 +2082,7 @@ std::vector<std::string> kicad_pcb_sim::_get_all_mask_layer()
 }
 
 
-std::vector<std::string> kicad_pcb_sim::_get_via_layers(const via& v)
+std::vector<std::string> z_extractor::_get_via_layers(const via& v)
 {
     std::vector<std::string> layers;
     bool flag = false;
@@ -2117,11 +2117,11 @@ std::vector<std::string> kicad_pcb_sim::_get_via_layers(const via& v)
 }
 
 
-std::vector<std::string> kicad_pcb_sim::_get_via_conn_layers(const kicad_pcb_sim::via& v)
+std::vector<std::string> z_extractor::_get_via_conn_layers(const z_extractor::via& v)
 {
     std::vector<std::string> layers;
     std::set<std::string> layer_set;
-    std::list<kicad_pcb_sim::segment> segments = get_segments(v.net);
+    std::list<z_extractor::segment> segments = get_segments(v.net);
     for (const auto& s: segments)
     {
         if (_point_equal(s.start.x, s.start.y, v.at.x, v.at.y) || _point_equal(s.end.x, s.end.y, v.at.x, v.at.y))
@@ -2141,7 +2141,7 @@ std::vector<std::string> kicad_pcb_sim::_get_via_conn_layers(const kicad_pcb_sim
 }
 
 
-float kicad_pcb_sim::_get_via_conn_len(const kicad_pcb_sim::via& v)
+float z_extractor::_get_via_conn_len(const z_extractor::via& v)
 {
     float min_z = 1;
     float max_z = -1;
@@ -2168,14 +2168,14 @@ float kicad_pcb_sim::_get_via_conn_len(const kicad_pcb_sim::via& v)
 }
 
 
-std::vector<std::string> kicad_pcb_sim::_get_pad_conn_layers(const kicad_pcb_sim::pad& p)
+std::vector<std::string> z_extractor::_get_pad_conn_layers(const z_extractor::pad& p)
 {
     float x;
     float y;
     _get_pad_pos(p, x, y);
     
     std::set<std::string> layer_set;
-    std::list<kicad_pcb_sim::segment> segments = get_segments(p.net);
+    std::list<z_extractor::segment> segments = get_segments(p.net);
     for (const auto& s: segments)
     {
         if (_point_equal(s.start.x, s.start.y, x, y) || _point_equal(s.end.x, s.end.y, x, y))
@@ -2208,7 +2208,7 @@ std::vector<std::string> kicad_pcb_sim::_get_pad_conn_layers(const kicad_pcb_sim
     return layers;
 }
 
-float kicad_pcb_sim::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
+float z_extractor::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {
     bool flag = false;
     float dist = 0;
@@ -2235,7 +2235,7 @@ float kicad_pcb_sim::_get_layer_distance(const std::string& layer_name1, const s
 }
 
 
-float kicad_pcb_sim::_get_layer_thickness(const std::string& layer_name)
+float z_extractor::_get_layer_thickness(const std::string& layer_name)
 {
     for (auto& l: _layers)
     {
@@ -2248,7 +2248,7 @@ float kicad_pcb_sim::_get_layer_thickness(const std::string& layer_name)
 }
 
 
-float kicad_pcb_sim::_get_layer_z_axis(const std::string& layer_name)
+float z_extractor::_get_layer_z_axis(const std::string& layer_name)
 {
     float dist = 0;
     for (auto& l: _layers)
@@ -2262,7 +2262,7 @@ float kicad_pcb_sim::_get_layer_z_axis(const std::string& layer_name)
     return dist;
 }
 
-float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_name)
+float z_extractor::_get_layer_epsilon_r(const std::string& layer_name)
 {
     for (auto& l: _layers)
     {
@@ -2275,7 +2275,7 @@ float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_name)
 }
 
 /* 取上下两层介电常数的均值 */
-float kicad_pcb_sim::_get_cu_layer_epsilon_r(const std::string& layer_name)
+float z_extractor::_get_cu_layer_epsilon_r(const std::string& layer_name)
 {
     layer up;
     layer down;
@@ -2322,7 +2322,7 @@ float kicad_pcb_sim::_get_cu_layer_epsilon_r(const std::string& layer_name)
     return (er1 + er2) * 0.5;
 }
 
-float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
+float z_extractor::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
 {
     float epsilon_r = 0;
     bool flag = false;
@@ -2349,7 +2349,7 @@ float kicad_pcb_sim::_get_layer_epsilon_r(const std::string& layer_start, const 
     return 1;
 }
 
-float kicad_pcb_sim::_get_board_thickness()
+float z_extractor::_get_board_thickness()
 {
     float dist = 0;
     for (auto& l: _layers)
@@ -2360,7 +2360,7 @@ float kicad_pcb_sim::_get_board_thickness()
 }
 
 
-float kicad_pcb_sim::_get_cu_min_thickness()
+float z_extractor::_get_cu_min_thickness()
 {
     float thickness = 1;
     for (const auto& l: _layers)
@@ -2376,19 +2376,19 @@ float kicad_pcb_sim::_get_cu_min_thickness()
     return thickness;
 }
 
-bool kicad_pcb_sim::_float_equal(float a, float b)
+bool z_extractor::_float_equal(float a, float b)
 {
     return fabs(a - b) < _float_epsilon;
 }
 
 
-bool kicad_pcb_sim::_point_equal(float x1, float y1, float x2, float y2)
+bool z_extractor::_point_equal(float x1, float y1, float x2, float y2)
 {
     return _float_equal(x1, x2) && _float_equal(y1, y2);
 }
 
 
-bool kicad_pcb_sim::_segments_get_next(std::list<kicad_pcb_sim::segment>& segments, kicad_pcb_sim::segment& s, float x, float y, const std::string& layer_name)
+bool z_extractor::_segments_get_next(std::list<z_extractor::segment>& segments, z_extractor::segment& s, float x, float y, const std::string& layer_name)
 {
     for (auto it = segments.begin(); it != segments.end(); it++)
     {
@@ -2410,18 +2410,18 @@ bool kicad_pcb_sim::_segments_get_next(std::list<kicad_pcb_sim::segment>& segmen
 }
 
 
-bool kicad_pcb_sim::_check_segments(std::uint32_t net_id)
+bool z_extractor::_check_segments(std::uint32_t net_id)
 {
-    std::list<kicad_pcb_sim::segment> segments = get_segments(net_id);
-    std::list<kicad_pcb_sim::pad> pads = get_pads(net_id);
-    std::list<kicad_pcb_sim::via> vias = get_vias(net_id);
+    std::list<z_extractor::segment> segments = get_segments(net_id);
+    std::list<z_extractor::pad> pads = get_pads(net_id);
+    std::list<z_extractor::via> vias = get_vias(net_id);
     
-    std::list<kicad_pcb_sim::segment> no_conn;
-    std::list<kicad_pcb_sim::segment> conn;
+    std::list<z_extractor::segment> no_conn;
+    std::list<z_extractor::segment> conn;
     
     while (!segments.empty())
     {
-        kicad_pcb_sim::segment s = segments.front();
+        z_extractor::segment s = segments.front();
         segments.pop_front();
         bool start = false;
         bool end = false;
@@ -2566,7 +2566,7 @@ bool kicad_pcb_sim::_check_segments(std::uint32_t net_id)
     return no_conn.empty();
 }
 
-float kicad_pcb_sim::_calc_segment_r(const segment& s)
+float z_extractor::_calc_segment_r(const segment& s)
 {
     //R = ρ * l / (w * h)  ρ:电导率(cu:0.0172) l:长度(m) w:线宽(mm) h:线厚度(mm) R:电阻(欧姆)
     float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
@@ -2575,14 +2575,14 @@ float kicad_pcb_sim::_calc_segment_r(const segment& s)
 }
 
 
-float kicad_pcb_sim::_calc_segment_l(const segment& s)
+float z_extractor::_calc_segment_l(const segment& s)
 {
     float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
     return 2 * l * (log(2 * l / s.width) + 0.5 + 0.2235 * s.width / l);
 }
 
 
-float kicad_pcb_sim::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
+float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
 {
     float h = _get_layer_distance(layer_name1, layer_name2);
     return h / 5 * (1 + log(4.0 * h / v.drill));
@@ -2596,7 +2596,7 @@ float kicad_pcb_sim::_calc_via_l(const via& v, const std::string& layer_name1, c
 #define IMG_COLS (297.0 * IMG_RATIO)
 #define GRID_SIZE (1 * IMG_RATIO)
 
-void kicad_pcb_sim::_get_zone_cond(const kicad_pcb_sim::zone& z, std::list<cond>& conds, std::set<kicad_pcb_sim::pcb_point>& points)
+void z_extractor::_get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points)
 {
     std::uint32_t w_n = IMG_COLS / GRID_SIZE;
     std::uint32_t h_n = IMG_ROWS / GRID_SIZE;
@@ -2677,11 +2677,11 @@ void kicad_pcb_sim::_get_zone_cond(const kicad_pcb_sim::zone& z, std::list<cond>
 }
 
 
-void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat)
+void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat)
 {
     for (auto ref_id: refs_id)
     {
-        std::list<kicad_pcb_sim::zone> zones = get_zones(ref_id);
+        std::list<z_extractor::zone> zones = get_zones(ref_id);
         for (auto& zone: zones)
         {
             if (zone.pts.size() == 0)
@@ -2709,7 +2709,7 @@ void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::ma
             //cv::waitKey();
         }
         
-        std::vector<std::list<kicad_pcb_sim::segment> > segments = get_segments_sort(ref_id);
+        std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
         for (auto& segment: segments)
         {
             for (auto& s: segment)
@@ -2737,7 +2737,7 @@ void kicad_pcb_sim::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::ma
 }
 
 
-void kicad_pcb_sim::_draw_segment(cv::Mat& img, kicad_pcb_sim::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
+void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
 {
     if (s.is_arc())
     {
@@ -2765,7 +2765,7 @@ void kicad_pcb_sim::_draw_segment(cv::Mat& img, kicad_pcb_sim::segment& s, std::
             cv::Scalar(b, g, r), _cvt_img_len(s.width), cv::LINE_4);
     }
 }
-std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2)
+std::list<std::pair<float, float> > z_extractor::_get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2)
 {
     std::list<std::pair<float, float> > tmp;
     
@@ -2835,7 +2835,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_mat_line(const cv::Mat& 
 }
 
 
-std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s, const std::map<std::string, cv::Mat>& refs_mat, std::vector<std::pair<float, float> >& v_Z0_td)
+std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s, const std::map<std::string, cv::Mat>& refs_mat, std::vector<std::pair<float, float> >& v_Z0_td)
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -3018,7 +3018,7 @@ std::string kicad_pcb_sim::_gen_segment_Z0_ckt_openmp(const std::string& cir_nam
 
 
 
-std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, kicad_pcb_sim::segment& s0, kicad_pcb_sim::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
+std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s0, z_extractor::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
                                                                 std::vector<std::pair<float, float> > v_Z0_td[2],
                                                                 std::vector<std::pair<float, float> >& v_Zodd_td,
                                                                 std::vector<std::pair<float, float> >& v_Zeven_td)
@@ -3029,7 +3029,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
         std::swap(s1.start, s1.end);
     }
     
-    kicad_pcb_sim::segment s;
+    z_extractor::segment s;
     s.start.x = (s0.start.x + s1.start.x) * 0.5;
     s.start.y = (s0.start.y + s1.start.y) * 0.5;
     s.end.x = (s0.end.x + s1.end.x) * 0.5;
@@ -3227,7 +3227,7 @@ std::string kicad_pcb_sim::_gen_segment_coupled_Z0_ckt_openmp(const std::string&
     return  strbuf + cir;
 }
 
-std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
+std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
 {
     char buf[2048] = {0};
     std::string ckt;
@@ -3316,7 +3316,7 @@ std::string kicad_pcb_sim::_gen_via_Z0_ckt(kicad_pcb_sim::via& v, std::map<std::
 }
 
 
-std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
+std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
 {
     char buf[2048] = {0};
     std::string ckt;
@@ -3365,7 +3365,7 @@ std::string kicad_pcb_sim::_gen_via_model_ckt(kicad_pcb_sim::via& v, std::map<st
     return ckt + ".ends\n";
 }
 
-float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
+float z_extractor::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
 {
     float a = hypot(bx - cx, by - cy);
     float b = hypot(ax - cx, ay - cy);
@@ -3374,7 +3374,7 @@ float kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float c
     return acos((a * a + b * b - c * c) / (2. * a * b));
 }
 
-void kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C)
+void z_extractor::_calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C)
 {
     float a = hypot(bx - cx, by - cy);
     float b = hypot(ax - cx, ay - cy);
@@ -3386,7 +3386,7 @@ void kicad_pcb_sim::_calc_angle(float ax, float ay, float bx, float by, float cx
 }
 
 
-float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
+float z_extractor::_calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
 {
     float angle = _calc_angle(x2, y2, x, y, x1, y1);
     
@@ -3403,7 +3403,7 @@ float kicad_pcb_sim::_calc_p2line_dist(float x1, float y1, float x2, float y2, f
 }
 
 
-bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy)
+bool z_extractor::_calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy)
 {
     float A = 0.;
     float B = 0.;
@@ -3446,7 +3446,7 @@ bool kicad_pcb_sim::_calc_p2line_intersection(float x1, float y1, float x2, floa
     return true;
 }
 
-bool kicad_pcb_sim::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
+bool z_extractor::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
                                                 float bx1, float by1, float bx2, float by2,
                                                 float& aox1, float& aoy1, float& aox2, float& aoy2,
                                                 float& box1, float& boy1, float& box2, float& boy2)
@@ -3537,7 +3537,7 @@ bool kicad_pcb_sim::_calc_parallel_lines_overlap(float ax1, float ay1, float ax2
 }
                
     
-float kicad_pcb_sim::_calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
+float z_extractor::_calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
                                                     float bx1, float by1, float bx2, float by2)
 {
     float aox1;
@@ -3558,7 +3558,7 @@ float kicad_pcb_sim::_calc_parallel_lines_overlap_len(float ax1, float ay1, floa
     return 0;
 }
 
-void kicad_pcb_sim::_calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius)
+void z_extractor::_calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius)
 {
     y1 = -y1;
     y2 = -y2;
@@ -3585,7 +3585,7 @@ void kicad_pcb_sim::_calc_arc_center_radius(float x1, float y1, float x2, float 
 }
 
 /* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
-void kicad_pcb_sim::_calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle)
+void z_extractor::_calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle)
 {
     y1 = -y1;
     y2 = -y2;
@@ -3606,13 +3606,13 @@ void kicad_pcb_sim::_calc_arc_angle(float x1, float y1, float x2, float y2, floa
     }
 }
 
-float kicad_pcb_sim::_calc_arc_len(float radius, float angle)
+float z_extractor::_calc_arc_len(float radius, float angle)
 {
     return radius * fabs(angle);
 }
 
 
-float kicad_pcb_sim::_get_segment_len(const kicad_pcb_sim::segment& s)
+float z_extractor::_get_segment_len(const z_extractor::segment& s)
 {
     if (s.is_arc())
     {
@@ -3630,7 +3630,7 @@ float kicad_pcb_sim::_get_segment_len(const kicad_pcb_sim::segment& s)
     }
 }
 
-void kicad_pcb_sim::_get_segment_pos(const kicad_pcb_sim::segment& s, float offset, float& x, float& y)
+void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y)
 {
     if (s.is_arc())
     {
@@ -3659,7 +3659,7 @@ void kicad_pcb_sim::_get_segment_pos(const kicad_pcb_sim::segment& s, float offs
 }
 
 
-void kicad_pcb_sim::_get_segment_perpendicular(const kicad_pcb_sim::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
+void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
 {
     if (s.is_arc())
     {
@@ -3704,7 +3704,7 @@ void kicad_pcb_sim::_get_segment_perpendicular(const kicad_pcb_sim::segment& s, 
 }
 
 
-std::list<std::pair<float, float> > kicad_pcb_sim::_get_segment_ref_plane(const kicad_pcb_sim::segment& s, const cv::Mat& ref, float offset, float w)
+std::list<std::pair<float, float> > z_extractor::_get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w)
 {
     float x_left = 0;
     float y_left = 0;
@@ -3716,7 +3716,7 @@ std::list<std::pair<float, float> > kicad_pcb_sim::_get_segment_ref_plane(const 
 }
 
 
-float kicad_pcb_sim::_get_via_anti_pad_diameter(const kicad_pcb_sim::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
+float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
 {
     float diameter = v.size * 5;
     if (refs_mat.count(layer) == 0)
@@ -3758,7 +3758,7 @@ float kicad_pcb_sim::_get_via_anti_pad_diameter(const kicad_pcb_sim::via& v,  co
     return diameter;
 }
 
-bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pcb_sim::segment& s2, float coupled_max_d, float coupled_min_len)
+bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len)
 {
     if (s1.is_arc() || s2.is_arc())
     {
@@ -3789,7 +3789,7 @@ bool kicad_pcb_sim::_is_coupled(const kicad_pcb_sim::segment& s1, const kicad_pc
 
 
 
-void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<kicad_pcb_sim::segment>& ss, float x1, float y1, float x2, float y2)
+void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2)
 {
     float d1 = _calc_dist(x1, y1, s.start.x, s.start.y);
     float d2 = _calc_dist(x2, y2, s.start.x, s.start.y);
@@ -3851,7 +3851,7 @@ void kicad_pcb_sim::_split_segment(const kicad_pcb_sim::segment& s, std::list<ki
     const char *str[] = {"0", "1", "2", "3", "4"};
     for (std::uint32_t i = 0; i < ps.size() - 1; i++)
     {
-        kicad_pcb_sim::segment tmp = s;
+        z_extractor::segment tmp = s;
         tmp.tstamp = str[i] + tmp.tstamp;
         tmp.start = ps[i];
         tmp.end = ps[i + 1];
