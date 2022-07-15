@@ -3,36 +3,36 @@
 #include <vector>
 #include "calc.h"
 
-static float _float_epsilon = 0.00005;
+static double _float_epsilon = 0.00005;
 
-float calc_angle(float x1, float y1, float x2, float y2)
+double calc_angle(double x1, double y1, double x2, double y2)
 {
     y1 = -y1;
     y2 = -y2;
     return atan2(y2 - y1, x2 - x1);
 }
 
-float calc_dist(float x1, float y1, float x2, float y2)
+double calc_dist(double x1, double y1, double x2, double y2)
 {
     return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
 
-float calc_angle(float ax, float ay, float bx, float by, float cx, float cy)
+double calc_angle(double ax, double ay, double bx, double by, double cx, double cy)
 {
-    float a = hypot(bx - cx, by - cy);
-    float b = hypot(ax - cx, ay - cy);
-    float c = hypot(ax - bx, ay - by);
+    double a = hypot(bx - cx, by - cy);
+    double b = hypot(ax - cx, ay - cy);
+    double c = hypot(ax - bx, ay - by);
     
     return acos((a * a + b * b - c * c) / (2. * a * b));
 }
 
 
-void calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C)
+void calc_angle(double ax, double ay, double bx, double by, double cx, double cy, double& A, double& B, double& C)
 {
-    float a = hypot(bx - cx, by - cy);
-    float b = hypot(ax - cx, ay - cy);
-    float c = hypot(ax - bx, ay - by);
+    double a = hypot(bx - cx, by - cy);
+    double b = hypot(ax - cx, ay - cy);
+    double c = hypot(ax - bx, ay - by);
     
     A = acos((b * b + c * c - a * a) / (2. * b * c));
     B = acos((a * a + c * c - b * b) / (2. * a * c));
@@ -40,16 +40,16 @@ void calc_angle(float ax, float ay, float bx, float by, float cx, float cy, floa
 }
 
 
-float calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
+double calc_p2line_dist(double x1, double y1, double x2, double y2, double x, double y)
 {
-    float angle = calc_angle(x2, y2, x, y, x1, y1);
+    double angle = calc_angle(x2, y2, x, y, x1, y1);
     
-    float d = hypot(x - x1, y - y1);
-    if (angle > (float)M_PI_2)
+    double d = hypot(x - x1, y - y1);
+    if (angle > (double)M_PI_2)
     {
-        angle = (float)M_PI - angle;
+        angle = (double)M_PI - angle;
     }
-    if (fabs(angle - (float)M_PI_2) < FLT_EPSILON)
+    if (fabs(angle - (double)M_PI_2) < FLT_EPSILON)
     {
         return d;
     }
@@ -57,35 +57,35 @@ float calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y)
 }
 
 
-bool calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy)
+bool calc_p2line_intersection(double x1, double y1, double x2, double y2, double x, double y, double& ix, double& iy)
 {
-    float A = 0.;
-    float B = 0.;
-    float C = 0.;
+    double A = 0.;
+    double B = 0.;
+    double C = 0.;
     
     calc_angle(x1, y1, x2, y2, x, y, A, B, C);
-    if (A > (float)M_PI_2 || B > (float)M_PI_2)
+    if (A > (double)M_PI_2 || B > (double)M_PI_2)
     {
         return false;
     }
     
-    if (fabs(A - (float)M_PI_2) < FLT_EPSILON)
+    if (fabs(A - (double)M_PI_2) < FLT_EPSILON)
     {
         ix = x1;
         iy = y1;
         return true;
     }
-    else if (fabs(B - (float)M_PI_2) < FLT_EPSILON)
+    else if (fabs(B - (double)M_PI_2) < FLT_EPSILON)
     {
         ix = x2;
         iy = y2;
         return true;
     }
     
-    float line_len = hypot(x2 - x1, y2 - y1);
-    float line_angle = calc_angle(x1, y1, x2, y2);
-    float d = hypot(x - x1, y - y1);
-    float len = cos(A) * d;
+    double line_len = hypot(x2 - x1, y2 - y1);
+    double line_angle = calc_angle(x1, y1, x2, y2);
+    double d = hypot(x - x1, y - y1);
+    double len = cos(A) * d;
     if (len > line_len)
     {
         ix = x2;
@@ -100,49 +100,49 @@ bool calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, f
     return true;
 }
 
-bool calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
-                                                float bx1, float by1, float bx2, float by2,
-                                                float& aox1, float& aoy1, float& aox2, float& aoy2,
-                                                float& box1, float& boy1, float& box2, float& boy2)
+bool calc_parallel_lines_overlap(double ax1, double ay1, double ax2, double ay2,
+                                                double bx1, double by1, double bx2, double by2,
+                                                double& aox1, double& aoy1, double& aox2, double& aoy2,
+                                                double& box1, double& boy1, double& box2, double& boy2)
 {
-    std::vector<std::pair<float, float> > ao;
-    std::vector<std::pair<float, float> > bo;
+    std::vector<std::pair<double, double> > ao;
+    std::vector<std::pair<double, double> > bo;
     
-    float x;
-    float y;
+    double x;
+    double y;
     
     /* 计算过点(ax1, ay1)到线段b垂线的交点 */
     if (calc_p2line_intersection(bx1, by1, bx2, by2, ax1, ay1, x, y))
     {
-        ao.push_back(std::pair<float, float>(ax1, ay1));
-        bo.push_back(std::pair<float, float>(x, y));
+        ao.push_back(std::pair<double, double>(ax1, ay1));
+        bo.push_back(std::pair<double, double>(x, y));
     }
     
 
     if (calc_p2line_intersection(bx1, by1, bx2, by2, ax2, ay2, x, y))
     {
-        ao.push_back(std::pair<float, float>(ax2, ay2));
-        bo.push_back(std::pair<float, float>(x, y));
+        ao.push_back(std::pair<double, double>(ax2, ay2));
+        bo.push_back(std::pair<double, double>(x, y));
     }
     
     /* 计算过点(bx1, by1)到线段a垂线的交点 */
     if (calc_p2line_intersection(ax1, ay1, ax2, ay2, bx1, by1, x, y))
     {
-        bo.push_back(std::pair<float, float>(bx1, by1));
-        ao.push_back(std::pair<float, float>(x, y));
+        bo.push_back(std::pair<double, double>(bx1, by1));
+        ao.push_back(std::pair<double, double>(x, y));
     }
         
     if (calc_p2line_intersection(ax1, ay1, ax2, ay2, bx2, by2, x, y))
     {
-        bo.push_back(std::pair<float, float>(bx2, by2));
-        ao.push_back(std::pair<float, float>(x, y));
+        bo.push_back(std::pair<double, double>(bx2, by2));
+        ao.push_back(std::pair<double, double>(x, y));
     }
     
     for (std::uint32_t i = 0; i < ao.size(); i++)
     {
         for (std::uint32_t j = i + 1; j < ao.size();)
         {
-            float d = hypot(ao[i].first - ao[j].first, ao[i].second - ao[j].second);
+            double d = hypot(ao[i].first - ao[j].first, ao[i].second - ao[j].second);
             if (d < _float_epsilon)
             {
                 ao[j] = ao.back();
@@ -159,7 +159,7 @@ bool calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
     {
         for (std::uint32_t j = i + 1; j < bo.size();)
         {
-            float d = hypot(bo[i].first - bo[j].first, bo[i].second - bo[j].second);
+            double d = hypot(bo[i].first - bo[j].first, bo[i].second - bo[j].second);
             if (d < _float_epsilon)
             {
                 bo[j] = bo.back();
@@ -185,23 +185,23 @@ bool calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
     boy1 = bo[0].second;
     box2 = bo[1].first;
     boy2 = bo[1].second;
-    float alen = hypot(aox2 - aox1, aoy2 - aoy1);
-    float blen = hypot(box2 - box1, boy2 - boy1);
+    double alen = hypot(aox2 - aox1, aoy2 - aoy1);
+    double blen = hypot(box2 - box1, boy2 - boy1);
     return fabs(alen - blen) < _float_epsilon;
 }
                
     
-float calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
-                                                    float bx1, float by1, float bx2, float by2)
+double calc_parallel_lines_overlap_len(double ax1, double ay1, double ax2, double ay2,
+                                                    double bx1, double by1, double bx2, double by2)
 {
-    float aox1;
-    float aoy1;
-    float aox2;
-    float aoy2;
-    float box1;
-    float boy1;
-    float box2;
-    float boy2;
+    double aox1;
+    double aoy1;
+    double aox2;
+    double aoy2;
+    double box1;
+    double boy1;
+    double box2;
+    double boy2;
     if (calc_parallel_lines_overlap(ax1, ay1, ax2, ay2,
                                     bx1, by1, bx2, by2,
                                     aox1, aoy1, aox2, aoy2,
@@ -212,19 +212,19 @@ float calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2
     return 0;
 }
 
-void calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius)
+void calc_arc_center_radius(double x1, double y1, double x2, double y2, double x3, double y3, double& x, double& y, double& radius)
 {
     y1 = -y1;
     y2 = -y2;
     y3 = -y3;
     
-    float a = x1 - x2;
-    float b = y1 - y2;
-    float c = x1 - x3;
-    float d = y1 - y3;
-    float e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) * 0.5;
-    float f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) * 0.5;
-    float det = b * c - a * d;
+    double a = x1 - x2;
+    double b = y1 - y2;
+    double c = x1 - x3;
+    double d = y1 - y3;
+    double e = ((x1 * x1 - x2 * x2) + (y1 * y1 - y2 * y2)) * 0.5;
+    double f = ((x1 * x1 - x3 * x3) + (y1 * y1 - y3 * y3)) * 0.5;
+    double det = b * c - a * d;
     if (fabs(det) < 1e-5)
     {
         radius = -1;
@@ -239,18 +239,18 @@ void calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, fl
 }
 
 /* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
-void calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle)
+void calc_arc_angle(double x1, double y1, double x2, double y2, double x3, double y3, double x, double y, double radius, double& angle)
 {
     y1 = -y1;
     y2 = -y2;
     y3 = -y3;
     y = -y;
     
-    float a = hypot(x2 - x1, y2 - y1) * 0.5;
-    float angle1 = asin(a / radius) * 2;
+    double a = hypot(x2 - x1, y2 - y1) * 0.5;
+    double angle1 = asin(a / radius) * 2;
     
     a = hypot(x3 - x2, y3 - y2) * 0.5;
-    float angle2 = asin(a / radius) * 2;
+    double angle2 = asin(a / radius) * 2;
     angle = angle1 + angle2;
     
     /* <0 为顺时针方向 */
@@ -264,4 +264,3 @@ float calc_arc_len(float radius, float angle)
 {
     return radius * fabs(angle);
 }
-

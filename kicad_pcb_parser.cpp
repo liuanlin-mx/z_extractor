@@ -886,8 +886,12 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
             
         if (is_arc)
         {
-            float r;
-            calc_arc_center_radius(start.x, start.y, mid.x, mid.y, end.x, end.y, center.x, center.y, r);
+            double x;
+            double y;
+            double r;
+            calc_arc_center_radius(start.x, start.y, mid.x, mid.y, end.x, end.y, x, y, r);
+            center.x = x;
+            center.y = y;
             is_circle = true;
             is_arc = false;
         }

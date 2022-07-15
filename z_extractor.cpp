@@ -689,14 +689,14 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                     auto& s1 = *it1;
                     if (_is_coupled(s0, s1, _coupled_max_d, _coupled_min_len))
                     {
-                        float aox1;
-                        float aoy1;
-                        float aox2;
-                        float aoy2;
-                        float box1;
-                        float boy1;
-                        float box2;
-                        float boy2;
+                        double aox1;
+                        double aoy1;
+                        double aox2;
+                        double aoy2;
+                        double box1;
+                        double boy1;
+                        double box2;
+                        double boy2;
                         
                         if (calc_parallel_lines_overlap(s0.start.x, s0.start.y, s0.end.x, s0.end.y,
                                                         s1.start.x, s1.start.y, s1.end.x, s1.end.y,
@@ -707,7 +707,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                             std::list<z_extractor::segment> ss1;
                             _split_segment(s0, ss0, aox1, aoy1, aox2, aoy2);
                             _split_segment(s1, ss1, box1, boy1, box2, boy2);
-                            float couple_len = calc_dist(aox1, aoy1, aox2, aoy2);
+                            double couple_len = calc_dist(aox1, aoy1, aox2, aoy2);
                             coupler_segment.emplace(1.0 / couple_len, std::pair<z_extractor::segment, z_extractor::segment>(ss0.front(), ss1.front()));
                             
                             ss0.pop_front();
@@ -1560,10 +1560,10 @@ float z_extractor::_get_segment_len(const z_extractor::segment& s)
 {
     if (s.is_arc())
     {
-        float cx;
-        float cy;
-        float radius;
-        float angle;
+        double cx;
+        double cy;
+        double radius;
+        double angle;
         calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
         calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
         return calc_arc_len(radius, angle);
@@ -1578,18 +1578,18 @@ void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, 
 {
     if (s.is_arc())
     {
-        float cx;
-        float cy;
-        float arc_radius;
-        float arc_angle;
+        double cx;
+        double cy;
+        double arc_radius;
+        double arc_angle;
         calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
         calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
-        float arc_len = calc_arc_len(arc_radius, arc_angle);
+        double arc_len = calc_arc_len(arc_radius, arc_angle);
         
-        float angle = arc_angle * offset / arc_len;
+        double angle = arc_angle * offset / arc_len;
         
-        float x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
-        float y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
+        double x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
+        double y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
     
         x = cx + x1;
         y = cy - y1;
@@ -1609,15 +1609,15 @@ void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, floa
     {
         float x = 0;
         float y = 0;
-        float cx;
-        float cy;
-        float arc_radius;
+        double cx;
+        double cy;
+        double arc_radius;
         calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
         
         _get_segment_pos(s, offset, x, y);
         
-        float rad_left = calc_angle(cx, cy, x, y);
-        float rad_right = rad_left - (float)M_PI;
+        double rad_left = calc_angle(cx, cy, x, y);
+        double rad_right = rad_left - (double)M_PI;
         
         /* >0 弧线为逆时针方向 */
         if ((s.mid.x - s.start.x) * (-s.end.y - -s.mid.y) - (-s.mid.y - -s.start.y) * (s.end.x - s.mid.x) > 0)
@@ -2790,4 +2790,3 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
     }
     return ckt + ".ends\n";
 }
-

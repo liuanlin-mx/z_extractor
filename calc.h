@@ -3,35 +3,35 @@
 #include <math.h>
 
 /* 计算两点连线倾斜角 */
-float calc_angle(float x1, float y1, float x2, float y2);
-float calc_dist(float x1, float y1, float x2, float y2);
+double calc_angle(double x1, double y1, double x2, double y2);
+double calc_dist(double x1, double y1, double x2, double y2);
 
 /* ACB 计算点C为中心点的夹角 */
-float calc_angle(float ax, float ay, float bx, float by, float cx, float cy);
+double calc_angle(double ax, double ay, double bx, double by, double cx, double cy);
 /* 计算三角形的三个夹角 */
-void calc_angle(float ax, float ay, float bx, float by, float cx, float cy, float& A, float& B, float& C);
+void calc_angle(double ax, double ay, double bx, double by, double cx, double cy, double& A, double& B, double& C);
 
 /* 计算点到线段或其延长线的垂直距离 */
-float calc_p2line_dist(float x1, float y1, float x2, float y2, float x, float y);
+double calc_p2line_dist(double x1, double y1, double x2, double y2, double x, double y);
 
 /* 计算过点(x y)到线段的垂线跟线段的交点 */
-bool calc_p2line_intersection(float x1, float y1, float x2, float y2, float x, float y, float& ix, float& iy);
+bool calc_p2line_intersection(double x1, double y1, double x2, double y2, double x, double y, double& ix, double& iy);
 
 /* 计算两条平行线段的交叠区域 */
-bool calc_parallel_lines_overlap(float ax1, float ay1, float ax2, float ay2,
-                                    float bx1, float by1, float bx2, float by2,
-                                    float& aox1, float& aoy1, float& aox2, float& aoy2,
-                                    float& box1, float& boy1, float& box2, float& boy2);
+bool calc_parallel_lines_overlap(double ax1, double ay1, double ax2, double ay2,
+                                    double bx1, double by1, double bx2, double by2,
+                                    double& aox1, double& aoy1, double& aox2, double& aoy2,
+                                    double& box1, double& boy1, double& box2, double& boy2);
                        
 /* 计算两条平行线段的交叠区域长度 */             
-float calc_parallel_lines_overlap_len(float ax1, float ay1, float ax2, float ay2,
-                                    float bx1, float by1, float bx2, float by2);
+double calc_parallel_lines_overlap_len(double ax1, double ay1, double ax2, double ay2,
+                                    double bx1, double by1, double bx2, double by2);
 
 
-void calc_arc_center_radius(float x1, float y1, float x2, float y2, float x3, float y3, float& x, float& y, float& radius);
+void calc_arc_center_radius(double x1, double y1, double x2, double y2, double x3, double y3, double& x, double& y, double& radius);
 
 /* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
-void calc_arc_angle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y, float radius, float& angle);
+void calc_arc_angle(double x1, double y1, double x2, double y2, double x3, double y3, double x, double y, double radius, double& angle);
 float calc_arc_len(float radius, float angle);
     
 #endif
