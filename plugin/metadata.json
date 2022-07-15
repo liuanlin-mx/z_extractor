@@ -3,17 +3,17 @@
     "name": "z extractor",
     "description": "Transmission Line Impedance Extraction",
     "description_full": "Transmission Line Impedance Extraction",
-    "identifier": "com.github.liuanlin-mx.kicad-pcb-simulation",
+    "identifier": "com.github.liuanlin-mx.z_extractor",
     "type": "plugin",
     "author": {
         "name": "LiuAnLin",
         "contact": {
-            "web": "https://github.com/liuanlin-mx/kicad_pcb_simulation"
+            "web": "https://github.com/liuanlin-mx/z_extractor"
         }
     },
     "license": "Apache-2.0",
     "resources": {
-        "Github": "https://github.com/liuanlin-mx/kicad_pcb_simulation"
+        "Github": "https://github.com/liuanlin-mx/z_extractor"
     },
     "tags": [
         "pcbnew"
