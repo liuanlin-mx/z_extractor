@@ -141,7 +141,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/m.2_2/DSI-D0N:/m.2_2/DSI-D0P,/m.2_2/DSI-D1N:/m.2_2/DSI-D1P,/m.2_2/DSI-D2N:/m.2_2/DSI-D2P,/m.2_2/DSI-D3N:/m.2_2/DSI-D3P,/m.2_2/DSI-CKN:/m.2_2/DSI-CKP&quot; -coupled_max_d 1.0 -coupled_min_len 0.2 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o dsi" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/m.2_2/DSI-D0N:/m.2_2/DSI-D0P,/m.2_2/DSI-D1N:/m.2_2/DSI-D1P,/m.2_2/DSI-D2N:/m.2_2/DSI-D2P,/m.2_2/DSI-D3N:/m.2_2/DSI-D3P,/m.2_2/DSI-CKN:/m.2_2/DSI-CKP&quot; -coupled_max_d 1.0 -coupled_min_len 0.2 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o dsi" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/S0_100N:/S0_100P&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o s0_100" UseSeparateDebugArgs="no" DebugArguments=" -pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/S0_100N:/S0_100P&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o s0_100" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -152,7 +152,10 @@
         <StartupCommands/>
       </Debugger>
       <PreBuild/>
-      <PostBuild/>
+      <PostBuild>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_kicad-pcb-simulation/linux</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_kicad-pcb-simulation/</Command>
+      </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
         <CleanCommand/>

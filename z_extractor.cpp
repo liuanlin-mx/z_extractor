@@ -1477,9 +1477,21 @@ float z_extractor::_get_cu_layer_epsilon_r(const std::string& layer_name)
         }
     }
     
-    float er1 = 0;
-    float er2 = 0;
+    float er1 = up.epsilon_r;
+    float er2 = down.epsilon_r;
     
+#if 0
+    if (up.type == "Top Solder Mask"
+        || up.type == "Bottom Solder Mask"
+        || down.type == "Top Solder Mask"
+        || down.type == "Bottom Solder Mask")
+    {
+        return (er1 + er2) * 0.55;
+    }
+    return (er1 + er2) * 0.45;
+#endif
+
+#if 0
     if (up.type == "Top Solder Mask" || up.type == "Bottom Solder Mask")
     {
         er1 = 1.0;
@@ -1497,7 +1509,8 @@ float z_extractor::_get_cu_layer_epsilon_r(const std::string& layer_name)
     {
         er2 = down.epsilon_r;
     }
-    
+#endif
+
     return (er1 + er2) * 0.5;
 }
 
