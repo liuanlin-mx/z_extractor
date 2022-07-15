@@ -64,7 +64,8 @@ bool calc_p2line_intersection(double x1, double y1, double x2, double y2, double
     double C = 0.;
     
     calc_angle(x1, y1, x2, y2, x, y, A, B, C);
-    if (A > (double)M_PI_2 || B > (double)M_PI_2)
+    if ((A > M_PI_2 && fabs(A - M_PI_2) > FLT_EPSILON)
+        || (B > M_PI_2 && B - M_PI_2 > FLT_EPSILON))
     {
         return false;
     }
