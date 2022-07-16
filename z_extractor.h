@@ -203,7 +203,7 @@ private:
     float _get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end);
     float _get_board_thickness();
     float _get_cu_min_thickness();
-    
+    bool _cu_layer_is_outer_layer(const std::string& layer_name);
     
     
     /* 获取走线长度 */

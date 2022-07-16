@@ -1477,41 +1477,18 @@ float z_extractor::_get_cu_layer_epsilon_r(const std::string& layer_name)
         }
     }
     
-    float er1 = up.epsilon_r;
-    float er2 = down.epsilon_r;
     
-#if 0
-    if (up.type == "Top Solder Mask"
-        || up.type == "Bottom Solder Mask"
-        || down.type == "Top Solder Mask"
-        || down.type == "Bottom Solder Mask")
-    {
-        return (er1 + er2) * 0.55;
-    }
-    return (er1 + er2) * 0.45;
-#endif
-
-#if 0
     if (up.type == "Top Solder Mask" || up.type == "Bottom Solder Mask")
     {
-        er1 = 1.0;
-    }
-    else
-    {
-        er1 = up.epsilon_r;
+        return up.epsilon_r;
     }
     
     if (down.type == "Top Solder Mask" || down.type == "Bottom Solder Mask")
     {
-        er2 = 1.0;
+        return down.epsilon_r;
     }
-    else
-    {
-        er2 = down.epsilon_r;
-    }
-#endif
-
-    return (er1 + er2) * 0.5;
+    
+    return (up.epsilon_r + down.epsilon_r) * 0.5;
 }
 
 float z_extractor::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
@@ -1568,6 +1545,39 @@ float z_extractor::_get_cu_min_thickness()
     return thickness;
 }
 
+
+bool z_extractor::_cu_layer_is_outer_layer(const std::string& layer_name)
+{
+    layer up;
+    layer down;
+    std::int32_t state = 0;
+    for (auto& l: _layers)
+    {
+        if (l.name == layer_name)
+        {
+            state = 1;
+            continue;
+        }
+        if (state == 0)
+        {
+            up = l;
+        }
+        else if (state == 1)
+        {
+            down = l;
+            break;
+        }
+    }
+    
+    if (up.type == "Top Solder Mask"
+        || up.type == "Bottom Solder Mask"
+        || down.type == "Top Solder Mask"
+        || down.type == "Bottom Solder Mask")
+    {
+        return true;
+    }
+    return false;
+}
 
 float z_extractor::_get_segment_len(const z_extractor::segment& s)
 {

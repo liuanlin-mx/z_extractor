@@ -141,7 +141,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/S0_100N:/S0_100P&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o s0_100" UseSeparateDebugArgs="no" DebugArguments=" -pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -coupled &quot;/S0_100N:/S0_100P&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o s0_100" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -net &quot;/S0_50&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o xx" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -net &quot;/S0_50&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o xx" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
