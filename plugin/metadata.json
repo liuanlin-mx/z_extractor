@@ -3,7 +3,7 @@
     "name": "z extractor",
     "description": "Transmission Line Impedance Extraction",
     "description_full": "Transmission Line Impedance Extraction",
-    "identifier": "com.github.liuanlin-mx.z_extractor",
+    "identifier": "com.github.liuanlin-mx.z-extractor",
     "type": "plugin",
     "author": {
         "name": "LiuAnLin",
