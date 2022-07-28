@@ -132,7 +132,7 @@ bool kicad_pcb_parser::_parse(const char *str)
 
 const char *kicad_pcb_parser::_parse_label(const char *str, std::string& label)
 {
-    while (*str != ' ' && *str != '\r' && *str != '\n')
+    while (*str != ' ' && *str != ')' && *str != '\r' && *str != '\n')
     {
         label += *str;
         str++;
