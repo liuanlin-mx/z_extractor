@@ -2,6 +2,8 @@
 #define __FASTHENRY_H__
 #include <list>
 #include <string>
+#include <vector>
+
 class fasthenry
 {
 public:
@@ -17,6 +19,14 @@ public:
         float z;
     };
     
+    struct impedance_matrix
+    {
+        double freq;
+        std::uint32_t rows;
+        std::uint32_t cols;
+        std::vector<std::pair<double, double> > values;
+    };
+    
 public:
     fasthenry();
     ~fasthenry();
@@ -24,8 +34,10 @@ public:
 public:
     void clear();
     bool add_wire(const char *name, point start, point end, float w, float h);
+    bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float w, float h);
     bool add_via(const char *name, point start, point end, float drill, float size);
     
+    bool calc_impedance(const std::string& node1_name, const std::string& node2_name, double& r, double& l);
     std::string gen_ckt(const char *wire_name, const std::string& name);
     
     std::string gen_ckt2(std::list<std::string> wire_names, const std::string& name);
@@ -36,10 +48,13 @@ public:
     
 private:
     void _call_fasthenry(std::list<std::string> wire_name);
+    void _call_fasthenry(const std::string& node1_name, const std::string& node2_name);
     std::string _make_cir(const std::string& name, std::uint32_t pins);
-    
+    std::vector<impedance_matrix> _read_impedance_matrix();
+    double _calc_inductance(double freq, double imag);
 private:
     std::string _inp;
+    std::set<std::string> _added_nodes;
 };
 
 #endif

@@ -500,7 +500,7 @@ const char *kicad_pcb_parser::_parse_footprint(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
-    std::string reference_value;
+    std::string footprint;
     float x;
     float y;
     float angle;
@@ -524,7 +524,7 @@ const char *kicad_pcb_parser::_parse_footprint(const char *str)
                 str = _parse_label(str, label);
                 if (label == "reference")
                 {
-                    str = _parse_reference(str, reference_value);
+                    str = _parse_reference(str, footprint);
                 }
                 str = _skip(str);
                 right++;
@@ -536,7 +536,7 @@ const char *kicad_pcb_parser::_parse_footprint(const char *str)
                 p.ref_at.y = y;
                 p.ref_at_angle = angle;
                 p.net = 0xffffffff;
-                p.reference_value = reference_value;
+                p.footprint = footprint;
                 str = _parse_pad(str, p);
                 if (p.net != 0xffffffff)
                 {

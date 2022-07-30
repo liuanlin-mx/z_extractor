@@ -27,7 +27,7 @@ std::vector<std::string> str_split(std::string str, const std::string& key)
 }
 
 std::string make_cir::make(const char *cir_file, const std::set<std::string>& net_names, const std::string& net_subckt,
-                const std::set<std::string>& reference_value)
+                const std::set<std::string>& footprint)
 {
     std::string cir;
     char buf[512];
@@ -58,7 +58,7 @@ std::string make_cir::make(const char *cir_file, const std::set<std::string>& ne
                 v = str_split(std::string(line), " ");
             }
             
-            if (reference_value.count(v[0]))
+            if (footprint.count(v[0]))
             {
                 if (tolower(line[0]) == 'x')
                 {

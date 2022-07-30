@@ -141,7 +141,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -net &quot;/S0_50&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o xx" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/work/pcba/pcb/twofloors/twofloors.kicad_pcb -ref &quot;GND&quot; -net &quot;/S0_50&quot; -coupled_max_d 1.0 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -step 0.5 -o xx" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/桌面/test/test.kicad_pcb -rl -pad &quot;J2.3:J1.3&quot; -net &quot;/SP&quot; -o newcfg" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/桌面/test/test.kicad_pcb -rl -pad &quot;J2.3:J1.3&quot; -net &quot;/SP&quot; -o newcfg" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

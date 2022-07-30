@@ -82,7 +82,7 @@ public:
             , size_w(0)
             , size_h(0)
             {}
-        std::string reference_value;
+        std::string footprint;
         std::string pad_number;
         std::uint32_t type;
         std::uint32_t net;
@@ -132,23 +132,26 @@ public:
     
     std::list<segment> get_segments(std::uint32_t net_id);
     std::list<pad> get_pads(std::uint32_t net_id);
+    bool get_pad(const std::string& footprint, const std::string& pad_number, z_extractor::pad& pad);
     std::list<via> get_vias(std::uint32_t net_id);
     std::list<zone> get_zones(std::uint32_t net_id);
     std::vector<std::list<z_extractor::segment> > get_segments_sort(std::uint32_t net_id);
     std::string get_net_name(std::uint32_t net_id);
     std::uint32_t get_net_id(std::string name);
     
-    
-    bool gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call);
+    bool gen_subckt_rl(const std::string& footprint1, const std::string& footprint1_pad_number,
+                        const std::string& footprint2, const std::string& footprint2_pad_number,
+                        std::string& ckt, std::string& call);
+    bool gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& footprint, std::string& call);
     
     bool gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
-            std::string& ckt, std::set<std::string>& reference_value, std::string& call);
+            std::string& ckt, std::set<std::string>& footprint, std::string& call);
     
     bool gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg);
+                        std::string& ckt, std::set<std::string>& footprint, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg);
                         
     bool gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call,
+                        std::string& ckt, std::set<std::string>& footprint, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg);
     
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points);
@@ -167,9 +170,9 @@ public:
     
     
     static std::string format_net_name(const std::string& net_name) { return _format_net_name(net_name); }
-    static std::string gen_pad_net_name(const std::string& reference_value, const std::string& net_name)
+    static std::string gen_pad_net_name(const std::string& footprint, const std::string& net_name)
     {
-        return _gen_pad_net_name(reference_value, net_name);
+        return _gen_pad_net_name(footprint, net_name);
     }
     
 private:
@@ -182,7 +185,7 @@ private:
     std::string _pos2net(float x, float y, const std::string& layer);
     static std::string _format_net_name(const std::string& net_name);
     std::string _format_layer_name(std::string layer_name);
-    static std::string _gen_pad_net_name(const std::string& reference_value, const std::string& net_name);
+    static std::string _gen_pad_net_name(const std::string& footprint, const std::string& net_name);
     
     
     std::vector<std::string> _get_all_cu_layer();
@@ -193,6 +196,7 @@ private:
     float _get_via_conn_len(const z_extractor::via& v);
     
     std::vector<std::string> _get_pad_conn_layers(const pad& p);
+    std::vector<std::string> _get_pad_layers(const pad& p);
     
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);

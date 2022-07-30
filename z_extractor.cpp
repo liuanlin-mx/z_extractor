@@ -136,6 +136,20 @@ std::list<z_extractor::pad> z_extractor::get_pads(std::uint32_t net_id)
 }
 
 
+bool z_extractor::get_pad(const std::string& footprint, const std::string& pad_number, z_extractor::pad& pad)
+{
+    for (const auto& pad_: _pads)
+    {
+        if (pad_.second.footprint == footprint && pad_.second.pad_number == pad_number)
+        {
+            pad = pad_.second;
+            return true;
+        }
+    }
+    return false;
+}
+
+
 std::list<z_extractor::via> z_extractor::get_vias(std::uint32_t net_id)
 {
     std::list<via> vias;
@@ -237,7 +251,134 @@ std::uint32_t z_extractor::get_net_id(std::string name)
 }
 
 
-bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& reference_value, std::string& call)
+bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string& footprint1_pad_number,
+                        const std::string& footprint2, const std::string& footprint2_pad_number,
+                        std::string& ckt, std::string& call)
+{
+    pad pad1;
+    pad pad2;
+    if (!get_pad(footprint1, footprint1_pad_number, pad1))
+    {
+        printf("not found %s.%s\n", footprint1.c_str(), footprint1_pad_number.c_str());
+        return false;
+    }
+    
+    if (!get_pad(footprint2, footprint2_pad_number, pad2))
+    {
+        printf("not found %s.%s\n", footprint2.c_str(), footprint2_pad_number.c_str());
+        return false;
+    }
+    
+    if (pad1.net != pad2.net)
+    {
+        printf("err: %s.%s %s.%s not on the same network\n", footprint1.c_str(), footprint1_pad_number.c_str(),
+                                    footprint2.c_str(), footprint2_pad_number.c_str());
+        return false;
+    }
+    std::uint32_t net_id = pad1.net;
+    
+    
+    std::list<pad> pads = get_pads(net_id);
+    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
+    std::list<via> vias = get_vias(net_id);
+    
+
+    /* 构建fasthenry */
+    fasthenry henry;
+    
+    for (auto& s_list: v_segments)
+    {
+        float z_val = _get_layer_z_axis(s_list.front().layer_name);
+        float h_val = _get_layer_thickness(s_list.front().layer_name);
+        
+        for (auto& s: s_list)
+        { 
+            henry.add_wire(_pos2net(s.start.x, s.start.y, s.layer_name), _pos2net(s.end.x, s.end.y, s.layer_name),
+                                _get_tstamp_short(s.tstamp),
+                                fasthenry::point(s.start.x, s.start.y, z_val),
+                                fasthenry::point(s.end.x, s.end.y, z_val), s.width, h_val);
+        }
+    }
+    
+    for (auto& v: vias)
+    {
+        std::vector<std::string> layers = _get_via_layers(v);
+        for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+        {
+            const std::string& start = layers[i];
+            const std::string& end = layers[i + 1];
+            
+            float z1 = _get_layer_z_axis(start);
+            float z2 = _get_layer_z_axis(end);
+            
+            char buf[32];
+            sprintf(buf, "%d", i);
+            henry.add_wire(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
+                                _get_tstamp_short(v.tstamp + buf),
+                                fasthenry::point(v.at.x, v.at.y, z1),
+                                fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
+        }
+    }
+
+    for (const auto& pad: pads)
+    {
+        float x;
+        float y;
+        _get_pad_pos(pad, x, y);
+        
+        std::vector<std::string> layers = _get_pad_layers(pad);
+        for (std::uint32_t i = 1; i < layers.size(); i++)
+        {
+            float z1 = _get_layer_z_axis(layers[i - 1]);
+            float z2 = _get_layer_z_axis(layers[i]);
+            char buf[32];
+            sprintf(buf, "%d", i);
+            henry.add_wire(_pos2net(x, y, layers[i - 1]), _pos2net(x, y, layers[i]),
+                                _get_tstamp_short(pad.tstamp + buf),
+                                fasthenry::point(x, y, z1),
+                                fasthenry::point(x, y, z2), 1, 1);
+        }
+    }
+    
+    henry.dump();
+    
+    float x1;
+    float y1;
+    float x2;
+    float y2;
+    double r = 0;
+    double l = 0;
+        
+    std::vector<std::string> layers1 = _get_pad_layers(pad1);
+    std::vector<std::string> layers2 = _get_pad_layers(pad2);
+    _get_pad_pos(pad1, x1, y1);
+    _get_pad_pos(pad2, x2, y2);
+    henry.calc_impedance(_pos2net(x1, y1, layers1.front()), _pos2net(x2, y2, layers2.front()), r, l);
+    
+    
+    char buf[512];
+    std::string comment;
+    std::string subckt_name = _format_net_name(_nets[net_id] + "_" +
+                            footprint1 + "_" + footprint1_pad_number + "-" + 
+                            footprint2 + "_" + footprint2_pad_number) + " ";
+    
+    std::string ckt_pin1 = footprint1 + "_" + footprint1_pad_number;
+    std::string ckt_pin2 = footprint2 + "_" + footprint2_pad_number;
+    ckt = ".subckt " + subckt_name + " " + ckt_pin1 + " " + ckt_pin2 + "\n";
+    call = "X" + subckt_name + " " + ckt_pin1 + " " + ckt_pin2 + " " + subckt_name + "\n";
+    
+    comment = "****" + footprint1 + "." + footprint1_pad_number + "    " + footprint2 + "." + footprint2_pad_number +  "*****\n";
+    ckt = comment + ckt;
+    sprintf(buf, "R1 %s mid %lg\n", ckt_pin1.c_str(), r);
+    ckt += buf;
+    sprintf(buf, "L1 mid %s %lg\n", ckt_pin2.c_str(), l);
+    ckt += buf;
+    ckt += ".ends\n";
+    return true;
+}
+
+
+bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& footprint, std::string& call)
 {
     std::string sub;
     char buf[512] = {0};
@@ -259,9 +400,9 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
         sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
 
         ckt += buf;
-        call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
+        call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
         call += " ";
-        reference_value.insert(p.reference_value);
+        footprint.insert(p.footprint);
     }
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
@@ -339,7 +480,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
 }
 
 bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
-            std::string& ckt, std::set<std::string>& reference_value, std::string& call)
+            std::string& ckt, std::set<std::string>& footprint, std::string& call)
 {
     std::string sub;
     std::string tmp;
@@ -370,9 +511,9 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
             sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
 
             ckt += buf;
-            call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
+            call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
             call += " ";
-            reference_value.insert(p.reference_value);
+            footprint.insert(p.footprint);
         }
     }
     
@@ -524,7 +665,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
 
 
 bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg)
+                        std::string& ckt, std::set<std::string>& footprint, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg)
 {
     std::string comment;
     std::string sub;
@@ -552,17 +693,17 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
         std::vector<std::string> layers = _get_pad_conn_layers(p);
         if (layers.size() == 0)
         {
-            printf("err: %s.%s no connection.\n", p.reference_value.c_str(), p.pad_number.c_str());
+            printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
             return false;
         }
         sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
-        call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
+        call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
         call += " ";
         
-        comment += p.reference_value + ":" + _nets[net_id] + " ";
-        reference_value.insert(p.reference_value);
+        comment += p.footprint + ":" + _nets[net_id] + " ";
+        footprint.insert(p.footprint);
         
         for (std::uint32_t i = 1; i < layers.size(); i++)
         {
@@ -653,7 +794,7 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
 
 
 bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net_id1, std::vector<std::uint32_t> refs_id,
-                        std::string& ckt, std::set<std::string>& reference_value, std::string& call,
+                        std::string& ckt, std::set<std::string>& footprint, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg)
 {
     
@@ -803,18 +944,18 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
             std::vector<std::string> layers = _get_pad_conn_layers(p);
             if (layers.size() == 0)
             {
-                printf("err: %s.%s no connection.\n", p.reference_value.c_str(), p.pad_number.c_str());
+                printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
                 return false;
             }
             sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
             ckt += buf;
-            call += _gen_pad_net_name(p.reference_value, _format_net_name(_nets[net_id]));
+            call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
             call += " ";
             
-            comment += p.reference_value + ":" + _nets[net_id];
+            comment += p.footprint + ":" + _nets[net_id];
             comment += " ";
-            reference_value.insert(p.reference_value);
+            footprint.insert(p.footprint);
             
             for (std::uint32_t i = 1; i < layers.size(); i++)
             {
@@ -1207,10 +1348,10 @@ std::string z_extractor::_format_layer_name(std::string layer_name)
 }
 
 
-std::string z_extractor::_gen_pad_net_name(const std::string& reference_value, const std::string& net_name)
+std::string z_extractor::_gen_pad_net_name(const std::string& footprint, const std::string& net_name)
 {
     char buf[256] = {0};
-    sprintf(buf, "%s_%s", reference_value.c_str(), net_name.c_str());
+    sprintf(buf, "%s_%s", footprint.c_str(), net_name.c_str());
     return std::string(buf);
 }
 
@@ -1386,6 +1527,24 @@ std::vector<std::string> z_extractor::_get_pad_conn_layers(const z_extractor::pa
     }
     return layers;
 }
+
+std::vector<std::string> z_extractor::_get_pad_layers(const pad& p)
+{
+    std::vector<std::string> layers;
+    for (const auto& layer: p.layers)
+    {
+        if (layer.find("*") != layer.npos)
+        {
+            layers = _get_all_cu_layer();
+        }
+        else
+        {
+            layers.push_back(layer);
+        }
+    }
+    return layers;
+}
+
 
 float z_extractor::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {

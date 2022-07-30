@@ -40,6 +40,26 @@ static void _parse_coupled_net(const char *str, std::list<std::pair<std::string,
 }
 
 
+static std::vector<std::string> _string_split(std::string str, const std::string& key)
+{
+    std::vector<std::string> out;
+    std::string::size_type begin = 0;
+    std::string::size_type end = 0;
+    while ((end = str.find(key, begin)) != str.npos)
+    {
+        out.push_back(str.substr(begin, end));
+        begin = end + key.size();
+    }
+    if (begin < str.size())
+    {
+        out.push_back(str.substr(begin, end));
+    }
+    
+    return out;
+}
+
+
+
 int main(int argc, char **argv)
 {
     std::shared_ptr<z_extractor> z_extr(new z_extractor);
@@ -48,9 +68,10 @@ int main(int argc, char **argv)
     static char buf[16 * 1024 * 1024];
     std::list<std::string> nets;
     std::list<std::pair<std::string, std::string> > coupled_nets;
+    std::list<std::pair<std::string, std::string> > pads;
     std::list<std::string> refs;
     const char *pcb_file = NULL;
-    bool tl = true;
+    bool tl = false;
     const char *oname = NULL;
     
     float coupled_max_d = 2;
@@ -80,6 +101,10 @@ int main(int argc, char **argv)
         {
             _parse_coupled_net(arg_next, coupled_nets);
         }
+        else if (std::string(arg) == "-pad" && i < argc)
+        {
+            _parse_coupled_net(arg_next, pads);
+        }
         else if (std::string(arg) == "-pcb" && i < argc)
         {
             pcb_file = arg_next;
@@ -91,6 +116,10 @@ int main(int argc, char **argv)
         else if (std::string(arg) == "-t")
         {
             tl = true;
+        }
+        else if (std::string(arg) == "-rl")
+        {
+            tl = false;
         }
         else if (std::string(arg) == "-coupled_max_d" && i < argc)
         {
@@ -131,10 +160,24 @@ int main(int argc, char **argv)
         
     }
     
-    
-    if (pcb_file == NULL || (nets.empty() && coupled_nets.empty()) || (tl == true && refs.empty()))
+    if (pcb_file == NULL)
     {
         return 0;
+    }
+    
+    if (tl)
+    {
+        if (refs.empty() || (nets.empty() && coupled_nets.empty()))
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        if (pads.empty() && nets.empty())
+        {
+            return 0;
+        }
     }
     
     if (!parser.parse(pcb_file, z_extr))
@@ -170,11 +213,11 @@ int main(int argc, char **argv)
         {
             std::string ckt;
             std::string call;
-            std::set<std::string> reference_value;
+            std::set<std::string> footprint;
             float Z0_avg = 0;
             float td = 0;
             float velocity_avg = 0;
-            if (!z_extr->gen_subckt_zo(z_extr->get_net_id(net.c_str()), v_refs, ckt, reference_value, call, Z0_avg, td, velocity_avg))
+            if (!z_extr->gen_subckt_zo(z_extr->get_net_id(net.c_str()), v_refs, ckt, footprint, call, Z0_avg, td, velocity_avg))
             {
                 continue;
             }
@@ -196,7 +239,7 @@ int main(int argc, char **argv)
             //printf("%s %s\n", coupled.first.c_str(), coupled.second.c_str());
             std::string ckt;
             std::string call;
-            std::set<std::string> reference_value;
+            std::set<std::string> footprint;
             //float td = 0;
             float Z0_avg[2] = {0., 0.};
             float td_sum[2] = {0., 0.};
@@ -204,7 +247,7 @@ int main(int argc, char **argv)
             float Zodd_avg = 0.;
             float Zeven_avg = 0.;
             if (!z_extr->gen_subckt_coupled_tl(z_extr->get_net_id(coupled.first.c_str()), z_extr->get_net_id(coupled.second.c_str()),
-                                        v_refs, ckt, reference_value, call,
+                                        v_refs, ckt, footprint, call,
                                         Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg))
             {
                 continue;
@@ -236,7 +279,37 @@ int main(int argc, char **argv)
             //sprintf(str, "net:%s td:%fNS len:(%fmm %fmil)\n", coupled.second.c_str(), td, len, len / 0.0254);
             //fwrite(str, 1, strlen(str), info_fp);
         }
+    }
+    else
+    {
+        for (const auto& pad: pads)
+        {
+            std::string ckt;
+            std::string call;
+            std::vector<std::string> footprint;
+            
+            std::vector<std::string> pad1 = _string_split(pad.first, ".");
+            std::vector<std::string> pad2 = _string_split(pad.second, ".");
+            if (z_extr->gen_subckt_rl(pad1.front(), pad1.back(), pad2.front(), pad2.back(), ckt, call))
+            {
+                spice += ckt;
+                printf("ckt:%s\n", ckt.c_str());
+            }
+        }
         
+        
+        for (const auto& net: nets)
+        {
+            std::string ckt;
+            std::string call;
+            std::set<std::string> footprint;
+            
+            if (z_extr->gen_subckt(z_extr->get_net_id(net.c_str()), ckt, footprint, call))
+            {
+                //spice += ckt;
+                printf("ckt:%s\n", ckt.c_str());
+            }
+        }
     }
     
     printf("%s\n", info.c_str());

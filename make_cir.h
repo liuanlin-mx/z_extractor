@@ -11,7 +11,7 @@ public:
     
 public:
     std::string make(const char *cir_file, const std::set<std::string>& net_name, const std::string& net_subckt,
-                const std::set<std::string>& reference_value);
+                const std::set<std::string>& footprint);
     
 };
 
