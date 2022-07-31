@@ -311,10 +311,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
             float z1 = _get_layer_z_axis(start);
             float z2 = _get_layer_z_axis(end);
             
-            char buf[32];
-            sprintf(buf, "%d", i);
             henry.add_wire(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
-                                _get_tstamp_short(v.tstamp + buf),
+                                _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                 fasthenry::point(v.at.x, v.at.y, z1),
                                 fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
         }
@@ -329,12 +327,13 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
         std::vector<std::string> layers = _get_pad_layers(pad);
         for (std::uint32_t i = 1; i < layers.size(); i++)
         {
-            float z1 = _get_layer_z_axis(layers[i - 1]);
-            float z2 = _get_layer_z_axis(layers[i]);
-            char buf[32];
-            sprintf(buf, "%d", i);
-            henry.add_wire(_pos2net(x, y, layers[i - 1]), _pos2net(x, y, layers[i]),
-                                _get_tstamp_short(pad.tstamp + buf),
+            const std::string& start = layers[i - 1];
+            const std::string& end = layers[i];
+            float z1 = _get_layer_z_axis(start);
+            float z2 = _get_layer_z_axis(end);
+            
+            henry.add_wire(_pos2net(x, y, start), _pos2net(x, y, end),
+                                _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
                                 fasthenry::point(x, y, z1),
                                 fasthenry::point(x, y, z2), 1, 1);
         }
@@ -380,45 +379,72 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
 
 bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& footprint, std::string& call)
 {
+    std::string comment;
     std::string sub;
+    std::string pad_ckt;
     char buf[512] = {0};
+    
+    if (_check_segments(net_id) == false)
+    {
+        return false;
+    }
     
     std::list<pad> pads = get_pads(net_id);
     std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
     std::list<via> vias = get_vias(net_id);
     
-
     /* 生成子电路参数和调用 */
     ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
     call = "X" + _format_net_name(_nets[net_id]) + " ";
-    
+    comment = std::string(ckt.length(), '*');
     for (auto& p: pads)
     {
         float x;
         float y;
         _get_pad_pos(p, x, y);
-        sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
+        std::vector<std::string> layers = _get_pad_conn_layers(p);
+        if (layers.size() == 0)
+        {
+            printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
+            return false;
+        }
+        sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
         call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
         call += " ";
+        
+        comment += p.footprint + ":" + _nets[net_id] + " ";
         footprint.insert(p.footprint);
+        
+        for (std::uint32_t i = 1; i < layers.size(); i++)
+        {
+            sprintf(buf, "R%s%d %s %s 0\n", _get_tstamp_short(p.tstamp).c_str(), i,
+                    _pos2net(x, y, layers.front()).c_str(), _pos2net(x, y, layers[i]).c_str());
+            pad_ckt += buf;
+        }
     }
     ckt += "\n";
     call += _format_net_name(_nets[net_id]);
     call += "\n";
-    ckt = call + ckt;
+
+    comment += "\n";
+    ckt = comment + ckt + pad_ckt;
+    
     
     /* 构建fasthenry */
     fasthenry henry;
+    
     for (auto& s_list: v_segments)
     {
-        float z_val = _get_layer_distance(_layers.front().name, s_list.front().layer_name);
+        float z_val = _get_layer_z_axis(s_list.front().layer_name);
         float h_val = _get_layer_thickness(s_list.front().layer_name);
-            
+        
         for (auto& s: s_list)
-        {
-            henry.add_wire(_get_tstamp_short(s.tstamp).c_str(), fasthenry::point(s.start.x, s.start.y, z_val),
+        { 
+            henry.add_wire(_pos2net(s.start.x, s.start.y, s.layer_name), _pos2net(s.end.x, s.end.y, s.layer_name),
+                                _get_tstamp_short(s.tstamp),
+                                fasthenry::point(s.start.x, s.start.y, z_val),
                                 fasthenry::point(s.end.x, s.end.y, z_val), s.width, h_val);
         }
     }
@@ -430,10 +456,35 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
         {
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
-            henry.add_via((_get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end)).c_str(),
-                            fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(start)),
-                            fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(end)),
-                            v.drill, v.size);
+            
+            float z1 = _get_layer_z_axis(start);
+            float z2 = _get_layer_z_axis(end);
+            
+            henry.add_wire(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
+                                _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
+                                fasthenry::point(v.at.x, v.at.y, z1),
+                                fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
+        }
+    }
+
+    for (const auto& pad: pads)
+    {
+        float x;
+        float y;
+        _get_pad_pos(pad, x, y);
+        
+        std::vector<std::string> layers = _get_pad_layers(pad);
+        for (std::uint32_t i = 1; i < layers.size(); i++)
+        {
+            const std::string& start = layers[i - 1];
+            const std::string& end = layers[i];
+            float z1 = _get_layer_z_axis(start);
+            float z2 = _get_layer_z_axis(end);
+            
+            henry.add_wire(_pos2net(x, y, start), _pos2net(x, y, end),
+                                _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
+                                fasthenry::point(x, y, z1),
+                                fasthenry::point(x, y, z2), 1, 1);
         }
     }
     henry.dump();
@@ -445,13 +496,21 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
             
         for (auto& s: s_list)
         {
-            sub += henry.gen_ckt(_get_tstamp_short(s.tstamp).c_str(), ("RL" + _get_tstamp_short(s.tstamp)).c_str());
-            
-            sprintf(buf, "X%s %s %s RL%s\n", _get_tstamp_short(s.tstamp).c_str(),
+            double r = 0;
+            double l = 0;
+            if (henry.calc_impedance(_pos2net(s.start.x, s.start.y, s.layer_name), _pos2net(s.end.x, s.end.y, s.layer_name), r, l))
+            {
+                sprintf(buf, "R%s %s %s_mid %lg\n", _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.start.x, s.start.y, s.layer_name).c_str(),
+                                    _get_tstamp_short(s.tstamp).c_str(),
+                                    r);
+                ckt += buf;
+                sprintf(buf, "L%s  %s_mid %s %lg\n", _get_tstamp_short(s.tstamp).c_str(),
+                                    _get_tstamp_short(s.tstamp).c_str(),
                                     _pos2net(s.end.x, s.end.y, s.layer_name).c_str(),
-                                    _get_tstamp_short(s.tstamp).c_str());
-            ckt += buf;
+                                    l);
+                ckt += buf;
+            }
         }
     }
     
@@ -463,14 +522,52 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
         {
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
-            std::string name = _get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end);
-            sub += henry.gen_ckt(name.c_str(), ("RL" + name).c_str());
             
-            sprintf(buf, "X%s %s %s RL%s\n", name.c_str(),
+            double r = 0;
+            double l = 0;
+            if (henry.calc_impedance(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end), r, l))
+            {
+                sprintf(buf, "Rv%s %s %s_mid %lg\n", _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                     _pos2net(v.at.x, v.at.y, start).c_str(),
+                                    _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
+                                    r);
+                ckt += buf;
+                sprintf(buf, "Lv%s %s_mid %s %lg\n", _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
+                                    _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                     _pos2net(v.at.x, v.at.y, end).c_str(),
-                                    name.c_str());
-            ckt += buf;
+                                    l);
+                ckt += buf;
+            }
+        }
+    }
+    
+    for (const auto& pad: pads)
+    {
+        float x;
+        float y;
+        _get_pad_pos(pad, x, y);
+        
+        std::vector<std::string> layers = _get_pad_layers(pad);
+        for (std::uint32_t i = 1; i < layers.size(); i++)
+        {
+            const std::string& start = layers[i - 1];
+            const std::string& end = layers[i];
+            
+            double r = 0;
+            double l = 0;
+            if (henry.calc_impedance(_pos2net(x, y, start), _pos2net(x, y, end), r, l))
+            {
+                sprintf(buf, "Rp%s %s %s_mid %lg\n", _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
+                                    _pos2net(x, y, start).c_str(),
+                                    _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
+                                    r);
+                ckt += buf;
+                sprintf(buf, "Lp%s %s_mid %s %lg\n", _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
+                                    _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
+                                    _pos2net(x, y, end).c_str(),
+                                    l);
+                ckt += buf;
+            }
         }
     }
         
