@@ -3,7 +3,7 @@
 #include <omp.h>
 #include "z_extractor.h"
 #include <opencv2/opencv.hpp>
-#include <fasthenry.h>
+#include "fasthenry.h"
 #include "atlc.h"
 #include "Z0_calc.h"
 #include "calc.h"
@@ -282,9 +282,17 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
     std::list<via> vias = get_vias(net_id);
     
-
     /* 构建fasthenry */
     fasthenry henry;
+    std::map<std::string, cv::Mat> zone_mat;
+    std::map<std::string, std::list<cond> > conds;
+    bool have_zones = !get_zones(net_id).empty();
+    float grid_size = 1;
+    if (have_zones)
+    {
+        _create_refs_mat({net_id}, zone_mat);
+        _add_zone(henry, net_id, zone_mat, conds, grid_size);
+    }
     
     for (auto& s_list: v_segments)
     {
@@ -297,6 +305,11 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
                                 _get_tstamp_short(s.tstamp),
                                 fasthenry::point(s.start.x, s.start.y, z_val),
                                 fasthenry::point(s.end.x, s.end.y, z_val), s.width, h_val);
+            if (have_zones)
+            {
+                _conn_to_zone(henry, s.start.x, s.start.y, s.layer_name, conds, grid_size);
+                _conn_to_zone(henry, s.end.x, s.end.y, s.layer_name, conds, grid_size);
+            }
         }
     }
     
@@ -315,6 +328,11 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                 fasthenry::point(v.at.x, v.at.y, z1),
                                 fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
+            if (have_zones)
+            {
+                _conn_to_zone(henry, v.at.x, v.at.y, start, conds, grid_size);
+                _conn_to_zone(henry, v.at.x, v.at.y, end, conds, grid_size);
+            }
         }
     }
 
@@ -336,6 +354,12 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
                                 _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
                                 fasthenry::point(x, y, z1),
                                 fasthenry::point(x, y, z2), 1, 1);
+            
+            if (have_zones)
+            {
+                _conn_to_zone(henry, x, y, start, conds, grid_size);
+                _conn_to_zone(henry, x, y, end, conds, grid_size);
+            }
         }
     }
     
@@ -1230,7 +1254,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     return true;
 }
 
-
+#if 0
 std::string z_extractor::gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points)
 {
     std::string text;
@@ -1269,7 +1293,7 @@ std::string z_extractor::gen_zone_fasthenry(std::uint32_t net_id, std::set<z_ext
     }
     return text;
 }
-
+#endif
 
 void z_extractor::set_calc(std::uint32_t type)
 {
@@ -2105,88 +2129,143 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
 }
 
 
-#define IMG_RATIO (10.0)
-#define IMG_RATIO_R (0.1)
-#define IMG_ROWS (210.0 * IMG_RATIO)
-#define IMG_COLS (297.0 * IMG_RATIO)
-#define GRID_SIZE (1 * IMG_RATIO)
-
-void z_extractor::_get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points)
+void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size)
 {
-    std::uint32_t w_n = IMG_COLS / GRID_SIZE;
-    std::uint32_t h_n = IMG_ROWS / GRID_SIZE;
-    float h = _get_layer_thickness(z.layer_name);
-    cv::Mat img(IMG_ROWS, IMG_COLS, CV_8UC1);
-    cv::Mat img2(IMG_ROWS, IMG_COLS, CV_8UC3);
-    std::vector<cv::Point> pts;
-    for (auto& i : z.pts)
-    {
-        cv::Point p(i.x * IMG_RATIO, i.y * IMG_RATIO);
-        pts.push_back(p);
-    }
-    cv::fillPoly(img, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(255, 255, 255));
+    grid_size = _cvt_img_len(grid_size);
+    std::uint32_t w_n = _get_pcb_img_cols() / grid_size;
+    std::uint32_t h_n = _get_pcb_img_rows() / grid_size;
     
-    for (std::uint32_t y = 0; y < h_n; y++)
+    for (const auto& mat: zone_mat)
     {
-        for (std::uint32_t x = 0; x < w_n; x++)
+        const cv::Mat& img = mat.second;
+        
+        if (conds.count(mat.first) == 0)
         {
-            std::uint32_t x1 = x * IMG_COLS / w_n;
-            std::uint32_t y1 = y * IMG_ROWS / h_n;
-            std::uint32_t x2 = (x + 1) * IMG_COLS / w_n;
-            std::uint32_t y2 = (y + 1) * IMG_ROWS / h_n;
-            
-            cv::Rect r(x1, y1, x2 - x1, y2 - y1);
-            cv::Mat roi = img(r);
-            
-            std::uint32_t count = 0;
-            for(std::int32_t i = 0;i < roi.rows; i++)
+            conds.emplace(mat.first, std::list<cond>());
+        }
+        
+        std::list<cond>& cond_list = conds[mat.first];
+        
+        for (std::uint32_t y = 0; y < h_n; y++)
+        {
+            for (std::uint32_t x = 0; x < w_n; x++)
             {
-                for(std::int32_t j = 0; j < roi.cols; j++)
+                std::uint32_t x1 = x * _get_pcb_img_cols() / w_n;
+                std::uint32_t y1 = y * _get_pcb_img_rows() / h_n;
+                std::uint32_t x2 = (x + 1) * _get_pcb_img_cols() / w_n;
+                std::uint32_t y2 = (y + 1) * _get_pcb_img_rows() / h_n;
+                
+                cv::Rect r(x1, y1, x2 - x1, y2 - y1);
+                cv::Mat roi = img(r);
+                
+                std::uint32_t count = 0;
+                for(std::int32_t i = 0;i < roi.rows; i++)
                 {
-                    if (roi.at<std::uint8_t>(i, j) > 0)
+                    for(std::int32_t j = 0; j < roi.cols; j++)
                     {
-                        count++;
+                        if (roi.at<std::uint8_t>(i, j) > 0)
+                        {
+                            count++;
+                        }
                     }
                 }
+                
+                if (count >= (std::uint32_t)roi.rows * roi.cols * 0.3)
+                {
+                    //cv::line(img2, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 255, 255));
+                
+                    pcb_point p;
+                    cond c;
+                    c.start.x = _cvt_pcb_x(x1);
+                    c.start.y = _cvt_pcb_y(y1);
+                    c.end.x = _cvt_pcb_x(x2);
+                    c.end.y = _cvt_pcb_y(y1);
+                    c.w = _cvt_pcb_len(y2 - y1);
+                    
+                    cond_list.push_back(c);
+                    
+                    /*
+                    p.x = c.start.x;
+                    p.y = c.start.y;
+                    points.insert(p);
+                    
+                    p.x = c.end.x;
+                    p.y = c.end.y;
+                    points.insert(p);
+                    */
+                    c.start.x = _cvt_pcb_x(x1);
+                    c.start.y = _cvt_pcb_y(y1);
+                    c.end.x = _cvt_pcb_x(x1);
+                    c.end.y = _cvt_pcb_y(y2);
+                    c.w = _cvt_pcb_len(x2 - x1);
+                    //c.h = h;
+                    cond_list.push_back(c);
+                    /*
+                    p.x = c.start.x;
+                    p.y = c.start.y;
+                    points.insert(p);
+                    
+                    p.x = c.end.x;
+                    p.y = c.end.y;
+                    points.insert(p);
+                    */
+                }
             }
-            
-            if (count >= (std::uint32_t)roi.rows * roi.cols * 0.3)
-            {
-                cv::line(img2, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 255, 255));
-            
-                pcb_point p;
-                cond c;
-                c.start.x = x1 * IMG_RATIO_R;
-                c.start.y = y1 * IMG_RATIO_R;
-                c.end.x =x2 * IMG_RATIO_R;
-                c.end.y = y1 * IMG_RATIO_R;
-                c.w = (y2 - y1) * IMG_RATIO_R;
-                c.h = h;
-                conds.push_back(c);
-                p.x = c.start.x;
-                p.y = c.start.y;
-                points.insert(p);
-                
-                p.x = c.end.x;
-                p.y = c.end.y;
-                points.insert(p);
-                
-                c.start.x = x1 * IMG_RATIO_R;
-                c.start.y = y1 * IMG_RATIO_R;
-                c.end.x = x1 * IMG_RATIO_R;
-                c.end.y = y2 * IMG_RATIO_R;
-                c.w = (x2 - x1) * IMG_RATIO_R;
-                c.h = h;
-                conds.push_back(c);
-                
-                p.x = c.start.x;
-                p.y = c.start.y;
-                points.insert(p);
-                
-                p.x = c.end.x;
-                p.y = c.end.y;
-                points.insert(p);
-            }
+        }
+    }
+}
+
+
+
+void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size)
+{
+    _get_zone_cond(net_id, zone_mat, conds, grid_size);
+    
+    for (const auto& cond: conds)
+    {
+        const std::string& layer_name = cond.first;
+        const std::list<z_extractor::cond>& cond_list = cond.second;
+        
+        float z_val = _get_layer_z_axis(layer_name);
+        float h_val = _get_layer_thickness(layer_name);
+        for (auto& c: cond_list)
+        {
+            std::string node1 = _pos2net(c.start.x, c.start.y, layer_name);
+            std::string node2 = _pos2net(c.end.x, c.end.y, layer_name);
+            henry.add_wire(node1, node2,
+                                node1 + node2,
+                                fasthenry::point(c.start.x, c.start.y, z_val),
+                                fasthenry::point(c.end.x, c.end.y, z_val), c.w, h_val);
+        }
+        
+    }
+}
+
+
+void z_extractor::_conn_to_zone(fasthenry& henry, float x, float y, const std::string& layer_name, std::map<std::string, std::list<z_extractor::cond> >& conds, float grid_size)
+{
+    if (conds.count(layer_name) == 0)
+    {
+        return;
+    }
+    
+    std::list<cond>& cond_list = conds[layer_name];
+    
+    for (const auto& c: cond_list)
+    {
+        if (calc_dist(c.start.x, c.start.y, x, y) < grid_size)
+        {
+            std::string node1 = _pos2net(c.start.x, c.start.y, layer_name);
+            std::string node2 = _pos2net(x, y, layer_name);
+            henry.add_equiv(node1, node2);
+            return;
+        }
+        else if (calc_dist(c.start.x, c.start.y, x, y) < grid_size)
+        {
+            std::string node1 = _pos2net(c.end.x, c.end.y, layer_name);
+            std::string node2 = _pos2net(x, y, layer_name);
+            henry.add_equiv(node1, node2);
+            return;
         }
     }
 }

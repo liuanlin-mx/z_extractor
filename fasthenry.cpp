@@ -34,7 +34,9 @@ bool fasthenry::add_wire(const char *name, point start, point end, float w, floa
 }
 
 
-bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float w, float h)
+bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
+                            point start, point end, float w, float h,
+                            std::int32_t nhinc, std::int32_t nwinc)
 {
     char buf[256] = {0};
     if (_added_nodes.count(node1_name) == 0)
@@ -50,7 +52,7 @@ bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2
         sprintf(buf, "N%s x=%f y=%f z=%f\n", node2_name.c_str(), end.x, end.y, end.z);
         _inp += std::string(buf);
     }
-    sprintf(buf, "E%s N%s N%s w=%f h=%f\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h);
+    sprintf(buf, "E%s N%s N%s w=%f h=%f nhinc=%d nwinc=%d\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h, nhinc, nwinc);
     _inp += std::string(buf);
     
     return true;
@@ -69,8 +71,20 @@ bool fasthenry::add_via(const char *name, point start, point end, float drill, f
     sprintf(buf, "E%s N%s_0 N%s_1 w=%f h=%f nhinc=5 nwinc=5\n", name, name, name, drill, drill);
     _inp += std::string(buf);
     
-    
     return false;
+}
+
+
+bool fasthenry::add_equiv(const std::string& node1_name, const std::string& node2_name)
+{
+    char buf[256] = {0};
+    sprintf(buf, ".equiv N%s N%s\n", node1_name.c_str(), node2_name.c_str());
+    if (_equiv.count(buf) == 0)
+    {
+        _equiv.insert(buf);
+        _inp += buf;
+    }
+    return true;
 }
 
 
@@ -113,6 +127,12 @@ void fasthenry::dump()
     
     tmp += ".freq fmin=1e9 fmax=1e9 ndec=1\n.end\n";
     printf("\n\n\n%s\n\n\n", tmp.c_str());
+    FILE *fp = fopen("test.inp", "wb");
+    if (fp)
+    {
+        fprintf(fp, "%s", tmp.c_str());
+        fclose(fp);
+    }
 }
 
 
@@ -222,14 +242,14 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     char buf[512];
     tmp = "*****\n"
                             ".units mm\n"
-                            ".default nwinc=8 nhinc=3 sigma=5.8e4\n";
+                            ".default nwinc=1 nhinc=1 sigma=5.8e4\n";
     tmp += _inp;
     
     sprintf(buf, ".external N%s N%s\n", node1_name.c_str(), node2_name.c_str());
     tmp += buf;
     
     
-    tmp += ".freq fmin=1e9 fmax=1e9 ndec=1\n.end\n";
+    tmp += ".freq fmin=1e6 fmax=1e6 ndec=1\n.end\n";
     
         
     FILE *fp = popen("fasthenry > /dev/null", "w");

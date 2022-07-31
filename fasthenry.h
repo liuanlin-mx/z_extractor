@@ -34,9 +34,10 @@ public:
 public:
     void clear();
     bool add_wire(const char *name, point start, point end, float w, float h);
-    bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float w, float h);
+    bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
+                    point start, point end, float w, float h, std::int32_t nhinc = 1, std::int32_t nwinc = 1);
     bool add_via(const char *name, point start, point end, float drill, float size);
-    
+    bool add_equiv(const std::string& node1_name, const std::string& node2_name);
     bool calc_impedance(const std::string& node1_name, const std::string& node2_name, double& r, double& l);
     std::string gen_ckt(const char *wire_name, const std::string& name);
     
@@ -55,6 +56,7 @@ private:
 private:
     std::string _inp;
     std::set<std::string> _added_nodes;
+    std::set<std::string> _equiv;
 };
 
 #endif

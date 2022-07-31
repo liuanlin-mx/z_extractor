@@ -141,7 +141,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/桌面/test/test.kicad_pcb -rl -pad &quot;J2.3:J1.3&quot; -net &quot;/SP&quot; -o newcfg" UseSeparateDebugArgs="no" DebugArguments="-pcb /home/mx/桌面/test/test.kicad_pcb -rl -pad &quot;J2.3:J1.3&quot; -net &quot;/SP&quot; -o newcfg" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -rl -pad &quot;L5.2:R19.1&quot;  -o newcfg" UseSeparateDebugArgs="no" DebugArguments=" -pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -rl -pad &quot;L5.2:R19.1&quot;  -o newcfg" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

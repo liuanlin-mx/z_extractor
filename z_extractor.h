@@ -10,6 +10,7 @@
 #include <opencv2/opencv.hpp>
 #include "Z0_calc.h"
 
+class fasthenry;
 class z_extractor
 {
 public:
@@ -226,7 +227,10 @@ private:
     
     
     
-    void _get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points);
+    void _get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size);
+    //void _get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points);
+    void _add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size);
+    void _conn_to_zone(fasthenry& henry, float x, float y, const std::string& layer_name, std::map<std::string, std::list<cond> >& conds, float grid_size);
     
     void _draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r);
     
@@ -266,10 +270,12 @@ private:
     std::string _gen_via_model_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
     
     
-    
     float _cvt_img_x(float x) { return round((x - _pcb_left) * _img_ratio); }
     float _cvt_img_y(float y) { return round((y - _pcb_top) * _img_ratio); }
     float _cvt_img_len(float len) { return round(len * _img_ratio); }
+    float _cvt_pcb_x(float x) { return x / _img_ratio + _pcb_left; }
+    float _cvt_pcb_y(float y) { return y / _img_ratio + _pcb_top; }
+    float _cvt_pcb_len(float len) { return len / _img_ratio; }
     float _get_pcb_img_cols() { return round((_pcb_right - _pcb_left) * _img_ratio); }
     float _get_pcb_img_rows() { return round((_pcb_bottom - _pcb_top) * _img_ratio); }
     
