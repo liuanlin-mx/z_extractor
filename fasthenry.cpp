@@ -36,7 +36,7 @@ bool fasthenry::add_wire(const char *name, point start, point end, float w, floa
 
 bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
                             point start, point end, float w, float h,
-                            std::int32_t nhinc, std::int32_t nwinc)
+                            std::int32_t nwinc, std::int32_t nhinc)
 {
     char buf[256] = {0};
     if (_added_nodes.count(node1_name) == 0)
@@ -58,6 +58,92 @@ bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2
     return true;
 }
 
+bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float drill, float size)
+{
+    char buf[256] = {0};
+    
+    
+    if (_added_nodes.count(node1_name) == 0)
+    {
+        _added_nodes.insert(node1_name);
+        sprintf(buf, "N%s x=%f y=%f z=%f\n", node1_name.c_str(), start.x, start.y, start.z);
+        _inp += std::string(buf);
+    }
+    
+    if (_added_nodes.count(node2_name) == 0)
+    {
+        _added_nodes.insert(node2_name);
+        sprintf(buf, "N%s x=%f y=%f z=%f\n", node2_name.c_str(), end.x, end.y, end.z);
+        _inp += std::string(buf);
+    }
+    
+    //An的坐标为(p+r*cos(2π*(n-1)/n),q+r*sin(2π*(n-1)/n))
+    
+    float via_cu_thick = 0.0254;
+    float inside_r = (drill +  via_cu_thick) * 0.5;
+    float outer_r = size * 0.5;
+    
+    std::vector<point> inside_points;
+    std::vector<point> outer_points;
+    
+    float cx = start.x;
+    float cy = start.y;
+    float div_n = 6;
+    for (std::uint32_t i = 0; i < div_n; i++)
+    {
+        float x = cx + inside_r * cos(2 * M_PI * i / div_n);
+        float y = cy + inside_r * sin(2 * M_PI * i / div_n);
+        inside_points.push_back(point(x, y, 0));
+        
+        x = cx + outer_r * cos(2 * M_PI * i / div_n);
+        y = cy + outer_r * sin(2 * M_PI * i / div_n);
+        outer_points.push_back(point(x, y, 0));
+    }
+    
+    std::string inp;
+    float w = M_PI * (drill + 2 * via_cu_thick) / div_n;
+    for (std::uint32_t i = 0; i < inside_points.size(); i++)
+    {
+        sprintf(buf, "N%s%d x=%f y=%f z=%f\n", node1_name.c_str(), i, inside_points[i].x, inside_points[i].y, start.z);
+        if (_added_nodes.count(buf) == 0)
+        {
+            _added_nodes.insert(buf);
+            inp += buf;
+        }
+        sprintf(buf, "N%s%d x=%f y=%f z=%f\n", node2_name.c_str(), i, inside_points[i].x, inside_points[i].y, end.z);
+        if (_added_nodes.count(buf) == 0)
+        {
+            _added_nodes.insert(buf);
+            inp += buf;
+        }
+            
+        /* 连接过孔各层的面 */
+        sprintf(buf, "Evid%s%d N%s%d N%s%d w=%f h=%f wx=%f wy=%f wz=0  nwinc=1 nhinc=1\n",
+                    wire_name.c_str(), i, node1_name.c_str(), i, node2_name.c_str(), i,
+                    via_cu_thick, w,
+                    inside_points[i].x - cx, inside_points[i].y - cy);
+        inp += buf;
+        
+        sprintf(buf, ".equiv N%s%d N%s\n", node1_name.c_str(), i, node1_name.c_str());
+        if (_added_nodes.count(buf) == 0)
+        {
+            _added_nodes.insert(buf);
+            inp += buf;
+        }
+        sprintf(buf, ".equiv N%s%d N%s\n", node2_name.c_str(), i, node2_name.c_str());
+        if (_added_nodes.count(buf) == 0)
+        {
+            _added_nodes.insert(buf);
+            inp += buf;
+        }
+    }
+    
+    
+    //sprintf(buf, "E%s N%s N%s w=%f h=%f nwinc=1 nhinc=1\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), drill, drill);
+    //_inp += std::string(buf);
+    _inp += inp;
+    return true;
+}
 
 bool fasthenry::add_via(const char *name, point start, point end, float drill, float size)
 {
@@ -249,7 +335,7 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     tmp += buf;
     
     
-    tmp += ".freq fmin=1e6 fmax=1e6 ndec=1\n.end\n";
+    tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
     
         
     FILE *fp = popen("fasthenry > /dev/null", "w");

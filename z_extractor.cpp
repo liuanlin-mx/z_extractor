@@ -324,7 +324,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
             float z1 = _get_layer_z_axis(start);
             float z2 = _get_layer_z_axis(end);
             
-            henry.add_wire(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
+            henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                 fasthenry::point(v.at.x, v.at.y, z1),
                                 fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
@@ -350,7 +350,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
             float z1 = _get_layer_z_axis(start);
             float z2 = _get_layer_z_axis(end);
             
-            henry.add_wire(_pos2net(x, y, start), _pos2net(x, y, end),
+            henry.add_via(_pos2net(x, y, start), _pos2net(x, y, end),
                                 _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
                                 fasthenry::point(x, y, z1),
                                 fasthenry::point(x, y, z2), 1, 1);
@@ -484,7 +484,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
             float z1 = _get_layer_z_axis(start);
             float z2 = _get_layer_z_axis(end);
             
-            henry.add_wire(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
+            henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                 fasthenry::point(v.at.x, v.at.y, z1),
                                 fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
@@ -505,7 +505,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
             float z1 = _get_layer_z_axis(start);
             float z2 = _get_layer_z_axis(end);
             
-            henry.add_wire(_pos2net(x, y, start), _pos2net(x, y, end),
+            henry.add_via(_pos2net(x, y, start), _pos2net(x, y, end),
                                 _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
                                 fasthenry::point(x, y, z1),
                                 fasthenry::point(x, y, z2), 1, 1);
@@ -2235,7 +2235,7 @@ void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::m
             henry.add_wire(node1, node2,
                                 node1 + node2,
                                 fasthenry::point(c.start.x, c.start.y, z_val),
-                                fasthenry::point(c.end.x, c.end.y, z_val), c.w, h_val);
+                                fasthenry::point(c.end.x, c.end.y, z_val), c.w, h_val, 1, 1);
         }
         
     }
@@ -2253,16 +2253,16 @@ void z_extractor::_conn_to_zone(fasthenry& henry, float x, float y, const std::s
     
     for (const auto& c: cond_list)
     {
-        if (calc_dist(c.start.x, c.start.y, x, y) < grid_size)
+        if (calc_dist(c.start.x, c.start.y, x, y) < grid_size * 0.51)
         {
             std::string node1 = _pos2net(c.start.x, c.start.y, layer_name);
             std::string node2 = _pos2net(x, y, layer_name);
             henry.add_equiv(node1, node2);
             return;
         }
-        else if (calc_dist(c.start.x, c.start.y, x, y) < grid_size)
+        else if (calc_dist(c.start.x, c.start.y, x, y) < grid_size * 0.51)
         {
-            std::string node1 = _pos2net(c.end.x, c.end.y, layer_name);
+            std::string node1 = _pos2net(c.end.x, c.end.y, layer_name );
             std::string node2 = _pos2net(x, y, layer_name);
             henry.add_equiv(node1, node2);
             return;
