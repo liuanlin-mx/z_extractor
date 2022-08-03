@@ -327,7 +327,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
             henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                                 fasthenry::point(v.at.x, v.at.y, z1),
-                                fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.drill);
+                                fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.size);
             if (have_zones)
             {
                 _conn_to_zone(henry, v.at.x, v.at.y, start, conds, grid_size);
