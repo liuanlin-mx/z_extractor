@@ -282,18 +282,23 @@ int main(int argc, char **argv)
     }
     else
     {
+        char str[4096] = {0};
         for (const auto& pad: pads)
         {
             std::string ckt;
             std::string call;
             std::vector<std::string> footprint;
+            float r = 0;
+            float l = 0;
             
             std::vector<std::string> pad1 = _string_split(pad.first, ".");
             std::vector<std::string> pad2 = _string_split(pad.second, ".");
-            if (z_extr->gen_subckt_rl(pad1.front(), pad1.back(), pad2.front(), pad2.back(), ckt, call))
+            if (z_extr->gen_subckt_rl(pad1.front(), pad1.back(), pad2.front(), pad2.back(), ckt, call, r, l))
             {
                 spice += ckt;
-                printf("ckt:%s\n", ckt.c_str());
+                sprintf(str, "pad-pad: %s.%s:%s.%s r=%.4e l=%.4gnH\n",
+                            pad1.front().c_str(), pad1.back().c_str(), pad2.front().c_str(), pad2.back().c_str(), r, l * 1e9);
+                info += str;
             }
         }
         
@@ -306,8 +311,7 @@ int main(int argc, char **argv)
             
             if (z_extr->gen_subckt(z_extr->get_net_id(net.c_str()), ckt, footprint, call))
             {
-                //spice += ckt;
-                printf("ckt:%s\n", ckt.c_str());
+                spice += ckt;
             }
         }
     }

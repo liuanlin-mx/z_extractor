@@ -132,6 +132,9 @@ class rl_extractor_base ( wx.Dialog ):
 
 		bSizer8 = wx.BoxSizer( wx.HORIZONTAL )
 
+
+		bSizer8.Add( ( 0, 0), 1, wx.EXPAND, 5 )
+
 		self.m_buttonExtract = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer8.Add( self.m_buttonExtract, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
@@ -142,7 +145,7 @@ class rl_extractor_base ( wx.Dialog ):
 		sbSizer6.Add( bSizer8, 1, wx.ALL|wx.EXPAND, 5 )
 
 
-		bSizer4.Add( sbSizer6, 0, wx.EXPAND, 5 )
+		bSizer4.Add( sbSizer6, 0, wx.ALIGN_CENTER|wx.EXPAND, 5 )
 
 		self.m_textCtrlOutput = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE|wx.TE_READONLY )
 		bSizer4.Add( self.m_textCtrlOutput, 1, wx.ALL|wx.EXPAND, 5 )
@@ -249,8 +252,7 @@ class rl_extractor_gui(rl_extractor_base):
             self.plugin_bin_path = self.plugin_path + os.sep + "win"
         elif sys == "Linux":
             self.plugin_bin_path = self.plugin_path + os.sep + "linux"
-            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
-            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "mmtl_bem", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "fasthenry", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "z_extractor", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
         else:
             pass

@@ -253,7 +253,7 @@ std::uint32_t z_extractor::get_net_id(std::string name)
 
 bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string& footprint1_pad_number,
                         const std::string& footprint2, const std::string& footprint2_pad_number,
-                        std::string& ckt, std::string& call)
+                        std::string& ckt, std::string& call, float& r, float& l)
 {
     pad pad1;
     pad pad2;
@@ -284,6 +284,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     
     /* 构建fasthenry */
     fasthenry henry;
+    henry.set_conductivity(_conductivity);
     std::map<std::string, cv::Mat> zone_mat;
     std::map<std::string, std::list<cond> > conds;
     bool have_zones = !get_zones(net_id).empty();
@@ -363,20 +364,20 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
         }
     }
     
-    henry.dump();
+    //henry.dump();
     
     float x1;
     float y1;
     float x2;
     float y2;
-    double r = 0;
-    double l = 0;
+    double r_ = 0;
+    double l_ = 0;
         
     std::vector<std::string> layers1 = _get_pad_layers(pad1);
     std::vector<std::string> layers2 = _get_pad_layers(pad2);
     _get_pad_pos(pad1, x1, y1);
     _get_pad_pos(pad2, x2, y2);
-    henry.calc_impedance(_pos2net(x1, y1, layers1.front()), _pos2net(x2, y2, layers2.front()), r, l);
+    henry.calc_impedance(_pos2net(x1, y1, layers1.front()), _pos2net(x2, y2, layers2.front()), r_, l_);
     
     
     char buf[512];
@@ -392,11 +393,14 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     
     comment = "****" + footprint1 + "." + footprint1_pad_number + "    " + footprint2 + "." + footprint2_pad_number +  "*****\n";
     ckt = comment + ckt;
-    sprintf(buf, "R1 %s mid %lg\n", ckt_pin1.c_str(), r);
+    sprintf(buf, "R1 %s mid %lg\n", ckt_pin1.c_str(), r_);
     ckt += buf;
-    sprintf(buf, "L1 mid %s %lg\n", ckt_pin2.c_str(), l);
+    sprintf(buf, "L1 mid %s %lg\n", ckt_pin2.c_str(), l_);
     ckt += buf;
     ckt += ".ends\n";
+    
+    r = r_;
+    l = l_;
     return true;
 }
 
@@ -458,6 +462,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     
     /* 构建fasthenry */
     fasthenry henry;
+    henry.set_conductivity(_conductivity);
     
     for (auto& s_list: v_segments)
     {
@@ -511,7 +516,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
                                 fasthenry::point(x, y, z2), 1, 1);
         }
     }
-    henry.dump();
+    //henry.dump();
     
     /* 生成走线参数 */
     for (auto& s_list: v_segments)
@@ -599,13 +604,14 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     ckt += sub;
     return true;
 }
-
+#if 0
 bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
             std::string& ckt, std::set<std::string>& footprint, std::string& call)
 {
     std::string sub;
     std::string tmp;
     fasthenry henry;
+    henry.set_conductivity(_conductivity);
     char buf[512] = {0};
     
     //生成子电路参数和调用代码
@@ -677,7 +683,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
             }
         }
     }
-    henry.dump();
+    //henry.dump();
     std::set<std::string> tstamp_tmp;
     for (auto& mutual: mutual_ind_tstamp)
     {
@@ -782,7 +788,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     ckt += sub;
     return true;
 }
-
+#endif
 
 
 bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,

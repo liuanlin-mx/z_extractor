@@ -4,6 +4,7 @@
 #include "fasthenry.h"
 
 fasthenry::fasthenry()
+    : _conductivity(5.8e7)
 {
 }
 
@@ -206,19 +207,15 @@ std::string fasthenry::gen_ckt2(std::list<std::string> wire_names, const std::st
 void fasthenry::dump()
 {
     std::string tmp;
-    tmp = "*****\n"
-                            ".units mm\n"
-                            ".default nwinc=8 nhinc=3 sigma=5.8e4\n";
+    char buf[256];
+    sprintf(buf, "*****\n"
+                    ".units mm\n"
+                    ".default nwinc=1 nhinc=1 sigma=%g\n", _conductivity * 1e-3);
+    tmp = buf;
     tmp += _inp;
     
-    tmp += ".freq fmin=1e9 fmax=1e9 ndec=1\n.end\n";
+    tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
     printf("\n\n\n%s\n\n\n", tmp.c_str());
-    FILE *fp = fopen("test.inp", "wb");
-    if (fp)
-    {
-        fprintf(fp, "%s", tmp.c_str());
-        fclose(fp);
-    }
 }
 
 
@@ -326,9 +323,10 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
 {
     std::string tmp;
     char buf[512];
-    tmp = "*****\n"
-                            ".units mm\n"
-                            ".default nwinc=1 nhinc=1 sigma=5.8e4\n";
+    sprintf(buf, "*****\n"
+                    ".units mm\n"
+                    ".default nwinc=1 nhinc=1 sigma=%g\n", _conductivity * 1e-3);
+    tmp = buf;
     tmp += _inp;
     
     sprintf(buf, ".external N%s N%s\n", node1_name.c_str(), node2_name.c_str());

@@ -142,11 +142,11 @@ public:
     
     bool gen_subckt_rl(const std::string& footprint1, const std::string& footprint1_pad_number,
                         const std::string& footprint2, const std::string& footprint2_pad_number,
-                        std::string& ckt, std::string& call);
+                        std::string& ckt, std::string& call, float& r, float& l);
     bool gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<std::string>& footprint, std::string& call);
     
-    bool gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
-            std::string& ckt, std::set<std::string>& footprint, std::string& call);
+    /*bool gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std::set<std::string> > mutual_ind_tstamp,
+            std::string& ckt, std::set<std::string>& footprint, std::string& call);*/
     
     bool gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t> refs_id,
                         std::string& ckt, std::set<std::string>& footprint, std::string& call, float& Z0_avg, float& td_sum, float& velocity_avg);

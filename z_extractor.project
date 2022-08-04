@@ -206,8 +206,10 @@
       <PreBuild/>
       <PostBuild>
         <Command Enabled="yes">cd ${WORKSPACE_PATH}/atlc &amp;&amp; CFLAGS=-static LDFLAGS=-static ./configure &amp;&amp; make -j4</Command>
+        <Command Enabled="yes">cd ${WORKSPACE_PATH}/FastHenry2 &amp;&amp; CC='gcc -static' make fasthenry -j4</Command>
         <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux</Command>
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/atlc/src/atlc ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
+        <Command Enabled="yes">cp ${WORKSPACE_PATH}/FastHenry2/bin/fasthenry ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
         <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/z_extractor ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
         <Command Enabled="yes">cp ${CL_OUTPUT_DIRECTORY}/mmtl_bem ${WORKSPACE_PATH}/z_extractor_pcm/plugins/linux/</Command>
         <Command Enabled="yes">cp -rf ${WORKSPACE_PATH}/plugin/*py ${WORKSPACE_PATH}/z_extractor_pcm/plugins/</Command>
