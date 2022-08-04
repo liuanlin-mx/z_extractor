@@ -340,16 +340,6 @@ class rl_extractor_gui(rl_extractor_base):
                 net = track.GetNet()
                 if net.GetNetname() in self.net_classes_list:
                     self.m_listBoxNetClasses.SetStringSelection(net.GetNetname())
-            
-    
-        for m in self.board.GetFootprints():
-            #print( 'footprint: ', fromUTF8Text( m.GetReference() ) )
-            
-            self.m_textCtrlOutput.AppendText("footprint: {}\n".format(m.GetReference()))
-            for p in m.Pads():
-                #print('pad ', fromUTF8Text( p.GetName() ), ToMM(p.GetPosition()), ToMM(p.GetOffset()))
-                self.m_textCtrlOutput.AppendText("Pad: {} net: {} {}\n".format(p.GetName(), p.GetClass(), p.GetNet().GetNetname()))
-            
     
     def update_pads_ui(self):
         selected = self.m_listBoxNetClasses.GetSelections()
@@ -357,20 +347,15 @@ class rl_extractor_gui(rl_extractor_base):
             return
             
         self.m_listBoxPads.Clear()
-        
         net_name = self.m_listBoxNetClasses.GetString(selected[0])
             
-        self.m_textCtrlOutput.AppendText("net_name: {}\n".format(net_name))
         for m in self.board.GetFootprints():
             footprint = m.GetReference()
-            #self.m_textCtrlOutput.AppendText("footprint: {}\n".format(m.GetReference()))
             for p in m.Pads():
-                #self.m_textCtrlOutput.AppendText("Pad: {} net: {} {}\n".format(p.GetName(), p.GetClass(), p.GetNet().GetNetname()))
                 if p.GetNet().GetNetname() == net_name:
                     self.m_listBoxPads.Append(footprint + "." + p.GetName())
             
     
-        pass
         
     def update_cfg_ui(self):
         self.m_listBoxCfg.Clear()

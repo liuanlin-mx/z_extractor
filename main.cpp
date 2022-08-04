@@ -296,7 +296,7 @@ int main(int argc, char **argv)
             if (z_extr->gen_subckt_rl(pad1.front(), pad1.back(), pad2.front(), pad2.back(), ckt, call, r, l))
             {
                 spice += ckt;
-                sprintf(str, "pad-pad: %s.%s:%s.%s r=%.4e l=%.4gnH\n",
+                sprintf(str, "pad-pad: %s.%s:%s.%s R=%.4e L=%.4gnH\n",
                             pad1.front().c_str(), pad1.back().c_str(), pad2.front().c_str(), pad2.back().c_str(), r, l * 1e9);
                 info += str;
             }
