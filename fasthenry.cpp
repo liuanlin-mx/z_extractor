@@ -337,15 +337,6 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     
     
     tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
-    if (1)
-    {
-        FILE *fp = fopen("test.inp", "wb");
-        if (fp)
-        {
-            fwrite(tmp.c_str(), 1, tmp.length(), fp);
-            fclose(fp);
-        }
-    }
     FILE *fp = popen("fasthenry > /dev/null", "w");
     if (fp)
     {
