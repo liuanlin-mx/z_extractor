@@ -3,6 +3,12 @@
 #include <math.h>
 #include "fasthenry.h"
 
+#ifdef _WIN32
+#define DEV_NULL " NUL "
+#else
+#define DEV_NULL " /dev/null "
+#endif
+
 fasthenry::fasthenry()
     : _conductivity(5.8e7)
 {
@@ -242,7 +248,7 @@ void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r)
         
     tmp += ".external N0 N1\n.freq fmin=1e8 fmax=1e8 ndec=1\n.end\n";
     
-    FILE *fp = popen("fasthenry > /dev/null", "w");
+    FILE *fp = popen("fasthenry > " DEV_NULL, "w");
     if (fp)
     {
         fwrite(tmp.c_str(), 1, tmp.length(), fp);
@@ -302,7 +308,7 @@ void fasthenry::_call_fasthenry(std::list<std::string> wire_name)
     tmp += ".freq fmin=1e9 fmax=1e9 ndec=1\n.end\n";
     
         
-    FILE *fp = popen("fasthenry > /dev/null", "w");
+    FILE *fp = popen("fasthenry > " DEV_NULL, "w");
     if (fp)
     {
         fwrite(tmp.c_str(), 1, tmp.length(), fp);
@@ -337,7 +343,7 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     
     
     tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
-    FILE *fp = popen("fasthenry > /dev/null", "w");
+    FILE *fp = popen("fasthenry > " DEV_NULL, "w");
     if (fp)
     {
         fwrite(tmp.c_str(), 1, tmp.length(), fp);
