@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     std::list<std::pair<std::string, std::string> > pads;
     std::list<std::string> refs;
     const char *pcb_file = NULL;
-    bool tl = false;
+    bool tl = true;
     const char *oname = NULL;
     
     float coupled_max_d = 2;
