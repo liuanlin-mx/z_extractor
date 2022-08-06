@@ -60,7 +60,7 @@ private:
     
 private:
     std::string _inp;
-    std::set<std::string> _added_nodes;
+    std::set<std::string> _added;
     std::set<std::string> _equiv;
     float _conductivity;
 };

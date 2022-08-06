@@ -40,21 +40,25 @@ bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2
                             std::int32_t nwinc, std::int32_t nhinc)
 {
     char buf[256] = {0};
-    if (_added_nodes.count(node1_name) == 0)
+    if (_added.count(node1_name) == 0)
     {
-        _added_nodes.insert(node1_name);
-        sprintf(buf, "N%s x=%f y=%f z=%f\n", node1_name.c_str(), start.x, start.y, start.z);
+        _added.insert(node1_name);
+        sprintf(buf, "N%s x=%.3f y=%.3f z=%.3f\n", node1_name.c_str(), start.x, start.y, start.z);
         _inp += std::string(buf);
     }
     
-    if (_added_nodes.count(node2_name) == 0)
+    if (_added.count(node2_name) == 0)
     {
-        _added_nodes.insert(node2_name);
-        sprintf(buf, "N%s x=%f y=%f z=%f\n", node2_name.c_str(), end.x, end.y, end.z);
+        _added.insert(node2_name);
+        sprintf(buf, "N%s x=%.3f y=%.3f z=%.3f\n", node2_name.c_str(), end.x, end.y, end.z);
         _inp += std::string(buf);
     }
-    sprintf(buf, "E%s N%s N%s w=%f h=%f nhinc=%d nwinc=%d\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h, nhinc, nwinc);
-    _inp += std::string(buf);
+    if (_added.count(wire_name) == 0)
+    {
+        _added.insert(wire_name);
+        sprintf(buf, "E%s N%s N%s w=%f h=%f nhinc=%d nwinc=%d\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h, nhinc, nwinc);
+        _inp += std::string(buf);
+    }
     
     return true;
 }
@@ -64,17 +68,17 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
     char buf[256] = {0};
     
     
-    if (_added_nodes.count(node1_name) == 0)
+    if (_added.count(node1_name) == 0)
     {
-        _added_nodes.insert(node1_name);
-        sprintf(buf, "N%s x=%f y=%f z=%f\n", node1_name.c_str(), start.x, start.y, start.z);
+        _added.insert(node1_name);
+        sprintf(buf, "N%s x=%.4f y=%.4f z=%.4f\n", node1_name.c_str(), start.x, start.y, start.z);
         _inp += std::string(buf);
     }
     
-    if (_added_nodes.count(node2_name) == 0)
+    if (_added.count(node2_name) == 0)
     {
-        _added_nodes.insert(node2_name);
-        sprintf(buf, "N%s x=%f y=%f z=%f\n", node2_name.c_str(), end.x, end.y, end.z);
+        _added.insert(node2_name);
+        sprintf(buf, "N%s x=%.4f y=%.4f z=%.4f\n", node2_name.c_str(), end.x, end.y, end.z);
         _inp += std::string(buf);
     }
     
@@ -105,16 +109,16 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
     float w = M_PI * (drill + 2 * via_cu_thick) / div_n;
     for (std::uint32_t i = 0; i < inside_points.size(); i++)
     {
-        sprintf(buf, "N%s%d x=%f y=%f z=%f\n", node1_name.c_str(), i, inside_points[i].x, inside_points[i].y, start.z);
-        if (_added_nodes.count(buf) == 0)
+        sprintf(buf, "N%s%d x=%.4f y=%.4f z=%.4f\n", node1_name.c_str(), i, inside_points[i].x, inside_points[i].y, start.z);
+        if (_added.count(buf) == 0)
         {
-            _added_nodes.insert(buf);
+            _added.insert(buf);
             inp += buf;
         }
-        sprintf(buf, "N%s%d x=%f y=%f z=%f\n", node2_name.c_str(), i, inside_points[i].x, inside_points[i].y, end.z);
-        if (_added_nodes.count(buf) == 0)
+        sprintf(buf, "N%s%d x=%.4f y=%.4f z=%.4f\n", node2_name.c_str(), i, inside_points[i].x, inside_points[i].y, end.z);
+        if (_added.count(buf) == 0)
         {
-            _added_nodes.insert(buf);
+            _added.insert(buf);
             inp += buf;
         }
             
@@ -126,15 +130,15 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
         inp += buf;
         
         sprintf(buf, ".equiv N%s%d N%s\n", node1_name.c_str(), i, node1_name.c_str());
-        if (_added_nodes.count(buf) == 0)
+        if (_added.count(buf) == 0)
         {
-            _added_nodes.insert(buf);
+            _added.insert(buf);
             inp += buf;
         }
         sprintf(buf, ".equiv N%s%d N%s\n", node2_name.c_str(), i, node2_name.c_str());
-        if (_added_nodes.count(buf) == 0)
+        if (_added.count(buf) == 0)
         {
-            _added_nodes.insert(buf);
+            _added.insert(buf);
             inp += buf;
         }
     }
@@ -149,13 +153,13 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
 bool fasthenry::add_via(const char *name, point start, point end, float drill, float size)
 {
     char buf[256] = {0};
-    sprintf(buf, "N%s_0 x=%f y=%f z=%f\n", name, start.x, start.y, start.z);
+    sprintf(buf, "N%s_0 x=%.3f y=%.3f z=%.3f\n", name, start.x, start.y, start.z);
     _inp += std::string(buf);
     
-    sprintf(buf, "N%s_1 x=%f y=%f z=%f\n", name, end.x, end.y, end.z);
+    sprintf(buf, "N%s_1 x=%.3f y=%.3f z=%.3f\n", name, end.x, end.y, end.z);
     _inp += std::string(buf);
     
-    sprintf(buf, "E%s N%s_0 N%s_1 w=%f h=%f nhinc=5 nwinc=5\n", name, name, name, drill, drill);
+    sprintf(buf, "E%s N%s_0 N%s_1 w=%.3f h=%.3f nhinc=5 nwinc=5\n", name, name, name, drill, drill);
     _inp += std::string(buf);
     
     return false;
@@ -230,10 +234,10 @@ void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r)
                             ".default nwinc=1 nhinc=1 sigma=5.8e4\n";
     tmp += "N0 x=0 y=0 z=0\n";
     
-    sprintf(buf, "N1 x=%f y=0 z=0\n", len);
+    sprintf(buf, "N1 x=%.3f y=0 z=0\n", len);
     tmp += std::string(buf);
     
-    sprintf(buf, "E0 N0 N1 w=%f h=%f\n", w, h);
+    sprintf(buf, "E0 N0 N1 w=%.3f h=%.3f\n", w, h);
     tmp += std::string(buf);
         
     tmp += ".external N0 N1\n.freq fmin=1e8 fmax=1e8 ndec=1\n.end\n";
@@ -316,7 +320,6 @@ void fasthenry::_call_fasthenry(std::list<std::string> wire_name)
         
         pclose(fp);
     }
-    
 }
 
 void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string& node2_name)
@@ -334,8 +337,15 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     
     
     tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
-    
-        
+    if (1)
+    {
+        FILE *fp = fopen("test.inp", "wb");
+        if (fp)
+        {
+            fwrite(tmp.c_str(), 1, tmp.length(), fp);
+            fclose(fp);
+        }
+    }
     FILE *fp = popen("fasthenry > /dev/null", "w");
     if (fp)
     {

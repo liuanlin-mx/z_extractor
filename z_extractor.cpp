@@ -291,7 +291,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     float grid_size = 1;
     if (have_zones)
     {
-        _create_refs_mat({net_id}, zone_mat);
+        _create_refs_mat({net_id}, zone_mat, false);
         _add_zone(henry, net_id, zone_mat, conds, grid_size);
     }
     
@@ -308,8 +308,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
                                 fasthenry::point(s.end.x, s.end.y, z_val), s.width, h_val);
             if (have_zones)
             {
-                _conn_to_zone(henry, s.start.x, s.start.y, s.layer_name, conds, grid_size);
-                _conn_to_zone(henry, s.end.x, s.end.y, s.layer_name, conds, grid_size);
+                _conn_to_zone(henry, s.start.x, s.start.y, zone_mat, s.layer_name, conds, grid_size);
+                _conn_to_zone(henry, s.end.x, s.end.y, zone_mat, s.layer_name, conds, grid_size);
             }
         }
     }
@@ -331,8 +331,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
                                 fasthenry::point(v.at.x, v.at.y, z2), v.drill, v.size);
             if (have_zones)
             {
-                _conn_to_zone(henry, v.at.x, v.at.y, start, conds, grid_size);
-                _conn_to_zone(henry, v.at.x, v.at.y, end, conds, grid_size);
+                _conn_to_zone(henry, v.at.x, v.at.y, zone_mat, start, conds, grid_size);
+                _conn_to_zone(henry, v.at.x, v.at.y, zone_mat, end, conds, grid_size);
             }
         }
     }
@@ -358,8 +358,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
             
             if (have_zones)
             {
-                _conn_to_zone(henry, x, y, start, conds, grid_size);
-                _conn_to_zone(henry, x, y, end, conds, grid_size);
+                _conn_to_zone(henry, x, y, zone_mat, start, conds, grid_size);
+                _conn_to_zone(henry, x, y, zone_mat, end, conds, grid_size);
             }
         }
     }
@@ -2135,11 +2135,22 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
 }
 
 
-void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size)
+void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float& grid_size)
 {
-    grid_size = _cvt_img_len(grid_size);
-    std::uint32_t w_n = _get_pcb_img_cols() / grid_size;
-    std::uint32_t h_n = _get_pcb_img_rows() / grid_size;
+    float img_grid_size = _get_pcb_img_cols() / 50;
+    if (img_grid_size < _get_pcb_img_rows() / 50)
+    {
+        img_grid_size = _get_pcb_img_rows() / 50;
+    }
+    if (_cvt_pcb_len(img_grid_size) < 0.5)
+    {
+        img_grid_size = _cvt_img_len(0.5);
+    }
+    grid_size = _cvt_pcb_len(img_grid_size);
+    
+    //float img_grid_size = _cvt_img_len(grid_size);
+    std::uint32_t w_n = _get_pcb_img_cols() / img_grid_size;
+    std::uint32_t h_n = _get_pcb_img_rows() / img_grid_size;
     
     for (const auto& mat: zone_mat)
     {
@@ -2176,45 +2187,41 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
                     }
                 }
                 
-                if (count >= (std::uint32_t)roi.rows * roi.cols * 0.3)
+                if (count >= (std::uint32_t)roi.rows * roi.cols * 0.8)
                 {
                     //cv::line(img2, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 255, 255));
-                
+                    float w_ratio = 1;
                     pcb_point p;
                     cond c;
                     c.start.x = _cvt_pcb_x(x1);
                     c.start.y = _cvt_pcb_y(y1);
                     c.end.x = _cvt_pcb_x(x2);
                     c.end.y = _cvt_pcb_y(y1);
-                    c.w = _cvt_pcb_len(y2 - y1);
+                    c.w = _cvt_pcb_len(y2 - y1) * w_ratio;
                     
                     cond_list.push_back(c);
                     
-                    /*
-                    p.x = c.start.x;
-                    p.y = c.start.y;
-                    points.insert(p);
-                    
-                    p.x = c.end.x;
-                    p.y = c.end.y;
-                    points.insert(p);
-                    */
                     c.start.x = _cvt_pcb_x(x1);
                     c.start.y = _cvt_pcb_y(y1);
                     c.end.x = _cvt_pcb_x(x1);
                     c.end.y = _cvt_pcb_y(y2);
-                    c.w = _cvt_pcb_len(x2 - x1);
-                    //c.h = h;
+                    c.w = _cvt_pcb_len(x2 - x1) * w_ratio;
                     cond_list.push_back(c);
-                    /*
-                    p.x = c.start.x;
-                    p.y = c.start.y;
-                    points.insert(p);
                     
-                    p.x = c.end.x;
-                    p.y = c.end.y;
-                    points.insert(p);
-                    */
+                    
+                    c.start.x = _cvt_pcb_x(x2);
+                    c.start.y = _cvt_pcb_y(y1);
+                    c.end.x = _cvt_pcb_x(x2);
+                    c.end.y = _cvt_pcb_y(y2);
+                    c.w = _cvt_pcb_len(x2 - x1) * w_ratio;
+                    cond_list.push_back(c);
+                    
+                    c.start.x = _cvt_pcb_x(x1);
+                    c.start.y = _cvt_pcb_y(y2);
+                    c.end.x = _cvt_pcb_x(x2);
+                    c.end.y = _cvt_pcb_y(y2);
+                    c.w = _cvt_pcb_len(y2 - y1) * w_ratio;
+                    cond_list.push_back(c);
                 }
             }
         }
@@ -2223,7 +2230,7 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
 
 
 
-void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size)
+void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float& grid_size)
 {
     _get_zone_cond(net_id, zone_mat, conds, grid_size);
     
@@ -2248,31 +2255,45 @@ void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::m
 }
 
 
-void z_extractor::_conn_to_zone(fasthenry& henry, float x, float y, const std::string& layer_name, std::map<std::string, std::list<z_extractor::cond> >& conds, float grid_size)
+void z_extractor::_conn_to_zone(fasthenry& henry, float x, float y, std::map<std::string, cv::Mat>& zone_mat, const std::string& layer_name, std::map<std::string, std::list<z_extractor::cond> >& conds, float grid_size)
 {
-    if (conds.count(layer_name) == 0)
+    if (conds.count(layer_name) == 0 || zone_mat.count(layer_name) == 0)
     {
         return;
     }
     
     std::list<cond>& cond_list = conds[layer_name];
+    const cv::Mat& img = zone_mat[layer_name];
     
+    if (img.at<std::uint8_t>(_cvt_img_y(y), _cvt_img_x(x)) == 0)
+    {
+        return;
+    }
+    std::string node1;
+    std::string node2;
+    float min_dist = 10000;
     for (const auto& c: cond_list)
     {
-        if (calc_dist(c.start.x, c.start.y, x, y) < grid_size * 0.51)
+        float dist = calc_dist(c.start.x, c.start.y, x, y);
+        if (dist < min_dist)
         {
-            std::string node1 = _pos2net(c.start.x, c.start.y, layer_name);
-            std::string node2 = _pos2net(x, y, layer_name);
-            henry.add_equiv(node1, node2);
-            return;
+            min_dist = dist;
+            node1 = _pos2net(c.start.x, c.start.y, layer_name);
+            node2 = _pos2net(x, y, layer_name);
         }
-        else if (calc_dist(c.start.x, c.start.y, x, y) < grid_size * 0.51)
+        
+        dist = calc_dist(c.end.x, c.end.y, x, y);
+        if (dist < min_dist)
         {
-            std::string node1 = _pos2net(c.end.x, c.end.y, layer_name );
-            std::string node2 = _pos2net(x, y, layer_name);
-            henry.add_equiv(node1, node2);
-            return;
+            min_dist = dist;
+            node1 = _pos2net(c.end.x, c.end.y, layer_name);
+            node2 = _pos2net(x, y, layer_name);
         }
+    }
+    //printf("grid_size:%f min_dist:%f\n", grid_size, min_dist);
+    //if (min_dist < grid_size)
+    {
+        henry.add_equiv(node1, node2);
     }
 }
 
@@ -2308,7 +2329,7 @@ void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint
 }
 
 
-void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat)
+void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat, bool use_segment)
 {
     for (auto ref_id: refs_id)
     {
@@ -2340,28 +2361,31 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
             //cv::waitKey();
         }
         
-        std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
-        for (auto& segment: segments)
+        if (use_segment)
         {
-            for (auto& s: segment)
+            std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
+            for (auto& segment: segments)
             {
-                if (refs_mat.count(s.layer_name) == 0)
+                for (auto& s: segment)
                 {
-                    cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
-                    refs_mat.emplace(s.layer_name, img);
+                    if (refs_mat.count(s.layer_name) == 0)
+                    {
+                        cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
+                        refs_mat.emplace(s.layer_name, img);
+                    }
+                    _draw_segment(refs_mat[s.layer_name], s, 255, 255, 255);
+                        
                 }
-                _draw_segment(refs_mat[s.layer_name], s, 255, 255, 255);
-                    
+                
+                /*for (auto& mat: refs_mat)
+                {
+                    cv::Mat tmp;
+                    cv::resize(mat.second, tmp, cv::Size(1280, 960));
+                    cv::namedWindow("mat", cv::WINDOW_NORMAL);
+                    cv::imshow("mat", tmp);
+                    cv::waitKey();
+                }*/
             }
-            
-            /*for (auto& mat: refs_mat)
-            {
-                cv::Mat tmp;
-                cv::resize(mat.second, tmp, cv::Size(1280, 960));
-                cv::namedWindow("mat", cv::WINDOW_NORMAL);
-                cv::imshow("mat", tmp);
-                cv::waitKey();
-            }*/
         }
     }
     

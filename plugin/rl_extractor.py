@@ -17,7 +17,7 @@ import platform
 class rl_extractor_base ( wx.Dialog ):
 
 	def __init__( self, parent ):
-		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"rl_extractor", pos = wx.DefaultPosition, size = wx.Size( 900,640 ), style = wx.DEFAULT_DIALOG_STYLE|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER )
+		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"RL_extractor", pos = wx.DefaultPosition, size = wx.Size( 900,640 ), style = wx.DEFAULT_DIALOG_STYLE|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER )
 
 		self.SetSizeHints( wx.Size( 800,640 ), wx.DefaultSize )
 

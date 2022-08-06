@@ -227,14 +227,14 @@ private:
     
     
     
-    void _get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size);
+    void _get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float& grid_size);
     //void _get_zone_cond(const z_extractor::zone& z, std::list<cond>& conds, std::set<z_extractor::pcb_point>& points);
-    void _add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float grid_size);
-    void _conn_to_zone(fasthenry& henry, float x, float y, const std::string& layer_name, std::map<std::string, std::list<cond> >& conds, float grid_size);
+    void _add_zone(fasthenry& henry, std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float& grid_size);
+    void _conn_to_zone(fasthenry& henry, float x, float y, std::map<std::string, cv::Mat>& zone_mat, const std::string& layer_name, std::map<std::string, std::list<cond> >& conds, float grid_size);
     
     void _draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r);
     
-    void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat);
+    void _create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat, bool use_segment = true);
     
     /* 提取走线附近的参考平面横界面参数 */
     std::list<std::pair<float, float> > _get_mat_line(const cv::Mat& img, float x1, float y1, float x2, float y2);
