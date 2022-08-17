@@ -47,12 +47,12 @@ static std::vector<std::string> _string_split(std::string str, const std::string
     std::string::size_type end = 0;
     while ((end = str.find(key, begin)) != str.npos)
     {
-        out.push_back(str.substr(begin, end));
+        out.push_back(str.substr(begin, end - begin));
         begin = end + key.size();
     }
     if (begin < str.size())
     {
-        out.push_back(str.substr(begin, end));
+        out.push_back(str.substr(begin, end - begin));
     }
     
     return out;
