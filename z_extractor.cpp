@@ -2854,7 +2854,8 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
     bool s0_is_left = ((s.start.y - s.end.y) * s0.start.x + (s.end.x - s.start.x) * s0.start.y + s.start.x * s.end.y - s.end.x * s.start.y) > 0;
 
     std::vector<std::string> layers = _get_all_dielectric_layer();
-    float box_w = s.width * _Z0_w_ratio;
+    float box_w = std::min(std::max(s0.width, s1.width) * _Z0_w_ratio, s.width * _Z0_w_ratio);
+    box_w = std::max(box_w, s.width * 2);
     float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
     float box_y_offset = _get_board_thickness() * - 0.5;
     float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
@@ -2919,7 +2920,7 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
         std::set<std::string> elec_add;
         for (auto& refs: refs_mat)
         {
-            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, ss_item.pos, s.width * _Z0_w_ratio);
+            std::list<std::pair<float, float> >  grounds = _get_segment_ref_plane(s, refs.second, ss_item.pos, box_w);
             
             for (auto& g: grounds)
             {
