@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     bool tl = true;
     const char *oname = NULL;
     
-    float coupled_max_d = 2;
+    float coupled_max_gap = 2;
     float coupled_min_len = 0.5;
     bool lossless_tl = true;
     bool ltra = false;
@@ -121,9 +121,9 @@ int main(int argc, char **argv)
         {
             tl = false;
         }
-        else if (std::string(arg) == "-coupled_max_d" && i < argc)
+        else if (std::string(arg) == "-coupled_max_gap" && i < argc)
         {
-            coupled_max_d = atof(arg_next);
+            coupled_max_gap = atof(arg_next);
         }
         else if (std::string(arg) == "-coupled_min_len" && i < argc)
         {
@@ -185,7 +185,7 @@ int main(int argc, char **argv)
         return 0;
     }
     
-    z_extr->set_coupled_max_d(coupled_max_d);
+    z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);
     z_extr->enable_lossless_tl(lossless_tl);
     z_extr->enable_ltra_model(ltra);

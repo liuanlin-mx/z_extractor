@@ -23,7 +23,7 @@ z_extractor::z_extractor()
     _Z0_w_ratio = 10;
     _Z0_h_ratio = 100;
     
-    _coupled_max_d = 2;
+    _coupled_max_gap = 2;
     _coupled_min_len = 0.2;
     _lossless_tl = true;
     _ltra_model = true;
@@ -955,7 +955,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                 for (auto it1 = s_list1.begin(); it1 != s_list1.end(); it1++)
                 {
                     auto& s1 = *it1;
-                    if (_is_coupled(s0, s1, _coupled_max_d, _coupled_min_len))
+                    if (_is_coupled(s0, s1, _coupled_max_gap, _coupled_min_len))
                     {
                         double aox1;
                         double aoy1;
@@ -2540,7 +2540,7 @@ float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, con
 }
 
 
-bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len)
+bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_gap, float coupled_min_len)
 {
     if (s1.is_arc() || s2.is_arc())
     {
@@ -2555,7 +2555,8 @@ bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor:
         return false;
     }
     float dist = calc_p2line_dist(s1.start.x, s1.start.y, s1.end.x, s1.end.y, s2.start.x, s2.start.y);
-    if (dist > coupled_max_d)
+    float gap = dist - s1.width * 0.5 - s2.width * 0.5;
+    if (gap > coupled_max_gap)
     {
         return false;
     }

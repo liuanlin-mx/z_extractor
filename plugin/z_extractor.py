@@ -80,7 +80,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		bSizer6.Add( self.m_staticText2, 1, wx.ALL, 5 )
 
-		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlMinLen.SetMaxLength( 6 )
 		self.m_textCtrlMinLen.SetToolTip( u"unit mm" )
 
@@ -91,12 +91,12 @@ class z_extractor_base ( wx.Dialog ):
 
 		bSizer7 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"MaxDist:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText1 = wx.StaticText( sbSizer71.GetStaticBox(), wx.ID_ANY, u"MaxGap:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText1.Wrap( -1 )
 
 		bSizer7.Add( self.m_staticText1, 1, wx.ALL, 5 )
 
-		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.Size( -1,-1 ), 0 )
+		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.508", wx.DefaultPosition, wx.Size( -1,-1 ), 0 )
 		self.m_textCtrlMaxDist.SetMaxLength( 6 )
 		self.m_textCtrlMaxDist.SetToolTip( u"unit mm" )
 
@@ -180,7 +180,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		m_radioBoxSolverChoices = [ u"mmtl", u"atlc" ]
 		self.m_radioBoxSolver = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Solver", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSolverChoices, 1, wx.RA_SPECIFY_COLS )
-		self.m_radioBoxSolver.SetSelection( 1 )
+		self.m_radioBoxSolver.SetSelection( 0 )
 		sbSizer6.Add( self.m_radioBoxSolver, 1, wx.ALL, 5 )
 
 		self.m_checkBoxLosslessTL = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Lossless TL", wx.DefaultPosition, wx.DefaultSize, 0 )
@@ -189,7 +189,7 @@ class z_extractor_base ( wx.Dialog ):
 
 		bSizer71 = wx.BoxSizer( wx.HORIZONTAL )
 
-		self.m_staticTextStep = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Scan Step (mm):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticTextStep = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Scan Step:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticTextStep.Wrap( -1 )
 
 		bSizer71.Add( self.m_staticTextStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
@@ -319,6 +319,7 @@ class z_extractor_base ( wx.Dialog ):
 		event.Skip()
 
 
+
 class z_config_item():
     def __init__(self):
         self.tline = []
@@ -326,8 +327,8 @@ class z_config_item():
         self.coupled = []
         self.name = "newcfg"
         self.spice_fmt = 0
-        self.coupled_max_d = 1
-        self.coupled_min_len = 0.5
+        self.coupled_max_gap = 0.508
+        self.coupled_min_len = 1
         self.solver_type = 0
         self.lossless_tl = True
         self.scan_step = 0.5
@@ -394,8 +395,8 @@ class z_extractor_gui(z_extractor_base):
                 item.coupled = cfg["coupled"]
             if "ref_net" in cfg :
                 item.ref_net = cfg["ref_net"]
-            if "coupled_max_d" in cfg:
-                item.coupled_max_d = cfg["coupled_max_d"]
+            if "coupled_max_gap" in cfg:
+                item.coupled_max_gap = cfg["coupled_max_gap"]
             if "coupled_min_len" in cfg:
                 item.coupled_min_len = cfg["coupled_min_len"]
             if "spice_fmt" in cfg:
@@ -442,7 +443,7 @@ class z_extractor_gui(z_extractor_base):
                     cmd = cmd + coupled + ","
                 cmd = cmd.strip(',') + '" '
                 
-            cmd = cmd + "-coupled_max_d " + str(cfg.coupled_max_d) + " -coupled_min_len " + str(cfg.coupled_min_len) + " "
+            cmd = cmd + "-coupled_max_gap " + str(cfg.coupled_max_gap) + " -coupled_min_len " + str(cfg.coupled_min_len) + " "
             if cfg.spice_fmt == 0:
                 cmd = cmd + "-ltra 0 "
             elif cfg.spice_fmt == 1:
@@ -507,7 +508,7 @@ class z_extractor_gui(z_extractor_base):
         self.m_listBoxCoupled.Clear()
         for net in self.cur_cfg.coupled:
             self.m_listBoxCoupled.Append(net)
-        self.m_textCtrlMaxDist.SetValue(str(self.cur_cfg.coupled_max_d))
+        self.m_textCtrlMaxDist.SetValue(str(self.cur_cfg.coupled_max_gap))
         self.m_textCtrlMinLen.SetValue(str(self.cur_cfg.coupled_min_len))
         
         
@@ -567,7 +568,7 @@ class z_extractor_gui(z_extractor_base):
         event.Skip()
 
     def m_textCtrlMaxDistOnText( self, event ):
-        self.cur_cfg.coupled_max_d = float(self.m_textCtrlMaxDist.GetValue())
+        self.cur_cfg.coupled_max_gap = float(self.m_textCtrlMaxDist.GetValue())
         event.Skip()
 
         

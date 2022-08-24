@@ -160,7 +160,7 @@ public:
     
     void set_calc(std::uint32_t type = Z0_calc::Z0_CALC_MMTL);
     void set_step(float step) { _Z0_step = step; }
-    void set_coupled_max_d(float dist) { _coupled_max_d = dist; }
+    void set_coupled_max_gap(float dist) { _coupled_max_gap = dist; }
     void set_coupled_min_len(float len) { _coupled_min_len = len; }
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
     void enable_lossless_tl(bool b) { _lossless_tl = b; }
@@ -256,7 +256,7 @@ private:
     float _calc_via_l(const via& s, const std::string& layer_name1, const std::string& layer_name2);
     
     
-    bool _is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_d, float coupled_min_len);
+    bool _is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_gap, float coupled_min_len);
     void _split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2);
     
     std::string _gen_segment_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s, const std::map<std::string, cv::Mat>& refs_mat,
@@ -291,7 +291,7 @@ private:
     float _Z0_step;
     float _Z0_w_ratio;
     float _Z0_h_ratio;
-    float _coupled_max_d;
+    float _coupled_max_gap;
     float _coupled_min_len;
     
     /* 无损传输线 */
