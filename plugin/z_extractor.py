@@ -81,7 +81,7 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer6.Add( self.m_staticText2, 1, wx.ALL, 5 )
 
 		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_textCtrlMinLen.SetMaxLength( 6 )
+		self.m_textCtrlMinLen.SetMaxLength( 10 )
 		self.m_textCtrlMinLen.SetToolTip( u"unit mm" )
 
 		bSizer6.Add( self.m_textCtrlMinLen, 0, wx.EXPAND, 5 )
@@ -97,7 +97,7 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer7.Add( self.m_staticText1, 1, wx.ALL, 5 )
 
 		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.508", wx.DefaultPosition, wx.Size( -1,-1 ), 0 )
-		self.m_textCtrlMaxDist.SetMaxLength( 6 )
+		self.m_textCtrlMaxDist.SetMaxLength( 10 )
 		self.m_textCtrlMaxDist.SetToolTip( u"unit mm" )
 
 		bSizer7.Add( self.m_textCtrlMaxDist, 0, wx.EXPAND, 5 )
@@ -183,6 +183,11 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_radioBoxSolver.SetSelection( 0 )
 		sbSizer6.Add( self.m_radioBoxSolver, 1, wx.ALL, 5 )
 
+		m_radioBoxUnitChoices = [ u"mm", u"mil" ]
+		self.m_radioBoxUnit = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Unit", wx.DefaultPosition, wx.DefaultSize, m_radioBoxUnitChoices, 1, wx.RA_SPECIFY_COLS )
+		self.m_radioBoxUnit.SetSelection( 1 )
+		sbSizer6.Add( self.m_radioBoxUnit, 1, wx.ALL|wx.EXPAND, 5 )
+
 		self.m_checkBoxLosslessTL = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Lossless TL", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_checkBoxLosslessTL.SetValue(True)
 		sbSizer6.Add( self.m_checkBoxLosslessTL, 1, wx.ALL|wx.EXPAND, 5 )
@@ -195,6 +200,7 @@ class z_extractor_base ( wx.Dialog ):
 		bSizer71.Add( self.m_staticTextStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 		self.m_textCtrlStep = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_textCtrlStep.SetMaxLength( 10 )
 		self.m_textCtrlStep.SetToolTip( u"unit mm" )
 
 		bSizer71.Add( self.m_textCtrlStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
@@ -245,6 +251,7 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_buttonSave.Bind( wx.EVT_BUTTON, self.m_buttonSaveOnButtonClick )
 		self.m_radioBoxSpiceFmt.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSpiceFmtOnRadioBox )
 		self.m_radioBoxSolver.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSolverOnRadioBox )
+		self.m_radioBoxUnit.Bind( wx.EVT_RADIOBOX, self.m_radioBoxUnitOnRadioBox )
 		self.m_checkBoxLosslessTL.Bind( wx.EVT_CHECKBOX, self.m_checkBoxLosslessTLOnCheckBox )
 		self.m_textCtrlStep.Bind( wx.EVT_TEXT, self.m_textCtrlStepOnText )
 		self.m_buttonExtract.Bind( wx.EVT_BUTTON, self.m_buttonExtractOnButtonClick )
@@ -306,6 +313,9 @@ class z_extractor_base ( wx.Dialog ):
 	def m_radioBoxSolverOnRadioBox( self, event ):
 		event.Skip()
 
+	def m_radioBoxUnitOnRadioBox( self, event ):
+		event.Skip()
+
 	def m_checkBoxLosslessTLOnCheckBox( self, event ):
 		event.Skip()
 
@@ -320,6 +330,8 @@ class z_extractor_base ( wx.Dialog ):
 
 
 
+
+
 class z_config_item():
     def __init__(self):
         self.tline = []
@@ -328,15 +340,16 @@ class z_config_item():
         self.name = "newcfg"
         self.spice_fmt = 0
         self.coupled_max_gap = 0.508
-        self.coupled_min_len = 1
+        self.coupled_min_len = 0.0254 * 100
         self.solver_type = 0
         self.lossless_tl = True
-        self.scan_step = 0.5
+        self.scan_step = 0.508
         
 
 class z_extractor_gui(z_extractor_base):
     def __init__(self):
         z_extractor_base.__init__(self, None)
+        self.unit = "mil"
         self.cfg_list = []
         self.cur_cfg = z_config_item()
         self.net_classes_list = []
@@ -349,6 +362,7 @@ class z_extractor_gui(z_extractor_base):
         self.plugin_path = os.path.split(os.path.realpath(__file__))[0]
         
         self.output_path = self.board_path + os.sep + "z_extractor"
+        self.cfg_path = self.board_path + os.sep + "z_extractor" + os.sep + "z_extractor.json"
         if not os.path.exists(self.output_path):
             os.mkdir(self.output_path)
         
@@ -374,15 +388,25 @@ class z_extractor_gui(z_extractor_base):
         self.update_other_ui()
     
     def load_cfg(self):
-        
+        old_cfg = False
         try:
-            cfg_file = open(self.board_path + os.sep + "z_extractor.json", "r")
+            cfg_file = open(self.cfg_path, "r")
         except:
-            self.cfg_list.append(z_config_item())
-            self.cur_cfg = self.cfg_list[0]
-            return
+            try:
+                cfg_file = open(self.board_path + os.sep  + "z_extractor.json", "r")
+                old_cfg = True
+            except:
+                self.cfg_list.append(z_config_item())
+                self.cur_cfg = self.cfg_list[0]
+                return
             
-        cfg_list = json.load(cfg_file)
+        if old_cfg:
+            cfg_list = json.load(cfg_file)
+        else:
+            json_data = json.load(cfg_file)
+            self.unit = json_data["unit"]
+            cfg_list = json_data["cfg_list"]
+            
         cfg_file.close()
         
         for cfg in cfg_list:
@@ -508,8 +532,8 @@ class z_extractor_gui(z_extractor_base):
         self.m_listBoxCoupled.Clear()
         for net in self.cur_cfg.coupled:
             self.m_listBoxCoupled.Append(net)
-        self.m_textCtrlMaxDist.SetValue(str(self.cur_cfg.coupled_max_gap))
-        self.m_textCtrlMinLen.SetValue(str(self.cur_cfg.coupled_min_len))
+        self.m_textCtrlMaxDist.SetValue(str(self.unit_mm_cvt_ui(self.cur_cfg.coupled_max_gap)))
+        self.m_textCtrlMinLen.SetValue(str(self.unit_mm_cvt_ui(self.cur_cfg.coupled_min_len)))
         
         
     def update_spice_fmt_ui(self):
@@ -526,7 +550,12 @@ class z_extractor_gui(z_extractor_base):
             self.m_radioBoxSolver.Select(1)
             
         self.m_checkBoxLosslessTL.SetValue(self.cur_cfg.lossless_tl)
-        self.m_textCtrlStep.SetValue(str(self.cur_cfg.scan_step))
+        self.m_textCtrlStep.SetValue(str(self.unit_mm_cvt_ui(self.cur_cfg.scan_step)))
+        
+        if self.unit == "mm":
+            self.m_radioBoxUnit.Select(0)
+        else:
+            self.m_radioBoxUnit.Select(1)
         
         
     def is_in_coupled(self, net):
@@ -537,6 +566,18 @@ class z_extractor_gui(z_extractor_base):
                 return True
         return False
         
+    def unit_mm_cvt_ui(self, v):
+        if self.unit == "mm":
+            return round(v, 4)
+        else:
+            return round(v / 0.0254, 4)
+            
+    def unit_ui_cvt_mm(self, v):
+        if self.unit == "mm":
+            return round(v, 4)
+        else:
+            return round(v * 0.0254, 4)
+            
     # Virtual event handlers, override them in your derived class
     def m_buttonRefreshOnButtonClick( self, event ):
         self.update_net_classes_ui()
@@ -564,11 +605,11 @@ class z_extractor_gui(z_extractor_base):
             
 
     def m_textCtrlMinLenOnText( self, event ):
-        self.cur_cfg.coupled_min_len = float(self.m_textCtrlMinLen.GetValue())
+        self.cur_cfg.coupled_min_len = self.unit_ui_cvt_mm(float(self.m_textCtrlMinLen.GetValue()))
         event.Skip()
 
     def m_textCtrlMaxDistOnText( self, event ):
-        self.cur_cfg.coupled_max_gap = float(self.m_textCtrlMaxDist.GetValue())
+        self.cur_cfg.coupled_max_gap = self.unit_ui_cvt_mm(float(self.m_textCtrlMaxDist.GetValue()))
         event.Skip()
 
         
@@ -687,11 +728,16 @@ class z_extractor_gui(z_extractor_base):
     def m_radioBoxSolverOnRadioBox( self, event ):
         self.cur_cfg.solver_type = self.m_radioBoxSolver.GetSelection()
             
+    def m_radioBoxUnitOnRadioBox( self, event ):
+        self.unit = self.m_radioBoxUnit.GetStringSelection()
+        self.update_coupled_ui()
+        self.update_other_ui()
+        
     def m_checkBoxLosslessTLOnCheckBox( self, event ):
         self.cur_cfg.lossless_tl = self.m_checkBoxLosslessTL.GetValue()
 
     def m_textCtrlStepOnText( self, event ):
-        self.cur_cfg.scan_step = float(self.m_textCtrlStep.GetValue())
+        self.cur_cfg.scan_step = self.unit_ui_cvt_mm(float(self.m_textCtrlStep.GetValue()))
 
     def m_buttonExtractOnButtonClick( self, event ):
         if self.m_buttonExtract.GetLabel() == "Terminate":
@@ -710,16 +756,16 @@ class z_extractor_gui(z_extractor_base):
         self.m_timer.Start(1000)
         
     def m_buttonSaveOnButtonClick( self, event ):
-        json_str = json.dumps(self.cur_cfg.__dict__)
-        
         list = []
         for cfg in self.cfg_list:
             list.append(cfg.__dict__)
             
-        json_str = json.dumps(list)
+        js = {"unit": self.unit, "cfg_list": list}
         
-        cfg_file = open(self.board_path + os.sep + "z_extractor.json", "w")
-        json.dump(list, cfg_file)
+        json_str = json.dumps(js)
+        
+        cfg_file = open(self.cfg_path, "w")
+        json.dump(js, cfg_file)
         cfg_file.close()
         
     def m_timerOnTimer( self, event ):
