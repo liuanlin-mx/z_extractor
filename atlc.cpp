@@ -127,7 +127,6 @@ bool atlc::calc_Z0(float& Zo, float& v, float& c, float& l, float& r, float& g)
         v = _v;
         return true;
     }
-    cv::imwrite(_get_bmp_name(), _img);
     _last_img = _img;
     
     _calc_Z0(_img, Zo, v, c, l, r, g);
@@ -138,28 +137,6 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
 {
     cv::rectangle(_img, cv::Point(0, _img.rows - 1), cv::Point(_img.cols - 1, _img.rows - 1), cv::Scalar(0, 255, 0), 1);
     cv::rectangle(_img, cv::Point(0, 0), cv::Point(_img.cols - 1, 0), cv::Scalar(0, 255, 0), 1);
-    
-    
-    float z1;
-    float v1;
-    float c1;
-    float l1;
-    float r1;
-    float g1;
-    
-    float z2;
-    float v2;
-    float c2;
-    float l2;
-    float r2;
-    float g2;
-    
-    float tmp;
-    
-    float Lodd = 0;
-    float Leven = 0;
-    float Codd = 0;
-    float Ceven = 0;
     
     r_matrix[0][1] = r_matrix[1][0] = 0;
     r_matrix[0][0] = 1.0 / (_wire_w * _wire_h * _wire_conductivity);
@@ -176,102 +153,6 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
     
     _last_img = _img;
     
-    // 计算电容
-    cv::Mat img = _img.clone();
-    for (std::int32_t i = 0; i < img.rows; i++)
-    {
-        for (int j = 0; j < img.cols; j++)
-        {
-            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
-            if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
-            {
-                pix[0] = pix[2] = 0;
-                pix[1] = 255;
-            }
-        }
-    }
-    cv::imwrite(_get_bmp_name(), img);
-    //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z1, v1, c1, tmp, r1, g1);
-    
-    //计算电感 
-    img = _img.clone();
-    for (std::int32_t i = 0; i < img.rows; i++)
-    {
-        for (int j = 0; j < img.cols; j++)
-        {
-            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
-            if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
-            {
-                pix[0] = pix[1] = pix[2] = 255;
-            }
-        }
-    }
-    
-    
-    cv::imwrite(_get_bmp_name(), img);
-    //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z1, v1, tmp, l1, r1, g1);
-    
-    //printf("z1:%f, v1:%f, c1:%f, l1:%f, r1:%f, g1:%f\n", z1, v1, c1, l1, r1, g1);
-    //cv::waitKey();
-    
-    
-    // 计算电容
-    img = _img.clone();
-    for (std::int32_t i = 0; i < img.rows; i++)
-    {
-        for (int j = 0; j < img.cols; j++)
-        {
-            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
-            if (pix[0] == 0 && pix[1] == 0 && pix[2] == 255)
-            {
-                pix[0] = pix[2] = 0;
-                pix[1] = 255;
-            }
-            else if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
-            {
-                pix[0] = 0;
-                pix[1] = 0;
-                pix[2] = 255;
-            }
-        }
-    }
-    cv::imwrite(_get_bmp_name(), img);
-    //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z2, v2, c2, tmp, r2, g2);
-    
-    
-    //计算电感 
-    img = _img.clone();
-    for (std::int32_t i = 0; i < img.rows; i++)
-    {
-        for (int j = 0; j < img.cols; j++)
-        {
-            cv::Vec3b& pix = img.at<cv::Vec3b>(i, j);
-            if (pix[0] == 0 && pix[1] == 0 && pix[2] == 255)
-            {
-                pix[0] = pix[1] = pix[2] = 255;
-            }
-            else if (pix[0] == 255 && pix[1] == 0 && pix[2] == 0)
-            {
-                pix[0] = 0;
-                pix[1] = 0;
-                pix[2] = 255;
-            }
-        }
-    }
-    cv::imwrite(_get_bmp_name(), img);
-    //cv::imshow(_get_bmp_name(), img);
-    _calc_Z0(img, z2, v2, tmp, l2, r2, g2);
-    
-    //printf("z2:%f, v2:%f, c2:%f, l2:%f, r2:%f, g2:%f\n", z2, v2, c2, l2, r2, g2);
-    
-    
-    
-    //cv::waitKey();
-    
-    
     
     cv::imwrite(_get_bmp_name(), _img);
     //cv::imshow(_get_bmp_name(), _img);
@@ -285,43 +166,40 @@ bool atlc::calc_coupled_Z0(float& Zodd, float& Zeven, float c_matrix[2][2], floa
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
+    sprintf(cmd, "atlc3 %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
     //printf("%s\n", cmd);
+    //cv::waitKey();
     
     char buf[1024] = {0};
     FILE *fp = popen(cmd, "r");
-    if (fgets(buf, sizeof(buf), fp))
+    while (fgets(buf, sizeof(buf), fp))
     {
-        Zodd = _read_value(buf, "Zodd");
-        Zeven = _read_value(buf, "Zeven");
+        //printf(buf);
+        if (strstr(buf, "Zodd="))
+        {
+            Zodd = _read_value(buf, "Zodd");
+            Zeven = _read_value(buf, "Zeven");
         
-        Lodd = _read_value(buf, "Lodd");
-        Leven = _read_value(buf, "Leven");
-        Codd = _read_value(buf, "Codd");
-        Ceven = _read_value(buf, "Ceven");
-    
-        _Zodd = Zodd;
-        _Zeven = Zeven;
-        
+            _Zodd = Zodd;
+            _Zeven = Zeven;
+        }
+        else if (strstr(buf, "C1=") && strstr(buf, "C2="))
+        {
+            c_matrix[0][0] = _read_value(buf, "C1=");
+            c_matrix[0][1] = _read_value(buf, "C12=");
+            c_matrix[1][0] = _read_value(buf, "C21=");
+            c_matrix[1][1] = _read_value(buf, "C2=");
+            
+            l_matrix[0][0] = _read_value(buf, "L1=");
+            l_matrix[0][1] = _read_value(buf, "L12=");
+            l_matrix[1][0] = _read_value(buf, "L21=");
+            l_matrix[1][1] = _read_value(buf, "L2=");
+        }
     }
     pclose(fp);
     
-    c_matrix[0][0] = c1;
-    c_matrix[0][1] = (Ceven - Codd) * 0.5;
-    c_matrix[1][0] = (Ceven - Codd) * 0.5;
-    c_matrix[1][1] = c2;
-    
-    l_matrix[0][0] = l1;
-    l_matrix[0][1] = (Leven - Lodd) * 0.5;
-    l_matrix[1][0] = (Leven - Lodd) * 0.5;
-    l_matrix[1][1] = l2;
-    
     memcpy(_c_matrix, c_matrix, sizeof(_c_matrix));
     memcpy(_l_matrix, l_matrix, sizeof(_l_matrix));
-    
-    //printf("Zodd:%f Zeven:%f %f \n", Zodd, Zeven, sqrt(l1/c1));
-    
-    //cv::waitKey();
     
     return false;
 }
@@ -386,7 +264,6 @@ std::string atlc::_get_bmp_name()
 
 void atlc::_calc_Z0(cv::Mat img, float& Zo, float& v, float& c, float& l, float& r, float& g)
 {
-    
     cv::imwrite(_get_bmp_name(), img);
     
     char cmd[512] = {0};
@@ -398,7 +275,7 @@ void atlc::_calc_Z0(cv::Mat img, float& Zo, float& v, float& c, float& l, float&
         sprintf(buf, "-d 0f%02x%02x=%f ", (uer >> 8) & 0xff, uer & 0xff, er);
         er_str += buf;
     }
-    sprintf(cmd, "atlc %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
+    sprintf(cmd, "atlc3 %s -c 0.001 -S -s %s", er_str.c_str(), _get_bmp_name().c_str());
     //printf("%s\n", cmd);
     
     char buf[1024] = {0};
