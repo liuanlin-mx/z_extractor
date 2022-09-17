@@ -4,3 +4,6 @@
 [submodule "FastHenry2"]
 	path = FastHenry2
 	url = https://github.com/ediloren/FastHenry2.git
+[submodule "atlc3"]
+	path = atlc3
+	url = https://github.com/liuanlin-mx/atlc3.git
