@@ -371,7 +371,7 @@ class z_extractor_gui(z_extractor_base):
             self.plugin_bin_path = self.plugin_path + os.sep + "win"
         elif sys == "Linux":
             self.plugin_bin_path = self.plugin_path + os.sep + "linux"
-            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc3", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "mmtl_bem", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "z_extractor", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
         else:
