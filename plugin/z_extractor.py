@@ -82,8 +82,6 @@ class z_extractor_base ( wx.Dialog ):
 
 		self.m_textCtrlMinLen = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"1", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlMinLen.SetMaxLength( 10 )
-		self.m_textCtrlMinLen.SetToolTip( u"unit mm" )
-
 		bSizer6.Add( self.m_textCtrlMinLen, 0, wx.EXPAND, 5 )
 
 
@@ -98,8 +96,6 @@ class z_extractor_base ( wx.Dialog ):
 
 		self.m_textCtrlMaxDist = wx.TextCtrl( sbSizer71.GetStaticBox(), wx.ID_ANY, u"0.508", wx.DefaultPosition, wx.Size( -1,-1 ), 0 )
 		self.m_textCtrlMaxDist.SetMaxLength( 10 )
-		self.m_textCtrlMaxDist.SetToolTip( u"unit mm" )
-
 		bSizer7.Add( self.m_textCtrlMaxDist, 0, wx.EXPAND, 5 )
 
 
@@ -201,8 +197,6 @@ class z_extractor_base ( wx.Dialog ):
 
 		self.m_textCtrlStep = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, u"0.5", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_textCtrlStep.SetMaxLength( 10 )
-		self.m_textCtrlStep.SetToolTip( u"unit mm" )
-
 		bSizer71.Add( self.m_textCtrlStep, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
 
@@ -327,8 +321,6 @@ class z_extractor_base ( wx.Dialog ):
 
 	def m_timerOnTimer( self, event ):
 		event.Skip()
-
-
 
 
 
