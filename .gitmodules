@@ -1,9 +1,6 @@
 [submodule "mmtl"]
 	path = mmtl
 	url = https://github.com/liuanlin-mx/mmtl.git
-[submodule "atlc"]
-	path = atlc
-	url = https://github.com/liuanlin-mx/atlc.git
 [submodule "FastHenry2"]
 	path = FastHenry2
 	url = https://github.com/ediloren/FastHenry2.git
