@@ -366,7 +366,7 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
     if (fp)
     {
         fwrite(tmp.c_str(), 1, tmp.length(), fp);
-        printf("\n\n\n%s\n\n", tmp.c_str());
+        //printf("\n\n\n%s\n\n", tmp.c_str());
         while (1)
         {
             if(fgets(buf, sizeof(buf), fp))
