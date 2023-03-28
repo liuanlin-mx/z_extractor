@@ -2367,7 +2367,7 @@ void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint
 }
 
 
-void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat, bool use_segment)
+void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<std::string, cv::Mat>& refs_mat, bool use_segment, bool clean_segment)
 {
     for (auto ref_id: refs_id)
     {
@@ -2423,6 +2423,30 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
                     cv::imshow("mat", tmp);
                     cv::waitKey();
                 }*/
+            }
+        }
+        else if (clean_segment) /*为提取rl提供 清理走线跟覆铜重叠的区域 避免重复计算电阻*/
+        {
+            std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
+            for (auto& segment: segments)
+            {
+                for (auto& s: segment)
+                {
+                    if (refs_mat.count(s.layer_name) == 0)
+                    {
+                        continue;
+                    }
+                    _draw_segment(refs_mat[s.layer_name], s, 0, 0, 0);
+                    
+                    /* 保留走线的起点和终点 连接走线到覆铜区域时需要使用它 */
+                    cv::circle(refs_mat[s.layer_name],
+                        cv::Point(_cvt_img_x(s.start.x), _cvt_img_y(s.start.y)), _cvt_img_len(s.width / 4),
+                        cv::Scalar(255, 255, 255), _cvt_img_len(s.width / 2), cv::LINE_4);
+                        
+                    cv::circle(refs_mat[s.layer_name],
+                        cv::Point(_cvt_img_x(s.end.x), _cvt_img_y(s.end.y)), _cvt_img_len(s.width / 4),
+                        cv::Scalar(255, 255, 255), _cvt_img_len(s.width / 2), cv::LINE_4);
+                }
             }
         }
     }
