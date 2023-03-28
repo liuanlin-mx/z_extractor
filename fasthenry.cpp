@@ -11,6 +11,7 @@
 
 fasthenry::fasthenry()
     : _conductivity(5.8e7)
+    , _freq(1e0)
 {
 }
 
@@ -218,26 +219,32 @@ void fasthenry::dump()
 {
     std::string tmp;
     char buf[256];
+    std::int32_t nwinc = 1;
+    std::int32_t nhinc = 1;
     sprintf(buf, "*****\n"
                     ".units mm\n"
-                    ".default nwinc=1 nhinc=1 sigma=%g\n", _conductivity * 1e-3);
+                    ".default nwinc=%d nhinc=%d sigma=%g\n", nwinc, nhinc, _conductivity * 1e-3);
     tmp = buf;
     tmp += _inp;
     
-    tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
+    sprintf(buf, ".freq fmin=%g fmax=%g ndec=1\n.end\n", _freq, _freq);
+    tmp += buf;
     printf("\n\n\n%s\n\n\n", tmp.c_str());
 }
 
 
-void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r)
+void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r, float conductivity, float freq)
 {
     std::string tmp;
     
     char buf[512] = {0};
     
-    tmp = "*****\n"
-                            ".units mm\n"
-                            ".default nwinc=1 nhinc=1 sigma=5.8e4\n";
+    std::int32_t nwinc = 1;
+    std::int32_t nhinc = 1;
+    sprintf(buf, "*****\n"
+                    ".units mm\n"
+                    ".default nwinc=%d nhinc=%d sigma=%g\n", nwinc, nhinc, conductivity * 1e-3);
+                    
     tmp += "N0 x=0 y=0 z=0\n";
     
     sprintf(buf, "N1 x=%.3f y=0 z=0\n", len);
@@ -246,7 +253,10 @@ void fasthenry::calc_wire_lr(float w, float h, float len, float& l, float& r)
     sprintf(buf, "E0 N0 N1 w=%.3f h=%.3f\n", w, h);
     tmp += std::string(buf);
         
-    tmp += ".external N0 N1\n.freq fmin=1e8 fmax=1e8 ndec=1\n.end\n";
+    tmp += ".external N0 N1\n";
+    
+    sprintf(buf, ".freq fmin=%g fmax=%g ndec=1\n.end\n", freq, freq);
+    tmp += buf;
     
     FILE *fp = popen("fasthenry > " DEV_NULL, "w");
     if (fp)
@@ -293,9 +303,13 @@ void fasthenry::_call_fasthenry(std::list<std::string> wire_name)
 {
     std::string tmp;
     char buf[512];
-    tmp = "*****\n"
-                            ".units mm\n"
-                            ".default nwinc=8 nhinc=3 sigma=5.8e4\n";
+    
+    std::int32_t nwinc = 1;
+    std::int32_t nhinc = 1;
+    sprintf(buf, "*****\n"
+                    ".units mm\n"
+                    ".default nwinc=%d nhinc=%d sigma=%g\n", nwinc, nhinc, _conductivity * 1e-3);
+                   
     tmp += _inp;
     
     for (auto& name: wire_name)
@@ -304,8 +318,8 @@ void fasthenry::_call_fasthenry(std::list<std::string> wire_name)
         tmp += buf;
     }
     
-    
-    tmp += ".freq fmin=1e9 fmax=1e9 ndec=1\n.end\n";
+    sprintf(buf, ".freq fmin=%g fmax=%g ndec=1\n.end\n", _freq, _freq);
+    tmp += buf;
     
         
     FILE *fp = popen("fasthenry > " DEV_NULL, "w");
@@ -332,22 +346,27 @@ void fasthenry::_call_fasthenry(const std::string& node1_name, const std::string
 {
     std::string tmp;
     char buf[512];
+    std::int32_t nwinc = 1;
+    std::int32_t nhinc = 1;
     sprintf(buf, "*****\n"
                     ".units mm\n"
-                    ".default nwinc=1 nhinc=1 sigma=%g\n", _conductivity * 1e-3);
+                    ".default nwinc=%d nhinc=%d sigma=%g\n", nwinc, nhinc, _conductivity * 1e-3);
+                    
+                    
     tmp = buf;
     tmp += _inp;
     
     sprintf(buf, ".external N%s N%s\n", node1_name.c_str(), node2_name.c_str());
     tmp += buf;
     
+    sprintf(buf, ".freq fmin=%g fmax=%g ndec=1\n.end\n", _freq, _freq);
+    tmp += buf;
     
-    tmp += ".freq fmin=1e7 fmax=1e7 ndec=1\n.end\n";
     FILE *fp = popen("fasthenry > " DEV_NULL, "w");
     if (fp)
     {
         fwrite(tmp.c_str(), 1, tmp.length(), fp);
-        //printf("\n\n\n%s\n\n", tmp.c_str());
+        printf("\n\n\n%s\n\n", tmp.c_str());
         while (1)
         {
             if(fgets(buf, sizeof(buf), fp))

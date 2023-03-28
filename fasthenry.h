@@ -33,6 +33,7 @@ public:
     
 public:
     void clear();
+    void set_freq(float freq) { _freq = freq; }
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
     bool add_wire(const char *name, point start, point end, float w, float h);
     bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
@@ -49,7 +50,7 @@ public:
     void dump();
     
 public:
-    static void calc_wire_lr(float w, float h, float len, float& l, float& r);
+    static void calc_wire_lr(float w, float h, float len, float& l, float& r, float conductivity = 5.8e7, float freq = 1e0);
     
 private:
     void _call_fasthenry(std::list<std::string> wire_name);
@@ -63,6 +64,7 @@ private:
     std::set<std::string> _added;
     std::set<std::string> _equiv;
     float _conductivity;
+    float _freq;
 };
 
 #endif

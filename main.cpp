@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     float coupled_min_len = 0.5;
     bool lossless_tl = true;
     bool ltra = false;
-    float conductivity = 5e7;
+    float conductivity = 5.8e7;
     float step = 0.5;
     bool via_tl_mode = false;
     bool use_mmtl = true;

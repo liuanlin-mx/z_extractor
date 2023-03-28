@@ -142,7 +142,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;GND&quot; -coupled &quot;USB_D0N:USB_D0P&quot; -coupled_max_gap 0.508 -coupled_min_len 0.5 -ltra 0 -mmtl 0 -lossless_tl 1 -step 0.5 -o usb" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testrl/testrl.kicad_pcb -rl -pad &quot;R2.2:R1.2&quot;  -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -154,10 +154,10 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/6.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>

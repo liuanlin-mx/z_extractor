@@ -36,7 +36,7 @@ z_extractor::z_extractor()
     _pcb_left = 10000.;
     _pcb_right = 0;
     
-    _conductivity = 5.0e7;
+    _conductivity = 5.8e7;
     
     
     std::int32_t thread_nums = omp_get_max_threads();
