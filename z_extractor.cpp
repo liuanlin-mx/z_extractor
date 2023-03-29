@@ -2137,11 +2137,8 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
 
 void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::string, cv::Mat>& zone_mat, std::map<std::string, std::list<cond> >& conds, float& grid_size)
 {
-    std::int32_t x1 = 1000000;
-    std::int32_t x2 = 0;
-    std::int32_t y1 = 1000000;
-    std::int32_t y2 = 0;
-    
+    std::uint32_t area = 0;
+
     for (const auto& mat: zone_mat)
     {
         const cv::Mat& img = mat.second;
@@ -2151,36 +2148,21 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
             {
                 if (img.at<std::uint8_t>(y, x) > 0)
                 {
-                    if (x < x1)
-                    {
-                        x1 = x;
-                    }
-                    if (x > x2)
-                    {
-                        x2 = x;
-                    }
-                    
-                    if (y < y1)
-                    {
-                        y1 = y;
-                    }
-                    
-                    if (y > y2)
-                    {
-                        y2 = y;
-                    }
+                    area++;
+
+
                 }
             }
         }
     }
     
     
-    float img_grid_size = sqrt((x2 - x1) * (y2 - y1)) / 50;
+    float img_grid_size = sqrt(area) / 50;
     
     grid_size = _cvt_pcb_len(img_grid_size);
-    if (grid_size < 0.5)
+    if (grid_size < 0.25)
     {
-        grid_size = 0.5;
+        grid_size = 0.25;
         img_grid_size = _cvt_img_len(grid_size);
     }
     
@@ -2244,7 +2226,7 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
                     c.w = grid_size * w_ratio;
                     cond_list.push_back(c);
                     
-                    
+                #if 0
                     c.start.x = _cvt_pcb_x(x2);
                     c.start.y = _cvt_pcb_y(y1);
                     c.end.x = _cvt_pcb_x(x2);
@@ -2260,6 +2242,7 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
                     //c.w = _cvt_pcb_len(y2 - y1) * w_ratio;
                     c.w = grid_size * w_ratio;
                     cond_list.push_back(c);
+                #endif
                 }
             }
         }

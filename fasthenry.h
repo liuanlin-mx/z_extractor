@@ -37,7 +37,7 @@ public:
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
     bool add_wire(const char *name, point start, point end, float w, float h);
     bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
-                    point start, point end, float w, float h, std::int32_t nwinc = 8, std::int32_t nhinc = 3);
+                    point start, point end, float w, float h, std::int32_t nwinc = 1, std::int32_t nhinc = 1);
                     
     bool add_via(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float drill, float size);
     
