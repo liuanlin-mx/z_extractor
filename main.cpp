@@ -78,6 +78,7 @@ int main(int argc, char **argv)
     float coupled_min_len = 0.5;
     bool lossless_tl = true;
     bool ltra = false;
+    float freq = 1e0;
     float conductivity = 5.8e7;
     float step = 0.5;
     bool via_tl_mode = false;
@@ -141,6 +142,10 @@ int main(int argc, char **argv)
         {
             conductivity = atof(arg_next);
         }
+        else if (std::string(arg) == "-freq" && i < argc)
+        {
+            freq = atof(arg_next);
+        }
         else if (std::string(arg) == "-step" && i < argc)
         {
             step = atof(arg_next);
@@ -191,6 +196,7 @@ int main(int argc, char **argv)
     z_extr->enable_ltra_model(ltra);
     z_extr->enable_via_tl_mode(via_tl_mode);
     z_extr->enable_openmp(enable_openmp);
+    z_extr->set_freq(freq);
     z_extr->set_conductivity(conductivity);
     z_extr->set_step(step);
     z_extr->set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);

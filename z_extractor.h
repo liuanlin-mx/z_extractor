@@ -158,6 +158,7 @@ public:
     std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points);
     
     
+    void set_freq(float freq) { _freq = freq; }
     void set_calc(std::uint32_t type = Z0_calc::Z0_CALC_MMTL);
     void set_step(float step) { _Z0_step = step; }
     void set_coupled_max_gap(float dist) { _coupled_max_gap = dist; }
@@ -320,6 +321,7 @@ private:
     /* 仅仅是坐标精度 */
     const float _float_epsilon = 0.00005;
     float _conductivity;
+    float _freq;
 };
 
 #endif

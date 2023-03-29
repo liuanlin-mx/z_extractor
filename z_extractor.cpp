@@ -37,6 +37,7 @@ z_extractor::z_extractor()
     _pcb_right = 0;
     
     _conductivity = 5.8e7;
+    _freq = 1e9;
     
     
     std::int32_t thread_nums = omp_get_max_threads();
@@ -284,6 +285,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     
     /* 构建fasthenry */
     fasthenry henry;
+    henry.set_freq(_freq);
     henry.set_conductivity(_conductivity);
     std::map<std::string, cv::Mat> zone_mat;
     std::map<std::string, std::list<cond> > conds;
@@ -462,6 +464,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     
     /* 构建fasthenry */
     fasthenry henry;
+    henry.set_freq(_freq);
     henry.set_conductivity(_conductivity);
     
     for (auto& s_list: v_segments)
@@ -611,6 +614,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     std::string sub;
     std::string tmp;
     fasthenry henry;
+    henry.set_freq(_freq);
     henry.set_conductivity(_conductivity);
     char buf[512] = {0};
     
