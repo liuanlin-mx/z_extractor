@@ -70,6 +70,7 @@ int main(int argc, char **argv)
     std::list<std::pair<std::string, std::string> > coupled_nets;
     std::list<std::pair<std::string, std::string> > pads;
     std::list<std::string> refs;
+    std::vector<std::string> current;
     const char *pcb_file = NULL;
     bool tl = true;
     const char *oname = NULL;
@@ -141,6 +142,10 @@ int main(int argc, char **argv)
         else if (std::string(arg) == "-conductivity" && i < argc)
         {
             conductivity = atof(arg_next);
+        }
+        else if (std::string(arg) == "-I" && i < argc)
+        {
+            current = _string_split(arg_next, ",");
         }
         else if (std::string(arg) == "-freq" && i < argc)
         {
@@ -302,9 +307,21 @@ int main(int argc, char **argv)
             if (z_extr->gen_subckt_rl(pad1.front(), pad1.back(), pad2.front(), pad2.back(), ckt, call, r, l))
             {
                 spice += ckt;
-                sprintf(str, "pad-pad: %s.%s:%s.%s R=%.4e L=%.4gnH\n",
+                sprintf(str, "pad-pad: %s.%s:%s.%s R=%.4e L=%.4gnH",
                             pad1.front().c_str(), pad1.back().c_str(), pad2.front().c_str(), pad2.back().c_str(), r, l * 1e9);
                 info += str;
+                
+                if (!current.empty())
+                {
+                    sprintf(str, " voltage drop: ");
+                    info += str;
+                    for (auto I: current)
+                    {
+                        sprintf(str, "(%.3eV@%gA) ", r * atof(I.c_str()), atof(I.c_str()));
+                        info += str;
+                    }
+                }
+                info += "\n";
             }
         }
         
