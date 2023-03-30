@@ -135,6 +135,14 @@ class rl_extractor_base ( wx.Dialog ):
 
 		bSizer8.Add( ( 0, 0), 1, wx.EXPAND, 5 )
 
+		self.m_staticText1 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Current(A)", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText1.Wrap( -1 )
+
+		bSizer8.Add( self.m_staticText1, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
+
+		self.m_textCtrlCurrent = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, u"1,2", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer8.Add( self.m_textCtrlCurrent, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
+
 		self.m_buttonExtract = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Extract", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer8.Add( self.m_buttonExtract, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
 
@@ -171,6 +179,7 @@ class rl_extractor_base ( wx.Dialog ):
 		self.m_buttonCfgDel.Bind( wx.EVT_BUTTON, self.m_buttonCfgDelOnButtonClick )
 		self.m_buttonCfgRename.Bind( wx.EVT_BUTTON, self.m_buttonCfgRenameOnButtonClick )
 		self.m_buttonSave.Bind( wx.EVT_BUTTON, self.m_buttonSaveOnButtonClick )
+		self.m_textCtrlCurrent.Bind( wx.EVT_TEXT, self.m_textCtrlCurrentOnText )
 		self.m_buttonExtract.Bind( wx.EVT_BUTTON, self.m_buttonExtractOnButtonClick )
 		self.Bind( wx.EVT_TIMER, self.m_timerOnTimer, id=wx.ID_ANY )
 
@@ -215,6 +224,9 @@ class rl_extractor_base ( wx.Dialog ):
 	def m_buttonSaveOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_textCtrlCurrentOnText( self, event ):
+		event.Skip()
+
 	def m_buttonExtractOnButtonClick( self, event ):
 		event.Skip()
 
@@ -227,6 +239,7 @@ class rl_config_item():
         self.rl_net = []
         self.pad2pad = []
         self.name = "newcfg"
+        self.current = "1,2"
         
 
 class rl_extractor_gui(rl_extractor_base):
@@ -285,6 +298,8 @@ class rl_extractor_gui(rl_extractor_base):
                 item.rl_net = cfg["rl_net"]
             if "pad2pad" in cfg:
                 item.pad2pad = cfg["pad2pad"]
+            if "current" in cfg:
+                item.current = cfg["current"]
             
             self.cfg_list.append(item)
         
@@ -314,7 +329,8 @@ class rl_extractor_gui(rl_extractor_base):
                 for pad2pad in cfg.pad2pad:
                     cmd = cmd + pad2pad + ","
                 cmd = cmd.strip(',') + '" '
-                
+            
+            cmd = cmd + ' -I "' + cfg.current + '"'
             cmd = cmd + " -o " + cfg.name + ";"
         
         return  cmd.strip(';')
@@ -363,6 +379,7 @@ class rl_extractor_gui(rl_extractor_base):
             self.m_listBoxCfg.Append(cfg.name)
         
         self.m_listBoxCfg.SetStringSelection(self.cur_cfg.name)
+        self.m_textCtrlCurrent.SetValue(self.cur_cfg.current)
     
     def update_net_ui(self):
         self.m_listBoxNet.Clear()
@@ -492,6 +509,9 @@ class rl_extractor_gui(rl_extractor_base):
                 self.m_listBoxCfg.SetString(n, name)
         dlg.Destroy()
 
+    def m_textCtrlCurrentOnText( self, event ):
+        self.cur_cfg.current = self.m_textCtrlCurrent.GetValue()
+        
     def m_buttonExtractOnButtonClick( self, event ):
         if self.m_buttonExtract.GetLabel() == "Terminate":
             if self.sub_process.poll() == None:
