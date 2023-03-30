@@ -559,7 +559,7 @@ class rl_extractor( pcbnew.ActionPlugin ):
         self.category = "RL Extractor"
         self.description = "RL Extraction"
         self.show_toolbar_button = True
-        #self.icon_file_name = os.path.join(os.path.dirname(__file__), 'icon.png')
+        self.icon_file_name = os.path.join(os.path.dirname(__file__), 'rl_icon.png')
 
     def Run( self ):
         dig = rl_extractor_gui()

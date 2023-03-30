@@ -214,6 +214,7 @@
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/metadata.json ${WORKSPACE_PATH}/z_extractor_pcm/</Command>
         <Command Enabled="yes">mkdir -p ${WORKSPACE_PATH}/z_extractor_pcm/resources</Command>
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/icon32x32.png ${WORKSPACE_PATH}/z_extractor_pcm/plugins/icon.png</Command>
+        <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/rl_icon32x32.png ${WORKSPACE_PATH}/z_extractor_pcm/plugins/rl_icon.png</Command>
         <Command Enabled="yes">cp ${WORKSPACE_PATH}/plugin/icon.png ${WORKSPACE_PATH}/z_extractor_pcm/resources/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
