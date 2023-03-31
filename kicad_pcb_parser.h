@@ -43,6 +43,7 @@ private:
     float _pcb_bottom;
     float _pcb_left;
     float _pcb_right;
+    std::uint32_t _layers;
 };
 
 #endif

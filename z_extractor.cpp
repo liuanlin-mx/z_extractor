@@ -91,7 +91,7 @@ bool z_extractor::add_pad(const pad& p)
 }
 
 
-bool z_extractor::add_layers(const layer& l)
+bool z_extractor::add_layer(const layer& l)
 {
     _layers.push_back(l);
     return 0;

@@ -128,7 +128,7 @@ public:
     bool add_via(const via& v);
     bool add_zone(const zone& z);
     bool add_pad(const pad& p);
-    bool add_layers(const layer& l);
+    bool add_layer(const layer& l);
     void set_edge(float top, float bottom, float left, float right);
     
     std::list<segment> get_segments(std::uint32_t net_id);

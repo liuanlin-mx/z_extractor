@@ -6,6 +6,7 @@ kicad_pcb_parser::kicad_pcb_parser()
     , _pcb_bottom(0)
     , _pcb_left(10000.)
     , _pcb_right(0)
+    , _layers(0)
 {
 }
 
@@ -127,6 +128,13 @@ bool kicad_pcb_parser::_parse(const char *str)
         printf("err: not found pcb edge.\n");
         return false;
     }
+    
+    if (_layers == 0)
+    {
+        printf("err: not found physical stackup.\n");
+        return false;
+    }
+    
     return true;
 }
 
@@ -803,7 +811,8 @@ const char *kicad_pcb_parser::_parse_stackup_layer(const char *str)
             l.thickness = 0.1;
         }
         
-        _z_extr->add_layers(l);
+        _z_extr->add_layer(l);
+        _layers++;
     }
     return str;
 }
