@@ -434,7 +434,7 @@ class z_extractor_gui(z_extractor_base):
             if "scan_step" in cfg:
                 item.scan_step = cfg["scan_step"]
             if "via_model" in cfg:
-                item.scan_step = cfg["via_model"]
+                item.via_model = cfg["via_model"]
             
             self.cfg_list.append(item)
         
