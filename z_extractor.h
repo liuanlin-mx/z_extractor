@@ -135,6 +135,7 @@ public:
     std::list<pad> get_pads(std::uint32_t net_id);
     bool get_pad(const std::string& footprint, const std::string& pad_number, z_extractor::pad& pad);
     std::list<via> get_vias(std::uint32_t net_id);
+    std::list<via> get_vias(const std::vector<std::uint32_t>& net_ids);
     std::list<zone> get_zones(std::uint32_t net_id);
     std::vector<std::list<z_extractor::segment> > get_segments_sort(std::uint32_t net_id);
     std::string get_net_name(std::uint32_t net_id);
@@ -267,7 +268,7 @@ private:
                                                     std::vector<std::pair<float, float> >& v_Zodd_td,
                                                     std::vector<std::pair<float, float> >& v_Zeven_td);
     
-    std::string _gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
+    std::string _gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, const std::vector<std::uint32_t>& refs_id, std::string& call, float& td);
     std::string _gen_via_model_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td);
     
     

@@ -165,6 +165,22 @@ std::list<z_extractor::via> z_extractor::get_vias(std::uint32_t net_id)
     return vias;
 }
 
+std::list<z_extractor::via> z_extractor::get_vias(const std::vector<std::uint32_t>& net_ids)
+{
+    std::list<via> vias;
+    for (const auto& net_id: net_ids)
+    {
+        auto v = _vias.equal_range(net_id);
+        if(v.first != std::end(_vias))
+        {
+            for (auto it = v.first; it != v.second; ++it)
+            {
+                vias.push_back(it->second);
+            }
+        }
+    }
+    return vias;
+}
 
 std::list<z_extractor::zone> z_extractor::get_zones(std::uint32_t net_id)
 {
@@ -897,7 +913,7 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
         float td = 0;
         if (_via_tl_mode)
         {
-            sub += _gen_via_Z0_ckt(v, refs_mat, via_call, td);
+            sub += _gen_via_Z0_ckt(v, refs_mat, refs_id, via_call, td);
         }
         else
         {
@@ -1210,7 +1226,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
             float td = 0;
             if (_via_tl_mode)
             {
-                sub += _gen_via_Z0_ckt(v, refs_mat, via_call, td);
+                sub += _gen_via_Z0_ckt(v, refs_mat, refs_id, via_call, td);
             }
             else
             {
@@ -3092,13 +3108,14 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
     return  strbuf + cir;
 }
 
-std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
+std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, const std::vector<std::uint32_t>& refs_id, std::string& call, float& td)
 {
     char buf[2048] = {0};
     std::string ckt;
     ckt = ".subckt VIA" + _get_tstamp_short(v.tstamp) + " ";
     call = "XVIA" + _get_tstamp_short(v.tstamp) + " ";
     
+    std::list<via> vias = get_vias(refs_id);
     std::vector<std::string> conn_layers = _get_via_conn_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
     {
@@ -3111,7 +3128,7 @@ std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::stri
     call += "VIA" + _get_tstamp_short(v.tstamp) + "\n";
     
     float radius = v.drill * 0.5;
-    float box_w = v.drill * 15;
+    float box_w = v.drill * 10;
     float box_h = v.drill * 15;
     float thickness = 0.0254 * 1;
     float atlc_pix_unit = thickness * 0.5;
@@ -3128,11 +3145,12 @@ std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::stri
         const std::string& start = layers[i];
         const std::string& end = layers[i + 1];
         
+        float h = _get_layer_distance(start, end);
         float start_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, start);
         float end_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, end);
         float anti_pad_diameter = std::min(start_anti_pad_d, end_anti_pad_d);
         
-        float h = _get_layer_distance(start, end);
+        float max_d = sqrt(h * h + anti_pad_diameter * 0.5 * anti_pad_diameter * 0.5);
         float er = _get_layer_epsilon_r(start, end);
         
         
@@ -3144,9 +3162,19 @@ std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::stri
         float g = 0.;
         
         atlc_.clean_all();
-        atlc_.add_ring_elec(0, 0, radius, radius * 10, er);
+        atlc_.add_elec(0, -box_h, box_w, box_h * 2, er);
         atlc_.add_ring_wire(0, 0, radius, thickness);
-        atlc_.add_ring_ground(0, 0, anti_pad_diameter, thickness);
+        
+        for (const auto& ref_via: vias)
+        {
+            float dist = calc_dist(ref_via.at.x, ref_via.at.y, v.at.x, v.at.y);
+            if (dist < box_w - ref_via.drill)
+            {
+                atlc_.add_ring_ground(ref_via.at.x - v.at.x, ref_via.at.y - v.at.y, ref_via.drill * 0.5, thickness);
+            }
+        }
+        
+        atlc_.add_ground(0, max_d, thickness, v.drill);
     
         atlc_.calc_Z0(Z0, v_, c, l, r, g);
         float td_ = h * 1000000 / v_;
