@@ -3200,8 +3200,24 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
     call += "VIA" + _get_tstamp_short(v.tstamp) + "\n";
     
     
+    fasthenry henry;
+    henry.set_freq(_freq);
+    henry.set_conductivity(_conductivity);
+    
     std::uint32_t id = 0;
     std::vector<std::string> layers = _get_via_layers(v);
+    for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
+    {
+        const std::string& start = layers[i];
+        const std::string& end = layers[i + 1];
+        float z_start = _get_layer_z_axis(start);
+        float z_end = _get_layer_z_axis(end);
+        henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
+                        _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
+                        fasthenry::point(v.at.x, v.at.y, z_start),
+                        fasthenry::point(v.at.x, v.at.y, z_end), v.drill, v.size);
+    }
+    
     for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
     {
         const std::string& start = layers[i];
@@ -3214,8 +3230,11 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
         float er = _get_layer_epsilon_r(start, end);
         
         float c = 1.41 * er * (h / 25.4) * v.size / (anti_pad_diameter - v.size); //pF
-        float l = h / 5 * (1 + log(4 * h / v.drill)); //nH
-        
+        //float l = h / 5 * (1 + log(4 * h / v.drill)); //nH
+        double r = 0;
+        double l = 0;
+        henry.calc_impedance(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end), r, l);
+        l = l * 1e9;
         td += sqrt(l * c * 0.001);
         
         sprintf(buf, "Cl%u %s 0 %gpF\n"
