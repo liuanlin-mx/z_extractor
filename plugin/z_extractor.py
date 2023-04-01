@@ -184,6 +184,11 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_radioBoxUnit.SetSelection( 1 )
 		sbSizer6.Add( self.m_radioBoxUnit, 1, wx.ALL|wx.EXPAND, 5 )
 
+		m_radioBoxViaModelChoices = [ u"LC", u"TL" ]
+		self.m_radioBoxViaModel = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Via Model", wx.DefaultPosition, wx.DefaultSize, m_radioBoxViaModelChoices, 1, wx.RA_SPECIFY_COLS )
+		self.m_radioBoxViaModel.SetSelection( 1 )
+		sbSizer6.Add( self.m_radioBoxViaModel, 0, wx.ALL|wx.EXPAND, 5 )
+
 		self.m_checkBoxLosslessTL = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Lossless TL", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_checkBoxLosslessTL.SetValue(True)
 		sbSizer6.Add( self.m_checkBoxLosslessTL, 1, wx.ALL|wx.EXPAND, 5 )
@@ -246,6 +251,7 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_radioBoxSpiceFmt.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSpiceFmtOnRadioBox )
 		self.m_radioBoxSolver.Bind( wx.EVT_RADIOBOX, self.m_radioBoxSolverOnRadioBox )
 		self.m_radioBoxUnit.Bind( wx.EVT_RADIOBOX, self.m_radioBoxUnitOnRadioBox )
+		self.m_radioBoxViaModel.Bind( wx.EVT_RADIOBOX, self.m_radioBoxViaModelOnRadioBox )
 		self.m_checkBoxLosslessTL.Bind( wx.EVT_CHECKBOX, self.m_checkBoxLosslessTLOnCheckBox )
 		self.m_textCtrlStep.Bind( wx.EVT_TEXT, self.m_textCtrlStepOnText )
 		self.m_buttonExtract.Bind( wx.EVT_BUTTON, self.m_buttonExtractOnButtonClick )
@@ -310,6 +316,9 @@ class z_extractor_base ( wx.Dialog ):
 	def m_radioBoxUnitOnRadioBox( self, event ):
 		event.Skip()
 
+	def m_radioBoxViaModelOnRadioBox( self, event ):
+		event.Skip()
+
 	def m_checkBoxLosslessTLOnCheckBox( self, event ):
 		event.Skip()
 
@@ -336,6 +345,7 @@ class z_config_item():
         self.solver_type = 0
         self.lossless_tl = True
         self.scan_step = 0.508
+        self.via_model = 0
         
 
 class z_extractor_gui(z_extractor_base):
@@ -423,6 +433,8 @@ class z_extractor_gui(z_extractor_base):
                 item.lossless_tl = cfg["lossless_tl"]
             if "scan_step" in cfg:
                 item.scan_step = cfg["scan_step"]
+            if "via_model" in cfg:
+                item.scan_step = cfg["via_model"]
             
             self.cfg_list.append(item)
         
@@ -474,6 +486,11 @@ class z_extractor_gui(z_extractor_base):
                 cmd = cmd + "-lossless_tl 1 "
             else:
                 cmd = cmd + "-lossless_tl 0 "
+                
+            if cfg.via_model == 1:
+                cmd = cmd + "-via_tl_mode 1"
+            else:
+                cmd = cmd + "-via_tl_mode 0 "
             
             cmd = cmd + "-step " + str(cfg.scan_step)
             cmd = cmd + " -o " + cfg.name + ";"
@@ -538,8 +555,13 @@ class z_extractor_gui(z_extractor_base):
     def update_other_ui(self):
         if self.cur_cfg.solver_type == 0:
             self.m_radioBoxSolver.Select(0)
-        elif self.cur_cfg.solver_type == 1:
+        else:
             self.m_radioBoxSolver.Select(1)
+            
+        if self.cur_cfg.via_model == 0:
+            self.m_radioBoxViaModel.Select(0)
+        else:
+            self.m_radioBoxViaModel.Select(1)
             
         self.m_checkBoxLosslessTL.SetValue(self.cur_cfg.lossless_tl)
         self.m_textCtrlStep.SetValue(str(self.unit_mm_cvt_ui(self.cur_cfg.scan_step)))
@@ -724,6 +746,9 @@ class z_extractor_gui(z_extractor_base):
         self.unit = self.m_radioBoxUnit.GetStringSelection()
         self.update_coupled_ui()
         self.update_other_ui()
+        
+    def m_radioBoxViaModelOnRadioBox( self, event ):
+        self.cur_cfg.via_model = self.m_radioBoxViaModel.GetSelection()
         
     def m_checkBoxLosslessTLOnCheckBox( self, event ):
         self.cur_cfg.lossless_tl = self.m_checkBoxLosslessTL.GetValue()
