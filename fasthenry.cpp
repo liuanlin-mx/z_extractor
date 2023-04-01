@@ -60,11 +60,34 @@ bool fasthenry::add_wire(const std::string& node1_name, const std::string& node2
         sprintf(buf, "N%s x=%.3f y=%.3f z=%.3f\n", node2_name.c_str(), end.x, end.y, end.z);
         _inp += std::string(buf);
     }
+    std::int32_t rw = 2;
+    std::int32_t rh = 2;
+    if (nwinc == 0)
+    {
+        nwinc = 1;
+        if (_freq > 1)
+        {
+            nwinc = fasthenry::_get_ninc(w, _freq, _conductivity, rw);
+        }
+    }
+    
+    if (nhinc == 0)
+    {
+        nhinc = 1;
+        if (_freq > 1)
+        {
+            nhinc = fasthenry::_get_ninc(h, _freq, _conductivity, rh);
+        }
+    }
+    
     if (_added.count(wire_name) == 0)
     {
         _added.insert(wire_name);
-        sprintf(buf, "E%s N%s N%s w=%f h=%f nhinc=%d nwinc=%d\n", wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h, nhinc, nwinc);
+        sprintf(buf, "E%s N%s N%s w=%f h=%f nwinc=%d rw=%d nhinc=%d rh=%d ",
+                        wire_name.c_str(), node1_name.c_str(), node2_name.c_str(), w, h,
+                        nwinc, rw, nhinc, rh);
         _inp += std::string(buf);
+        _inp += "\n";
     }
     
     return true;
@@ -114,6 +137,13 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
     
     std::string inp;
     float w = M_PI * (drill + 2 * via_cu_thick) / div_n;
+    std::int32_t rw = 2;
+    std::int32_t nwinc = 1;
+    if (_freq > 1)
+    {
+       nwinc = _get_ninc(via_cu_thick, _freq, _conductivity, rw);
+    }
+    
     for (std::uint32_t i = 0; i < inside_points.size(); i++)
     {
         sprintf(buf, "N%s%d x=%.4f y=%.4f z=%.4f\n", node1_name.c_str(), i, inside_points[i].x, inside_points[i].y, start.z);
@@ -130,10 +160,11 @@ bool fasthenry::add_via(const std::string& node1_name, const std::string& node2_
         }
             
         /* 连接过孔各层的面 */
-        sprintf(buf, "Evid%s%d N%s%d N%s%d w=%f h=%f wx=%f wy=%f wz=0  nwinc=1 nhinc=1\n",
+        sprintf(buf, "Evid%s%d N%s%d N%s%d w=%f h=%f wx=%f wy=%f wz=0  nhinc=1  nwinc=%d rw=%d\n",
                     wire_name.c_str(), i, node1_name.c_str(), i, node2_name.c_str(), i,
                     via_cu_thick, w,
-                    inside_points[i].x - cx, inside_points[i].y - cy);
+                    inside_points[i].x - cx, inside_points[i].y - cy,
+                    nwinc, rw);
         inp += buf;
         
         sprintf(buf, ".equiv N%s%d N%s\n", node1_name.c_str(), i, node1_name.c_str());
@@ -504,4 +535,30 @@ std::vector<fasthenry::impedance_matrix> fasthenry::_read_impedance_matrix()
 double fasthenry::_calc_inductance(double freq, double imag)
 {
     return imag / (2 * M_PI * freq);
+}
+
+std::int32_t fasthenry::_get_ninc(float w, float freq, float conductivity, std::int32_t& ratio)
+{
+    float d = sqrt(1 / (M_PI * freq * conductivity * 4 * M_PI * 1e-7)) * 1000.; // 趋肤深度单位mm
+    std::int32_t n = 1;
+    ratio = 2;
+    float min = 1e9;
+    std::int32_t a1 = 1;
+    for (std::int32_t r = 1; r < 20; r++)
+    {
+        for (std::int32_t i = 1; i < 12; i++)
+        {
+            std::int32_t count = a1 * (1 - pow(r, i) / (1 - r)) * 2 + a1 * pow(r, i);
+            float tmp = fabs(d - w / count);
+            if (tmp < min)
+            {
+                min = tmp;
+                n = i * 2 + 1;
+                ratio = r;
+            }
+        }
+    }
+    //std::int32_t count = a1 * (1 - pow(ratio, n / 2) / (1 - ratio)) * 2 + a1 * pow(ratio, n / 2);
+    //printf("ratio:%d n:%d d:%f v:%f\n", ratio, n, d, w / count);
+    return n;
 }

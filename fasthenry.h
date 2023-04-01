@@ -37,7 +37,7 @@ public:
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
     bool add_wire(const char *name, point start, point end, float w, float h);
     bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
-                    point start, point end, float w, float h, std::int32_t nwinc = 1, std::int32_t nhinc = 1);
+                    point start, point end, float w, float h, std::int32_t nwinc = 0, std::int32_t nhinc = 0);
                     
     bool add_via(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name, point start, point end, float drill, float size);
     
@@ -58,7 +58,7 @@ private:
     std::string _make_cir(const std::string& name, std::uint32_t pins);
     std::vector<impedance_matrix> _read_impedance_matrix();
     double _calc_inductance(double freq, double imag);
-    
+    std::int32_t _get_ninc(float w, float freq, float conductivity, std::int32_t& ratio);
 private:
     std::string _inp;
     std::set<std::string> _added;
