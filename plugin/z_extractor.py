@@ -2,12 +2,14 @@
 
 import pcbnew
 import os
+import signal
 import stat
 import wx
 import subprocess
 import json
 import time
 import platform
+import threading
 
 
 ###########################################################################
@@ -356,9 +358,12 @@ class z_extractor_gui(z_extractor_base):
         self.cur_cfg = z_config_item()
         self.net_classes_list = []
         self.board = pcbnew.GetBoard()
-        self.sub_process = None
-        self.start_time = time.perf_counter()
-            
+        self.sub_process_pid = -1
+        self.thread = None
+        self.lock = threading.Lock()
+        self.cmd_line = ""
+        self.cmd_output = ""
+        
         file_name = self.board.GetFileName()
         self.board_path = os.path.split(file_name)[0]
         self.plugin_path = os.path.split(os.path.realpath(__file__))[0]
@@ -376,6 +381,7 @@ class z_extractor_gui(z_extractor_base):
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc3", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "mmtl_bem", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "z_extractor", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
+            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "fasthenry", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
         else:
             pass
         
@@ -758,19 +764,31 @@ class z_extractor_gui(z_extractor_base):
 
     def m_buttonExtractOnButtonClick( self, event ):
         if self.m_buttonExtract.GetLabel() == "Terminate":
-            if self.sub_process.poll() == None:
-                self.sub_process.terminate()
+            sys = platform.system()
+            if sys == "Windows":
+                #os.kill(self.sub_process_pid, signal.CTRL_C_EVENT)
+                os.popen("taskkill.exe /f /t /pid " + str(self.sub_process_pid))
+            elif sys == "Linux":
+                os.killpg(os.getpgid(self.sub_process_pid), signal.SIG_IGN)
+            else:
+                pass
             self.m_buttonExtract.SetLabel("Extract")
             self.m_timer.Stop()
+            self.thread.join()
             return
-            
-        cmd = self.gen_cmd(self.m_checkBoxExtractAll.GetValue())
-        self.m_textCtrlOutput.AppendText("cmd: " + cmd + "\n\n")
-        self.start_time = time.perf_counter()
-        self.sub_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, cwd=self.output_path, env={"PATH": self.plugin_bin_path})
         
+        self.lock.acquire()
+        self.cmd_output = ""
+        self.cmd_line = self.gen_cmd(self.m_checkBoxExtractAll.GetValue())
+        self.lock.release()
+        
+        self.m_textCtrlOutput.AppendText("cmd: " + self.cmd_line + "\n\n")
         self.m_buttonExtract.SetLabel("Terminate")
         self.m_timer.Start(1000)
+        
+        self.thread = threading.Thread(target=z_extractor_gui.thread_func, args=(self,))
+        self.thread.start()
+        
         
     def m_buttonSaveOnButtonClick( self, event ):
         list = []
@@ -786,16 +804,45 @@ class z_extractor_gui(z_extractor_base):
         cfg_file.close()
         
     def m_timerOnTimer( self, event ):
-        if self.sub_process.poll() == None:
-            self.m_textCtrlOutput.AppendText(".");
+        cmd_output = ""
+        if self.lock.acquire(blocking=False):
+            cmd_output = self.cmd_output
+            self.lock.release()
+            
+        if (cmd_output == ""):
+            self.m_textCtrlOutput.AppendText(".")
         else:
-            str = self.sub_process.stdout.read().decode()
-            self.m_textCtrlOutput.AppendText("\n" + str + "\n");
-            self.m_textCtrlOutput.AppendText("time: {:.3f}s\n".format((time.perf_counter() - self.start_time)));
+            self.m_textCtrlOutput.AppendText("\n" + cmd_output + "\n");
             self.m_buttonExtract.SetLabel("Extract")
             self.m_timer.Stop()
-            self.sub_process.wait(0.1)
-
+            self.thread.join(0.1)
+            
+            
+    def thread_func(self):
+        start_time = time.perf_counter()
+        self.lock.acquire()
+        sys = platform.system()
+        if sys == "Windows":
+            sub_process = subprocess.Popen(self.cmd_line, shell=True, stdout=subprocess.PIPE, cwd=self.output_path, env={"PATH": self.plugin_bin_path})
+        elif sys == "Linux":
+            sub_process = subprocess.Popen(self.cmd_line, shell=True, stdout=subprocess.PIPE, cwd=self.output_path, env={"PATH": self.plugin_bin_path}, start_new_session=True)
+        else:
+            self.cmd_output = "failed"
+            self.lock.release()
+            return
+            
+        self.sub_process_pid = sub_process.pid
+        self.lock.release()
+        out, err = sub_process.communicate()
+            
+        if sub_process.returncode == 0:
+            str = out.decode()
+            self.lock.acquire()
+            self.cmd_output = str + "\n" + "time: {:.3f}s\n".format((time.perf_counter() - start_time))
+            self.lock.release()
+            
+            
+            
         
 class z_extractor( pcbnew.ActionPlugin ):
     def defaults( self ):
