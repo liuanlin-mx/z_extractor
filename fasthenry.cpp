@@ -18,6 +18,7 @@ fasthenry::fasthenry()
 
 fasthenry::~fasthenry()
 {
+    remove("Zc.mat");
 }
 
 void fasthenry::clear()

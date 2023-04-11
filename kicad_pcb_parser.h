@@ -28,6 +28,7 @@ private:
     const char *_parse_layers(const char *str, std::list<std::string>& layers);
     const char *_parse_footprint(const char *str);
     const char *_parse_at(const char *str, float &x, float& y, float& angle);
+    const char *_parse_pad_size(const char *str, float& w, float& h);
     const char *_parse_reference(const char *str, std::string& footprint_name);
     const char *_parse_pad(const char *str, z_extractor::pad& v);
     

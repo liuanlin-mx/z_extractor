@@ -105,7 +105,139 @@ void z_extractor::set_edge(float top, float bottom, float left, float right)
     _pcb_left = left;
     _pcb_right = right;
 }
-    
+
+/* 如果线段在焊盘内但没有连接到中心点 就添加一个等宽线段连接到中心 */
+/* 如果两个线段的起点或终点没有连接在一点但距离小于线宽和的1/2 就添加一个等宽线段连接它们 */
+void z_extractor::clean_segment()
+{
+    for (const auto& net: _nets)
+    {
+        std::uint32_t net_id = net.first;
+        
+        std::list<pad> pads = get_pads(net_id);
+        std::list<std::pair<std::uint32_t, z_extractor::segment> > no_conn;
+        std::list<z_extractor::segment> conn;
+        _get_no_conn_segments(net_id, no_conn, conn);
+        
+        for (auto it = no_conn.begin(); it != no_conn.end();)
+        {
+            auto& s = *it;
+            for (const auto& p: pads)
+            {
+                std::uint32_t flag = _segment_is_inside_pad(s.second, p);
+                if ((s.first & 0x01) && (flag & 0x01))
+                {
+                    float x;
+                    float y;
+                    _get_pad_pos(p, x, y);
+                    z_extractor::segment new_s;
+                    new_s = s.second;
+                    new_s.end.x = x;
+                    new_s.end.y = y;
+                    new_s.tstamp = "s" + new_s.tstamp;
+                    _segments.emplace(new_s.net, new_s);
+                    s.first &= ~0x01;
+                }
+                if ((s.first & 0x02) && (flag & 0x02))
+                {
+                    float x;
+                    float y;
+                    _get_pad_pos(p, x, y);
+                    z_extractor::segment new_s;
+                    new_s = s.second;
+                    new_s.start.x = x;
+                    new_s.start.y = y;
+                    new_s.tstamp = "e" + new_s.tstamp;
+                    _segments.emplace(new_s.net, new_s);
+                    s.first &= ~0x02;
+                }
+            }
+            if (s.first == 0)
+            {
+                it = no_conn.erase(it);
+                continue;
+            }
+            it++;
+        }
+        
+        while (!no_conn.empty())
+        {
+            auto s = no_conn.front();
+            no_conn.pop_front();
+            
+            for (auto it = no_conn.begin(); it != no_conn.end(); it++)
+            {
+                if (s.first & 0x01)
+                {
+                    if (it->first & 0x01)
+                    {
+                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.start.x, it->second.start.y)
+                                    < s.second.width * 0.5 + it->second.width * 0.5)
+                        {
+                            z_extractor::segment new_s;
+                            new_s = s.second;
+                            new_s.end.x = it->second.start.x;
+                            new_s.end.y = it->second.start.y;
+                            new_s.tstamp = "s" + new_s.tstamp;
+                            _segments.emplace(new_s.net, new_s);
+                            s.first &= ~0x01;
+                            it->first &= ~0x01;
+                        }
+                    }
+                    if (it->first & 0x02)
+                    {
+                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.end.x, it->second.end.y)
+                                    < s.second.width * 0.5 + it->second.width * 0.5)
+                        {
+                            z_extractor::segment new_s;
+                            new_s = s.second;
+                            new_s.end.x = it->second.end.x;
+                            new_s.end.y = it->second.end.y;
+                            new_s.tstamp = "s" + new_s.tstamp;
+                            _segments.emplace(new_s.net, new_s);
+                            s.first &= ~0x01;
+                            it->first &= ~0x02;
+                        }
+                    }
+                }
+                
+                if (s.first & 0x02)
+                {
+                    if (it->first & 0x01)
+                    {
+                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.start.x, it->second.start.y)
+                                    < s.second.width * 0.5 + it->second.width * 0.5)
+                        {
+                            z_extractor::segment new_s;
+                            new_s = s.second;
+                            new_s.start.x = it->second.start.x;
+                            new_s.start.y = it->second.start.y;
+                            new_s.tstamp = "e" + new_s.tstamp;
+                            _segments.emplace(new_s.net, new_s);
+                            s.first &= ~0x02;
+                            it->first &= ~0x01;
+                        }
+                    }
+                    if (it->first & 0x02)
+                    {
+                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.end.x, it->second.end.y)
+                                    < s.second.width * 0.5 + it->second.width * 0.5)
+                        {
+                            z_extractor::segment new_s;
+                            new_s = s.second;
+                            new_s.start.x = it->second.end.x;
+                            new_s.start.y = it->second.end.y;
+                            new_s.tstamp = "e" + new_s.tstamp;
+                            _segments.emplace(new_s.net, new_s);
+                            s.first &= ~0x02;
+                            it->first &= ~0x02;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 std::list<z_extractor::segment> z_extractor::get_segments(std::uint32_t net_id)
 {
@@ -294,6 +426,11 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     }
     std::uint32_t net_id = pad1.net;
     
+    
+    if (_check_segments(net_id) == false)
+    {
+        return false;
+    }
     
     std::list<pad> pads = get_pads(net_id);
     std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
@@ -1634,6 +1771,17 @@ float z_extractor::_get_via_conn_len(const z_extractor::via& v)
     return len;
 }
 
+bool z_extractor::_is_cu_layer(const std::string& layer)
+{
+    for (const auto& l: _layers)
+    {
+        if (layer == l.name)
+        {
+            return l.type == "copper";
+        }
+    }
+    return false;
+}
 
 std::vector<std::string> z_extractor::_get_pad_conn_layers(const z_extractor::pad& p)
 {
@@ -1885,6 +2033,43 @@ bool z_extractor::_cu_layer_is_outer_layer(const std::string& layer_name)
     return false;
 }
 
+std::uint32_t z_extractor::_segment_is_inside_pad(const z_extractor::segment& s, const z_extractor::pad& p)
+{
+    std::vector<std::string> layers = _get_pad_layers(p);
+    bool brk = true;
+    for (const auto& l: layers)
+    {
+        if (l == s.layer_name)
+        {
+            brk = false;
+            break;
+        }
+    }
+            
+    if (brk)
+    {
+        return 0;
+    }
+            
+    float x;
+    float y;
+    _get_pad_pos(p, x, y);
+    std::uint32_t ret = 0;
+    
+    if ((s.start.x >= x - p.size_w * 0.5 && s.start.x <= x + p.size_w * 0.5)
+        && (s.start.y >= y - p.size_h * 0.5 && s.start.y <= y + p.size_h * 0.5))
+    {
+        ret |= 1;
+    }
+    
+    if ((s.end.x >= x - p.size_w * 0.5 && s.end.x <= x + p.size_w * 0.5)
+        && (s.end.y >= y - p.size_h * 0.5 && s.end.y <= y + p.size_h * 0.5))
+    {
+        ret |= 2;
+    }
+    return ret;
+}
+
 float z_extractor::_get_segment_len(const z_extractor::segment& s)
 {
     if (s.is_arc())
@@ -2000,12 +2185,30 @@ bool z_extractor::_segments_get_next(std::list<z_extractor::segment>& segments, 
 
 bool z_extractor::_check_segments(std::uint32_t net_id)
 {
+    std::list<std::pair<std::uint32_t, z_extractor::segment> > no_conn;
+    std::list<z_extractor::segment> conn;
+    _get_no_conn_segments(net_id, no_conn, conn);
+    
+    for (const auto& s: no_conn)
+    {
+        if (s.first & 0x01)
+        {
+            printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.second.net).c_str(), s.second.start.x, s.second.start.y);
+        }
+        if (s.first & 0x02)
+        {
+            printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.second.net).c_str(), s.second.end.x, s.second.end.y);
+        }
+    }
+    return no_conn.empty();
+}
+
+void z_extractor::_get_no_conn_segments(std::uint32_t net_id, std::list<std::pair<std::uint32_t, z_extractor::segment> >& no_conn, std::list<z_extractor::segment>& conn)
+{
     std::list<z_extractor::segment> segments = get_segments(net_id);
     std::list<z_extractor::pad> pads = get_pads(net_id);
     std::list<z_extractor::via> vias = get_vias(net_id);
     
-    std::list<z_extractor::segment> no_conn;
-    std::list<z_extractor::segment> conn;
     
     while (!segments.empty())
     {
@@ -2053,18 +2256,18 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
         
         for (const auto& it: no_conn)
         {
-            if (it.layer_name != s.layer_name)
+            if (it.second.layer_name != s.layer_name)
             {
                 continue;
             }
-            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
-                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
+            if (_point_equal(s.start.x, s.start.y, it.second.start.x, it.second.start.y)
+                || _point_equal(s.start.x, s.start.y, it.second.end.x, it.second.end.y))
             {
                 start = true;
             }
             
-            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
-                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
+            if (_point_equal(s.end.x, s.end.y, it.second.start.x, it.second.start.y)
+                || _point_equal(s.end.x, s.end.y, it.second.end.x, it.second.end.y))
             {
                 end = true;
             }
@@ -2138,20 +2341,20 @@ bool z_extractor::_check_segments(std::uint32_t net_id)
         }
         else
         {
+            std::uint32_t flag = 0;
             if (!start)
             {
-                printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.net).c_str(), s.start.x, s.start.y);
+                flag |= 1;
             }
             if (!end)
             {
-                printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.net).c_str(), s.end.x, s.end.y);
+                flag |= 2;
             }
             
-            no_conn.push_back(s);
+            no_conn.push_back(std::pair<std::uint32_t, z_extractor::segment>(flag, s));
         }
     }
-    
-    return no_conn.empty();
+
 }
 
 

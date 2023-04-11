@@ -131,6 +131,8 @@ public:
     bool add_layer(const layer& l);
     void set_edge(float top, float bottom, float left, float right);
     
+    void clean_segment();
+    
     std::list<segment> get_segments(std::uint32_t net_id);
     std::list<pad> get_pads(std::uint32_t net_id);
     bool get_pad(const std::string& footprint, const std::string& pad_number, z_extractor::pad& pad);
@@ -198,9 +200,10 @@ private:
     std::vector<std::string> _get_via_conn_layers(const via& v);
     float _get_via_conn_len(const z_extractor::via& v);
     
+    bool _is_cu_layer(const std::string& layer);
+    
     std::vector<std::string> _get_pad_conn_layers(const pad& p);
     std::vector<std::string> _get_pad_layers(const pad& p);
-    
     
     float _get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float _get_layer_thickness(const std::string& layer_name);
@@ -211,6 +214,8 @@ private:
     float _get_board_thickness();
     float _get_cu_min_thickness();
     bool _cu_layer_is_outer_layer(const std::string& layer_name);
+    /* 判断走线是否在焊盘内， 返回1 start端在焊盘内， 2 end端在焊盘内, 3两端都在盘焊内, 0两端都不在焊盘内 */
+    std::uint32_t _segment_is_inside_pad(const z_extractor::segment& s, const z_extractor::pad& pad);
     
     
     /* 获取走线长度 */
@@ -225,6 +230,7 @@ private:
     bool _segments_get_next(std::list<segment>& segments, z_extractor::segment& s, float x, float y, const std::string& layer_name);
     /* 检测是否有未连接的走线 */
     bool _check_segments(std::uint32_t net_id);
+    void _get_no_conn_segments(std::uint32_t net_id, std::list<std::pair<std::uint32_t/*1 start未连接 2 end,3 all*/, z_extractor::segment> >& no_conn, std::list<z_extractor::segment>& conn);
     
     
     

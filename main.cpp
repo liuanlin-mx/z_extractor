@@ -194,6 +194,7 @@ int main(int argc, char **argv)
     {
         return 0;
     }
+    z_extr->clean_segment();
     
     z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);

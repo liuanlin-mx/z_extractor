@@ -592,6 +592,14 @@ const char *kicad_pcb_parser::_parse_at(const char *str, float &x, float& y, flo
     return str;
 }
 
+const char *kicad_pcb_parser::_parse_pad_size(const char *str, float& w, float& h)
+{
+    while (*str == ' ') str++;
+    str = _parse_number(str, w);
+    while (*str == ' ') str++;
+    str = _parse_number(str, h);
+    return str;
+}
 
 
 const char *kicad_pcb_parser::_parse_reference(const char *str, std::string& footprint_name)
@@ -627,6 +635,10 @@ const char *kicad_pcb_parser::_parse_pad(const char *str, z_extractor::pad& p)
                 p.at.x = x;
                 p.at.y = y;
                 p.at_angle = angle;
+            }
+            else if (label == "size")
+            {
+                str = _parse_pad_size(str, p.size_w, p.size_h);
             }
             else if (label == "net")
             {
