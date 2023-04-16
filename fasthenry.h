@@ -35,6 +35,7 @@ public:
     void clear();
     void set_freq(float freq) { _freq = freq; }
     void set_conductivity(float conductivity) { _conductivity = conductivity; }
+    bool add_node(const std::string& node_name, point p);
     bool add_wire(const char *name, point start, point end, float w, float h);
     bool add_wire(const std::string& node1_name, const std::string& node2_name, const std::string& wire_name,
                     point start, point end, float w, float h, std::int32_t nwinc = 0, std::int32_t nhinc = 0);

@@ -27,6 +27,19 @@ void fasthenry::clear()
 }
 
 
+bool fasthenry::add_node(const std::string& node_name, point p)
+{
+    if (_added.count(node_name) == 0)
+    {
+        char buf[256] = {0};
+        _added.insert(node_name);
+        sprintf(buf, "N%s x=%.3f y=%.3f z=%.3f\n", node_name.c_str(), p.x, p.y, p.z);
+        _inp += std::string(buf);
+        return true;
+    }
+    return false;
+}
+
 bool fasthenry::add_wire(const char *name, point start, point end, float w, float h)
 {
     char buf[256] = {0};

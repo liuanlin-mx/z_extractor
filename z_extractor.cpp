@@ -499,6 +499,19 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
         _get_pad_pos(pad, x, y);
         
         std::vector<std::string> layers = _get_pad_layers(pad);
+        
+        if (layers.size() == 1)
+        {
+            const std::string& layer = layers.front();
+            float z = _get_layer_z_axis(layer);
+            henry.add_node(_pos2net(x, y, layer), fasthenry::point(x, y, z));
+                                
+            if (have_zones)
+            {
+                _conn_to_zone(henry, x, y, zone_mat, layer, conds, grid_size);
+            }
+        }
+        
         for (std::uint32_t i = 1; i < layers.size(); i++)
         {
             const std::string& start = layers[i - 1];
@@ -2427,7 +2440,7 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
                     }
                 }
                 
-                if (count >= (std::uint32_t)roi.rows * roi.cols * 0.8)
+                if (count >= (std::uint32_t)roi.rows * roi.cols * 0.7)
                 {
                     //cv::line(img2, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 255, 255));
                     float w_ratio = 1;
