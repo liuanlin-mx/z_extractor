@@ -275,7 +275,8 @@ class rl_extractor_gui(rl_extractor_base):
         self.board_path = os.path.split(file_name)[0]
         self.plugin_path = os.path.split(os.path.realpath(__file__))[0]
         
-        self.output_path = self.board_path + os.sep + "rl_extractor"
+        self.output_path = self.board_path + os.sep + "rl_extractor" 
+        self.cfg_path = self.board_path + os.sep + "rl_extractor" + os.sep + "rl_extractor.json"
         if not os.path.exists(self.output_path):
             os.mkdir(self.output_path)
         
@@ -300,7 +301,7 @@ class rl_extractor_gui(rl_extractor_base):
     def load_cfg(self):
         
         try:
-            cfg_file = open(self.board_path + os.sep + "rl_extractor.json", "r")
+            cfg_file = open(self.cfg_path, "r")
         except:
             self.cfg_list.append(rl_config_item())
             self.cur_cfg = self.cfg_list[0]
@@ -575,7 +576,7 @@ class rl_extractor_gui(rl_extractor_base):
             
         json_str = json.dumps(list)
         
-        cfg_file = open(self.board_path + os.sep + "rl_extractor.json", "w")
+        cfg_file = open(self.cfg_path, "w")
         json.dump(list, cfg_file)
         cfg_file.close()
         
