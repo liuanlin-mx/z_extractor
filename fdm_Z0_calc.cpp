@@ -490,14 +490,15 @@ bool fdm_Z0_calc::_is_some(cv::Mat& img1, cv::Mat& img2)
 void fdm_Z0_calc::_init_fdm(fdm& fdm, cv::Mat& img)
 {
     fdm.set_box_size(img.rows, img.cols, _pix_unit);
-    //fdm.set_bc(fdm::BC_DIRICHLET, fdm::BC_DIRICHLET, fdm::BC_DIRICHLET, fdm::BC_DIRICHLET);
-    fdm.set_bc(fdm::BC_DIRICHLET, fdm::BC_DIRICHLET, fdm::BC_NEUMANN, fdm::BC_NEUMANN);
+    //fdm.set_bc(fdm::BC_DIRICHLET, fdm::BC_DIRICHLET, fdm::BC_NEUMANN, fdm::BC_NEUMANN);
     //fdm.set_bc(fdm::BC_NEUMANN, fdm::BC_NEUMANN, fdm::BC_DIRICHLET, fdm::BC_DIRICHLET);
     //fdm.set_bc(fdm::BC_NEUMANN, fdm::BC_NEUMANN, fdm::BC_NEUMANN, fdm::BC_DIRICHLET);
     fdm.add_dielectric(FDM_ID_AIR, 1);
     fdm.add_metal(FDM_ID_METAL_GND, 0);
     fdm.add_metal(FDM_ID_METAL_COND1, 1);
     fdm.add_metal(FDM_ID_METAL_COND2, -1);
+    
+    fdm.add_point(0, 0, FDM_ID_METAL_GND);
     
     for (auto& it: _er_map)
     {

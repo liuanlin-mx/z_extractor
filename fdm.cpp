@@ -20,7 +20,7 @@
 #if FDM_USE_OPENCV
 #include <opencv2/opencv.hpp>
 #endif
-
+#include <math.h>
 #include <set>
 #include "fdm.h"
 
@@ -120,12 +120,17 @@ void fdm::solver(bool ignore_dielectric)
 {
     _init_voltage();
     
+    float t = cos(M_PI / _v_mat.rows()) + cos(M_PI / _v_mat.cols());
+    _w = (8 - sqrt(64 - 16 * t *t)) / (t * t);
+    //printf("t:%f w:%f\n", t, _w);
+    
+    float minR = 1.0 / (_v_mat.rows() * _v_mat.cols());
     if (ignore_dielectric)
     {
         while (1)
         {
             float R = _solver_no_er();
-            if (R < 1.0 / (_v_mat.rows() * _v_mat.cols()))
+            if (R < minR)
             {
                 return;
             }
@@ -136,7 +141,7 @@ void fdm::solver(bool ignore_dielectric)
         while (1)
         {
             float R = _solver_er();
-            if (R < 1.0 / (_v_mat.rows() * _v_mat.cols()))
+            if (R < minR)
             {
                 return;
             }
@@ -408,22 +413,18 @@ void fdm::_init_voltage()
             {
                 _v_mat.at(row, col).id = m.id;
                 _v_mat.at(row, col).v = m.v;
-                _v_mat.at(row, col).er = m.er;
                 _v_mat.at(row, col).bc = m.bc;
                 
                 _v_mat.at(row, col + 1).id = m.id;
                 _v_mat.at(row, col + 1).v = m.v;
-                _v_mat.at(row, col + 1).er = m.er;
                 _v_mat.at(row, col + 1).bc = m.bc;
                 
                 _v_mat.at(row + 1, col).id = m.id;
                 _v_mat.at(row + 1, col).v = m.v;
-                _v_mat.at(row + 1, col).er = m.er;
                 _v_mat.at(row + 1, col).bc = m.bc;
                 
                 _v_mat.at(row + 1, col + 1).id = m.id;
                 _v_mat.at(row + 1, col + 1).v = m.v;
-                _v_mat.at(row + 1, col + 1).er = m.er;
                 _v_mat.at(row + 1, col + 1).bc = m.bc;
             }
         }
@@ -439,22 +440,18 @@ void fdm::_init_voltage()
             {
                 _v_mat.at(row, col).id = m.id;
                 _v_mat.at(row, col).v = m.v;
-                _v_mat.at(row, col).er = m.er;
                 _v_mat.at(row, col).bc = m.bc;
                 
                 _v_mat.at(row, col + 1).id = m.id;
                 _v_mat.at(row, col + 1).v = m.v;
-                _v_mat.at(row, col + 1).er = m.er;
                 _v_mat.at(row, col + 1).bc = m.bc;
                 
                 _v_mat.at(row + 1, col).id = m.id;
                 _v_mat.at(row + 1, col).v = m.v;
-                _v_mat.at(row + 1, col).er = m.er;
                 _v_mat.at(row + 1, col).bc = m.bc;
                 
                 _v_mat.at(row + 1, col + 1).id = m.id;
                 _v_mat.at(row + 1, col + 1).v = m.v;
-                _v_mat.at(row + 1, col + 1).er = m.er;
                 _v_mat.at(row + 1, col + 1).bc = m.bc;
             }
         }
@@ -484,6 +481,32 @@ void fdm::_init_voltage()
 float fdm::_solver_no_er()
 {
     float max_R = 0;
+#if 0
+    float xx = 0.25;
+    std::int32_t rows = _v_mat.rows();
+    std::int32_t cols = _v_mat.cols();
+    for (std::int32_t row = 1; row < rows - 1; row++)
+    {
+        voltage *mid = _v_mat.data() + row * cols;
+        voltage *up = mid - cols;
+        voltage *down = mid + cols;
+        
+        for (std::int32_t col = 1; col < cols - 1; col++)
+        {
+            if (mid[col].bc == BC_NONE)
+            {
+                float tmp = (up[col].v + down[col].v + mid[col - 1].v + mid[col + 1].v);
+                float R = tmp / 4 - mid[col].v;
+                mid[col].v = mid[col].v + _w * R;
+                if (R > max_R)
+                {
+                    max_R = R;
+                }
+            }
+            
+        }
+    }
+#else
     for (std::int32_t row = 1; row < _v_mat.rows() - 1; row++)
     {
         for (std::int32_t col = 1; col < _v_mat.cols() - 1; col++)
@@ -491,7 +514,7 @@ float fdm::_solver_no_er()
             if (_v_mat.at(row, col).bc == BC_NONE)
             {
                 float w = _w;
-                float R = 0.25 * (_v_mat.at(row - 1, col).v + _v_mat.at(row + 1, col).v + _v_mat.at(row, col - 1).v + _v_mat.at(row, col + 1).v) - _v_mat.at(row, col).v;
+                float R = (_v_mat.at(row - 1, col).v + _v_mat.at(row + 1, col).v + _v_mat.at(row, col - 1).v + _v_mat.at(row, col + 1).v) / 4 - _v_mat.at(row, col).v;
                 _v_mat.at(row, col).v = _v_mat.at(row, col).v + w * R;
                 if (R > max_R)
                 {
@@ -500,7 +523,7 @@ float fdm::_solver_no_er()
             }
         }
     }
-    
+#endif
     for (std::int32_t col = 0; col < _v_mat.cols(); col++)
     {
         if (_v_mat.at(0, col).bc == BC_NEUMANN)

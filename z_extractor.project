@@ -148,7 +148,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testrl/testrl.kicad_pcb -ref &quot;GND&quot; -net &quot;Net-(R1-Pad1)&quot; -coupled_max_gap 0.508 -coupled_min_len 2.54 -ltra 0 -mmtl 0 -lossless_tl 1 -via_tl_mode 0 -step 0.508 -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testrl/testrl.kicad_pcb -ref &quot;GND&quot; -net &quot;Net-(R1-Pad1)&quot; -coupled_max_gap 0.508 -coupled_min_len 2.54 -ltra 0 -mmtl 1 -lossless_tl 1 -via_tl_mode 0 -step 0.508 -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

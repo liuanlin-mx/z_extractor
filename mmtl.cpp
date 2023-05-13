@@ -26,16 +26,16 @@ static const char *base_xsctn = "package require csdl\n\n"
                 "set ::Stackup::riseTime \"5\"\n"
                 "set ::Stackup::frequency \"500MHz\"\n"
                 "set ::Stackup::defaultLengthUnits \"meters\"\n"
-                "set CSEG 10\n"
-                "set DSEG 10\n"
+                "set CSEG 5\n"
+                "set DSEG 5\n"
                 
                 "GroundPlane ground  \\\n"
                 "   -thickness 0.035 \\\n"
                 "   -yOffset 0.0 \\\n"
                 "   -xOffset 0.0\n"
                 "DielectricLayer dielAir  \\\n"
-                "   -thickness 3 \\\n"
-                "   -lossTangent 0.0002 \\\n"
+                "   -thickness 5 \\\n"
+                "   -lossTangent 0.0 \\\n"
                 "   -permittivity 1.0 \\\n"
                 "   -permeability 1.0 \\\n"
                 "   -yOffset 0.0 \\\n"
@@ -374,7 +374,7 @@ void mmtl::_add_elec(float x, float y, float w, float thickness, float er)
     sprintf(buf, "-thickness %f \\\n", thickness);
     _xsctn += buf;
     
-    _xsctn += "-lossTangent 0.0002 \\\n";
+    _xsctn += "-lossTangent 0.0 \\\n";
     
     sprintf(buf, "-permittivity %f \\\n", er);
     _xsctn += buf;
