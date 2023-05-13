@@ -15,8 +15,13 @@
 *  limitations under the License.                                            *
 *                                                                            *
 *****************************************************************************/
+#define FDM_USE_OPENCV 0
 
+#if FDM_USE_OPENCV
 #include <opencv2/opencv.hpp>
+#endif
+
+#include <set>
 #include "fdm.h"
 
 #define EPSILON_0 8.854e-12
@@ -191,6 +196,7 @@ float fdm::calc_capacity(std::uint8_t id1, std::uint8_t id2, bool ignore_dielect
 
 void fdm::gen_atlc()
 {
+#if FDM_USE_OPENCV
     std::set<std::uint32_t> erset;
     cv::Mat img(_material_mat.rows(), _material_mat.cols(), CV_8UC3, cv::Scalar(0, 0, 0));
     for (std::int32_t col = 1; col < _material_mat.cols() - 1; col++)
@@ -259,13 +265,15 @@ void fdm::gen_atlc()
         img.at<cv::Vec3b>(row, _material_mat.cols() - 1)[2] = 0;
     }
     
-    cv::imshow("atlc", img);
     cv::imwrite("atlc.bmp", img);
-    cv::waitKey(10);
+    //cv::imshow("atlc", img);
+    //cv::waitKey(10);
+#endif
 }
 
 void fdm::dump_V()
 {
+#if FDM_USE_OPENCV
     cv::Mat img(_v_mat.rows(), _v_mat.cols(), CV_8UC3, cv::Scalar(0, 0, 0));
     for (std::int32_t col = 0; col < _v_mat.cols(); col++)
     {
@@ -301,13 +309,15 @@ void fdm::dump_V()
             }
         }
     }
-    cv::imshow("dump_v", img);
     cv::imwrite("dump_v.bmp", img);
-    cv::waitKey(10);
+    //cv::imshow("dump_v", img);
+    //cv::waitKey(10);
+#endif
 }
 
 void fdm::dump_E()
 {
+#if FDM_USE_OPENCV
     cv::Mat img(_v_mat.rows(), _v_mat.cols(), CV_8UC3, cv::Scalar(0, 0, 0));
     double max = 0;
     for (std::int32_t col = 0; col < _v_mat.cols() - 1; col++)
@@ -335,14 +345,16 @@ void fdm::dump_E()
         }
     }
     
-    cv::imshow("img_E", img);
     cv::imwrite("img_E.bmp", img);
-    cv::waitKey(10);
+    //cv::imshow("img_E", img);
+    //cv::waitKey(10);
+#endif
 }
 
 
 void fdm::dump_E2()
 {
+#if FDM_USE_OPENCV
     cv::Mat img(_v_mat.rows(), _v_mat.cols(), CV_8UC3, cv::Scalar(0, 0, 0));
     double max = 0;
     for (std::int32_t col = 0; col < _v_mat.cols() - 1; col++)
@@ -378,9 +390,10 @@ void fdm::dump_E2()
         }
     }
     
-    cv::imshow("img_E2", img);
     cv::imwrite("img_E2.bmp", img);
-    cv::waitKey(10);
+    //cv::imshow("img_E2", img);
+    //cv::waitKey(10);
+#endif
 }
 
 
