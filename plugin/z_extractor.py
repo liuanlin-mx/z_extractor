@@ -193,7 +193,7 @@ class z_extractor_base ( wx.Dialog ):
 		self.m_radioBoxSpiceFmt.SetSelection( 0 )
 		sbSizer6.Add( self.m_radioBoxSpiceFmt, 1, wx.ALL, 5 )
 
-		m_radioBoxSolverChoices = [ u"mmtl", u"atlc" ]
+		m_radioBoxSolverChoices = [ u"mmtl", u"fdm" ]
 		self.m_radioBoxSolver = wx.RadioBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Solver", wx.DefaultPosition, wx.DefaultSize, m_radioBoxSolverChoices, 1, wx.RA_SPECIFY_COLS )
 		self.m_radioBoxSolver.SetSelection( 0 )
 		sbSizer6.Add( self.m_radioBoxSolver, 1, wx.ALL, 5 )
@@ -395,7 +395,6 @@ class z_extractor_gui(z_extractor_base):
             self.plugin_bin_path = self.plugin_path + os.sep + "win"
         elif sys == "Linux":
             self.plugin_bin_path = self.plugin_path + os.sep + "linux"
-            os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "atlc3", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "mmtl_bem", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "z_extractor", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
             os.chmod(self.plugin_path + os.sep + "linux" + os.sep + "fasthenry", stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXGRP)
