@@ -93,7 +93,7 @@ static bool matrix_invert(float *matrix, float *invert, std::int32_t rows, std::
             }
         }
         /* 没有找到非零行 消元无法进行 */
-        if (non_zero_row > rows)
+        if (non_zero_row >= rows)
         {
             return false;
         }
