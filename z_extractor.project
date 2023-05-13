@@ -12,6 +12,11 @@
     <File Name="plugin/z_extractor.py"/>
   </VirtualDirectory>
   <VirtualDirectory Name="z_extractor">
+    <File Name="fdm_Z0_calc.h"/>
+    <File Name="fdm_Z0_calc.cpp"/>
+    <File Name="fdm.h"/>
+    <File Name="fdm.cpp"/>
+    <File Name="matrix.h"/>
     <File Name="LICENSE"/>
     <File Name="calc.cpp"/>
     <File Name="calc.h"/>
@@ -132,7 +137,7 @@
       </Completion>
     </Configuration>
     <Configuration Name="linux" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-O0;-fopenmp;-Wall" C_Options="-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-g;-O3;-fopenmp;-Wall" C_Options="-g;-O3;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="/usr/include/opencv4/"/>
       </Compiler>
       <Linker Options="-fopenmp" Required="yes">
@@ -143,7 +148,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/DC12A03/DC12A03.kicad_pcb -rl -pad &quot;J1.1:J3.A9&quot;  -I &quot;1,2&quot; -freq 1e0 -o test" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/testrl/testrl.kicad_pcb -ref &quot;GND&quot; -net &quot;Net-(R1-Pad1)&quot; -coupled_max_gap 0.508 -coupled_min_len 2.54 -ltra 0 -mmtl 0 -lossless_tl 1 -via_tl_mode 0 -step 0.508 -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

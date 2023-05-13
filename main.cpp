@@ -223,7 +223,7 @@ int main(int argc, char **argv)
     z_extr->set_freq(freq);
     z_extr->set_conductivity(conductivity);
     z_extr->set_step(step);
-    z_extr->set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_ATLC);
+    z_extr->set_calc((use_mmtl)? Z0_calc::Z0_CALC_MMTL: Z0_calc::Z0_CALC_FDM);
     
     std::string spice;
     std::string info;

@@ -19,6 +19,7 @@
 #include "Z0_calc.h"
 #include "atlc.h"
 #include "mmtl.h"
+#include "fdm_Z0_calc.h"
 
 std::shared_ptr<Z0_calc> Z0_calc::create(std::uint32_t type)
 {
@@ -29,6 +30,10 @@ std::shared_ptr<Z0_calc> Z0_calc::create(std::uint32_t type)
     else if (type == Z0_CALC_MMTL)
     {
         return std::make_shared<mmtl>();
+    }
+    else if (type == Z0_CALC_FDM)
+    {
+        return std::make_shared<fdm_Z0_calc>();
     }
     return std::make_shared<atlc>();
 }

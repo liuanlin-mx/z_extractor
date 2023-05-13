@@ -29,6 +29,7 @@ public:
     {
         Z0_CALC_ATLC = 0,
         Z0_CALC_MMTL,
+        Z0_CALC_FDM,
     };
     
 public:

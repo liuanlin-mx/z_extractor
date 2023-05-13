@@ -61,10 +61,7 @@ z_extractor::z_extractor()
     std::int32_t thread_nums = omp_get_max_threads();
     for (std::int32_t i = 0; i < std::max(1, thread_nums); i++)
     {
-        std::shared_ptr<Z0_calc> calc = Z0_calc::create(Z0_calc::Z0_CALC_ATLC);
-        char name[32];
-        sprintf(name, "mmtl_tmp%d", i);
-        calc->set_tmp_name(name);
+        std::shared_ptr<Z0_calc> calc = Z0_calc::create(Z0_calc::Z0_CALC_FDM);
         _Z0_calc.push_back(calc);
     }
 }
@@ -1514,6 +1511,16 @@ void z_extractor::set_calc(std::uint32_t type)
             char name[32];
             sprintf(name, "mmtl_tmp%d", i);
             calc->set_tmp_name(name);
+            _Z0_calc.push_back(calc);
+        }
+    }
+    else if (type == Z0_calc::Z0_CALC_FDM)
+    {
+        std::int32_t thread_nums = omp_get_max_threads();
+        _Z0_calc.clear();
+        for (std::int32_t i = 0; i < thread_nums; i++)
+        {
+            std::shared_ptr<Z0_calc> calc = Z0_calc::create(Z0_calc::Z0_CALC_FDM);
             _Z0_calc.push_back(calc);
         }
     }
