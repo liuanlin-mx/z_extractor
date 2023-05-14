@@ -32,7 +32,7 @@ kicad_pcb_parser::~kicad_pcb_parser()
 {
 }
 
-bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<z_extractor> z_extr)
+bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> z_extr)
 {
     _z_extr = z_extr;
     
@@ -97,7 +97,7 @@ bool kicad_pcb_parser::_parse(const char *str)
             }
             else if (label == "segment" || label == "arc")
             {
-                z_extractor::segment s;
+                pcb::segment s;
                 str = _parse_segment(str, s);
                 _z_extr->add_segment(s);
                 continue;
@@ -109,7 +109,7 @@ bool kicad_pcb_parser::_parse(const char *str)
             }
             else if (label == "via")
             {
-                z_extractor::via v;
+                pcb::via v;
                 str = _parse_via(str, v);
                 _z_extr->add_via(v);
                 continue;
@@ -126,7 +126,7 @@ bool kicad_pcb_parser::_parse(const char *str)
             }
             else if (label == "zone")
             {
-                std::vector<z_extractor::zone> zones;
+                std::vector<pcb::zone> zones;
                 str = _parse_zone(str, zones);
                 for (auto& z: zones)
                 {
@@ -188,11 +188,11 @@ const char *kicad_pcb_parser::_skip(const char *str)
     return str;
 }
 
-const char *kicad_pcb_parser::_parse_zone(const char *str, std::vector<z_extractor::zone>& zones)
+const char *kicad_pcb_parser::_parse_zone(const char *str, std::vector<pcb::zone>& zones)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
-    z_extractor::zone z;
+    pcb::zone z;
     while (*str)
     {
         if (*str == '(')
@@ -234,7 +234,7 @@ const char *kicad_pcb_parser::_parse_zone(const char *str, std::vector<z_extract
 }
 
 
-const char *kicad_pcb_parser::_parse_filled_polygon(const char *str, z_extractor::zone& z)
+const char *kicad_pcb_parser::_parse_filled_polygon(const char *str, pcb::zone& z)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -252,7 +252,7 @@ const char *kicad_pcb_parser::_parse_filled_polygon(const char *str, z_extractor
             }
             else if (label == "xy")
             {
-                z_extractor::pcb_point p;
+                pcb::point p;
                 str = _parse_postion(str, p.x, p.y);
                 z.pts.push_back(p);
             }
@@ -309,7 +309,7 @@ const char *kicad_pcb_parser::_parse_net(const char *str, std::uint32_t& id, std
 }
 
 
-const char *kicad_pcb_parser::_parse_segment(const char *str, z_extractor::segment& s)
+const char *kicad_pcb_parser::_parse_segment(const char *str, pcb::segment& s)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -380,7 +380,7 @@ const char *kicad_pcb_parser::_parse_segment(const char *str, z_extractor::segme
     return str;
 }
 
-const char *kicad_pcb_parser::_parse_via(const char *str, z_extractor::via& v)
+const char *kicad_pcb_parser::_parse_via(const char *str, pcb::via& v)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -557,7 +557,7 @@ const char *kicad_pcb_parser::_parse_footprint(const char *str)
             }
             else if (label == "pad")
             {
-                z_extractor::pad p;
+                pcb::pad p;
                 p.ref_at.x = x;
                 p.ref_at.y = y;
                 p.ref_at_angle = angle;
@@ -628,7 +628,7 @@ const char *kicad_pcb_parser::_parse_reference(const char *str, std::string& foo
 }
 
 
-const char *kicad_pcb_parser::_parse_pad(const char *str, z_extractor::pad& p)
+const char *kicad_pcb_parser::_parse_pad(const char *str, pcb::pad& p)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
@@ -776,7 +776,7 @@ const char *kicad_pcb_parser::_parse_stackup_layer(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
-    z_extractor::layer l;
+    pcb::layer l;
     
     while (*str != '"') str++;
     str = _parse_string(str, l.name);
@@ -852,10 +852,10 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
 {
     std::uint32_t left = 1;
     std::uint32_t right = 0;
-    z_extractor::pcb_point start;
-    z_extractor::pcb_point mid;
-    z_extractor::pcb_point end;
-    z_extractor::pcb_point center;
+    pcb::point start;
+    pcb::point mid;
+    pcb::point end;
+    pcb::point center;
     std::string layer_name;
     
     bool is_arc = false;

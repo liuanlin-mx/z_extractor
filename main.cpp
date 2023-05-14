@@ -80,7 +80,8 @@ static std::vector<std::string> _string_split(std::string str, const std::string
 
 int main(int argc, char **argv)
 {
-    std::shared_ptr<z_extractor> z_extr(new z_extractor);
+    std::shared_ptr<pcb> pcb_(new pcb());
+    std::shared_ptr<z_extractor> z_extr(new z_extractor(pcb_));
     
     kicad_pcb_parser parser;
     static char buf[16 * 1024 * 1024];
@@ -208,11 +209,11 @@ int main(int argc, char **argv)
         }
     }
     
-    if (!parser.parse(pcb_file, z_extr))
+    if (!parser.parse(pcb_file, pcb_))
     {
         return 0;
     }
-    z_extr->clean_segment();
+    pcb_->clean_segment();
     
     z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);
@@ -233,7 +234,7 @@ int main(int argc, char **argv)
         
         for (const auto& net: refs)
         {
-            v_refs.push_back(z_extr->get_net_id(net.c_str()));
+            v_refs.push_back(pcb_->get_net_id(net.c_str()));
         }
         
         bool first = true;
@@ -247,7 +248,7 @@ int main(int argc, char **argv)
             float Z0_avg = 0;
             float td = 0;
             float velocity_avg = 0;
-            if (!z_extr->gen_subckt_zo(z_extr->get_net_id(net.c_str()), v_refs, ckt, footprint, call, Z0_avg, td, velocity_avg))
+            if (!z_extr->gen_subckt_zo(pcb_->get_net_id(net.c_str()), v_refs, ckt, footprint, call, Z0_avg, td, velocity_avg))
             {
                 continue;
             }
@@ -276,7 +277,7 @@ int main(int argc, char **argv)
             float velocity_avg[2] = {0., 0.};
             float Zodd_avg = 0.;
             float Zeven_avg = 0.;
-            if (!z_extr->gen_subckt_coupled_tl(z_extr->get_net_id(coupled.first.c_str()), z_extr->get_net_id(coupled.second.c_str()),
+            if (!z_extr->gen_subckt_coupled_tl(pcb_->get_net_id(coupled.first.c_str()), pcb_->get_net_id(coupled.second.c_str()),
                                         v_refs, ckt, footprint, call,
                                         Z0_avg, td_sum, velocity_avg, Zodd_avg, Zeven_avg))
             {
@@ -351,7 +352,7 @@ int main(int argc, char **argv)
             std::string call;
             std::set<std::string> footprint;
             
-            if (z_extr->gen_subckt(z_extr->get_net_id(net.c_str()), ckt, footprint, call))
+            if (z_extr->gen_subckt(pcb_->get_net_id(net.c_str()), ckt, footprint, call))
             {
                 spice += ckt;
             }

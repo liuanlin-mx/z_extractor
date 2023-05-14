@@ -35,7 +35,8 @@
 #define log_info(fmt, args...) printf(fmt, ##args)
 
 #define DBG_IMG 0
-z_extractor::z_extractor()
+z_extractor::z_extractor(std::shared_ptr<pcb>& pcb)
+    : _pcb(pcb)
 {
     _Z0_step = 0.5;
     _Z0_w_ratio = 10;
@@ -49,10 +50,6 @@ z_extractor::z_extractor()
     _enable_openmp = true;
     
     _img_ratio = 1 / (0.0254 * 0.5);
-    _pcb_top = 10000.;
-    _pcb_bottom = 0;
-    _pcb_left = 10000.;
-    _pcb_right = 0;
     
     _conductivity = 5.8e7;
     _freq = 1e9;
@@ -71,363 +68,19 @@ z_extractor::~z_extractor()
 }
 
 
-bool z_extractor::add_net(std::uint32_t id, std::string name)
-{
-    _nets.emplace(id, name);
-    return 0;
-}
-
-
-bool z_extractor::add_segment(const segment& s)
-{
-    _segments.emplace(s.net, s);
-    return 0;
-}
-
-
-bool z_extractor::add_via(const via& v)
-{
-    _vias.emplace(v.net, v);
-    return 0;
-}
-
-
-bool z_extractor::add_zone(const zone& z)
-{
-    _zones.emplace(z.net, z);
-    return 0;
-}
-
-
-bool z_extractor::add_pad(const pad& p)
-{
-    _pads.emplace(p.net, p);
-    return 0;
-}
-
-
-bool z_extractor::add_layer(const layer& l)
-{
-    _layers.push_back(l);
-    return 0;
-}
-
-
-void z_extractor::set_edge(float top, float bottom, float left, float right)
-{
-    _pcb_top = top;
-    _pcb_bottom = bottom;
-    _pcb_left = left;
-    _pcb_right = right;
-}
-
-/* 如果线段在焊盘内但没有连接到中心点 就添加一个等宽线段连接到中心 */
-/* 如果两个线段的起点或终点没有连接在一点但距离小于线宽和的1/2 就添加一个等宽线段连接它们 */
-void z_extractor::clean_segment()
-{
-    for (const auto& net: _nets)
-    {
-        std::uint32_t net_id = net.first;
-        
-        std::list<pad> pads = get_pads(net_id);
-        std::list<std::pair<std::uint32_t, z_extractor::segment> > no_conn;
-        std::list<z_extractor::segment> conn;
-        _get_no_conn_segments(net_id, no_conn, conn);
-        
-        for (auto it = no_conn.begin(); it != no_conn.end();)
-        {
-            auto& s = *it;
-            for (const auto& p: pads)
-            {
-                std::uint32_t flag = _segment_is_inside_pad(s.second, p);
-                if ((s.first & 0x01) && (flag & 0x01))
-                {
-                    float x;
-                    float y;
-                    _get_pad_pos(p, x, y);
-                    z_extractor::segment new_s;
-                    new_s = s.second;
-                    new_s.end.x = x;
-                    new_s.end.y = y;
-                    new_s.tstamp = "s" + new_s.tstamp;
-                    _segments.emplace(new_s.net, new_s);
-                    s.first &= ~0x01;
-                }
-                if ((s.first & 0x02) && (flag & 0x02))
-                {
-                    float x;
-                    float y;
-                    _get_pad_pos(p, x, y);
-                    z_extractor::segment new_s;
-                    new_s = s.second;
-                    new_s.start.x = x;
-                    new_s.start.y = y;
-                    new_s.tstamp = "e" + new_s.tstamp;
-                    _segments.emplace(new_s.net, new_s);
-                    s.first &= ~0x02;
-                }
-            }
-            if (s.first == 0)
-            {
-                it = no_conn.erase(it);
-                continue;
-            }
-            it++;
-        }
-        
-        while (!no_conn.empty())
-        {
-            auto s = no_conn.front();
-            no_conn.pop_front();
-            
-            for (auto it = no_conn.begin(); it != no_conn.end(); it++)
-            {
-                if (s.first & 0x01)
-                {
-                    if (it->first & 0x01)
-                    {
-                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.start.x, it->second.start.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            z_extractor::segment new_s;
-                            new_s = s.second;
-                            new_s.end.x = it->second.start.x;
-                            new_s.end.y = it->second.start.y;
-                            new_s.tstamp = "s" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x01;
-                            it->first &= ~0x01;
-                        }
-                    }
-                    if (it->first & 0x02)
-                    {
-                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.end.x, it->second.end.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            z_extractor::segment new_s;
-                            new_s = s.second;
-                            new_s.end.x = it->second.end.x;
-                            new_s.end.y = it->second.end.y;
-                            new_s.tstamp = "s" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x01;
-                            it->first &= ~0x02;
-                        }
-                    }
-                }
-                
-                if (s.first & 0x02)
-                {
-                    if (it->first & 0x01)
-                    {
-                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.start.x, it->second.start.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            z_extractor::segment new_s;
-                            new_s = s.second;
-                            new_s.start.x = it->second.start.x;
-                            new_s.start.y = it->second.start.y;
-                            new_s.tstamp = "e" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x02;
-                            it->first &= ~0x01;
-                        }
-                    }
-                    if (it->first & 0x02)
-                    {
-                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.end.x, it->second.end.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            z_extractor::segment new_s;
-                            new_s = s.second;
-                            new_s.start.x = it->second.end.x;
-                            new_s.start.y = it->second.end.y;
-                            new_s.tstamp = "e" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x02;
-                            it->first &= ~0x02;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-std::list<z_extractor::segment> z_extractor::get_segments(std::uint32_t net_id)
-{
-    std::list<segment> segments;
-    auto v = _segments.equal_range(net_id);
-    if(v.first != std::end(_segments))
-    {
-        for (auto it = v.first; it != v.second; ++it)
-        {
-            segments.push_back(it->second);
-        }
-    }
-    return segments;
-}
-
-
-std::list<z_extractor::pad> z_extractor::get_pads(std::uint32_t net_id)
-{
-    std::list<pad> pads;
-    auto p = _pads.equal_range(net_id);
-    if(p.first != std::end(_pads))
-    {
-        for (auto it = p.first; it != p.second; ++it)
-        {
-            pads.push_back(it->second);
-        }
-    }
-    return pads;
-}
-
-
-bool z_extractor::get_pad(const std::string& footprint, const std::string& pad_number, z_extractor::pad& pad)
-{
-    for (const auto& pad_: _pads)
-    {
-        if (pad_.second.footprint == footprint && pad_.second.pad_number == pad_number)
-        {
-            pad = pad_.second;
-            return true;
-        }
-    }
-    return false;
-}
-
-
-std::list<z_extractor::via> z_extractor::get_vias(std::uint32_t net_id)
-{
-    std::list<via> vias;
-    auto v = _vias.equal_range(net_id);
-    if(v.first != std::end(_vias))
-    {
-        for (auto it = v.first; it != v.second; ++it)
-        {
-            vias.push_back(it->second);
-        }
-    }
-    return vias;
-}
-
-std::list<z_extractor::via> z_extractor::get_vias(const std::vector<std::uint32_t>& net_ids)
-{
-    std::list<via> vias;
-    for (const auto& net_id: net_ids)
-    {
-        auto v = _vias.equal_range(net_id);
-        if(v.first != std::end(_vias))
-        {
-            for (auto it = v.first; it != v.second; ++it)
-            {
-                vias.push_back(it->second);
-            }
-        }
-    }
-    return vias;
-}
-
-std::list<z_extractor::zone> z_extractor::get_zones(std::uint32_t net_id)
-{
-    std::list<zone> zones;
-    auto z = _zones.equal_range(net_id);
-    if(z.first != std::end(_zones))
-    {
-        for (auto it = z.first; it != z.second; ++it)
-        {
-            zones.push_back(it->second);
-        }
-    }
-    return zones;
-}
-
-
-std::vector<std::list<z_extractor::segment> > z_extractor::get_segments_sort(std::uint32_t net_id)
-{
-    std::vector<std::list<z_extractor::segment> > v_segments;
-    std::list<z_extractor::segment> segments = get_segments(net_id);
-    while (segments.size())
-    {
-        std::list<z_extractor::segment> s_list;
-        z_extractor::segment first = segments.front();
-        segments.pop_front();
-        s_list.push_back(first);
-        z_extractor::segment tmp = first;
-        z_extractor::segment next;
-        
-        while (_segments_get_next(segments, next, tmp.start.x, tmp.start.y, tmp.layer_name))
-        {
-            if (_point_equal(next.start.x, next.start.y, tmp.start.x, tmp.start.y))
-            {
-                std::swap(next.start, next.end);
-            }
-            tmp = next;
-            s_list.push_front(next);
-        }
-        
-        tmp = first;
-        
-        while (_segments_get_next(segments, next, tmp.end.x, tmp.end.y, tmp.layer_name))
-        {
-            if (_point_equal(next.end.x, next.end.y, tmp.end.x, tmp.end.y))
-            {
-                std::swap(next.start, next.end);
-            }
-            tmp = next;
-            s_list.push_back(next);
-        }
-        
-        v_segments.push_back(s_list);
-    }
-    
-    for (auto& s_list : v_segments)
-    {
-        for (auto i : s_list)
-        {
-            log_debug("--- start: x:%f y:%f end: x:%f y:%f\n", i.start.x, i.start.y, i.end.x, i.end.y);
-        }
-        log_debug("--------------------------------\n");
-    }
-    return v_segments;
-}
-
-std::string z_extractor::get_net_name(std::uint32_t net_id)
-{
-    if (_nets.count(net_id))
-    {
-        return _nets[net_id];
-    }
-    return "";
-}
-
-std::uint32_t z_extractor::get_net_id(std::string name)
-{
-    for (const auto& net: _nets)
-    {
-        if (net.second == name)
-        {
-            return net.first;
-        }
-    }
-    return 0;
-}
-
-
 bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string& footprint1_pad_number,
                         const std::string& footprint2, const std::string& footprint2_pad_number,
                         std::string& ckt, std::string& call, float& r, float& l)
 {
-    pad pad1;
-    pad pad2;
-    if (!get_pad(footprint1, footprint1_pad_number, pad1))
+    pcb::pad pad1;
+    pcb::pad pad2;
+    if (!_pcb->get_pad(footprint1, footprint1_pad_number, pad1))
     {
         printf("not found %s.%s\n", footprint1.c_str(), footprint1_pad_number.c_str());
         return false;
     }
     
-    if (!get_pad(footprint2, footprint2_pad_number, pad2))
+    if (!_pcb->get_pad(footprint2, footprint2_pad_number, pad2))
     {
         printf("not found %s.%s\n", footprint2.c_str(), footprint2_pad_number.c_str());
         return false;
@@ -442,14 +95,14 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     std::uint32_t net_id = pad1.net;
     
     
-    if (_check_segments(net_id) == false)
+    if (_pcb->check_segments(net_id) == false)
     {
         return false;
     }
     
-    std::list<pad> pads = get_pads(net_id);
-    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
-    std::list<via> vias = get_vias(net_id);
+    std::list<pcb::pad> pads = _pcb->get_pads(net_id);
+    std::vector<std::list<pcb::segment> > v_segments = _pcb->get_segments_sort(net_id);
+    std::list<pcb::via> vias = _pcb->get_vias(net_id);
     
     /* 构建fasthenry */
     fasthenry henry;
@@ -457,7 +110,7 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     henry.set_conductivity(_conductivity);
     std::map<std::string, cv::Mat> zone_mat;
     std::map<std::string, std::list<cond> > conds;
-    bool have_zones = !get_zones(net_id).empty();
+    bool have_zones = !_pcb->get_zones(net_id).empty();
     float grid_size = 1;
     if (have_zones)
     {
@@ -467,8 +120,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     
     for (auto& s_list: v_segments)
     {
-        float z_val = _get_layer_z_axis(s_list.front().layer_name);
-        float h_val = _get_layer_thickness(s_list.front().layer_name);
+        float z_val = _pcb->get_layer_z_axis(s_list.front().layer_name);
+        float h_val = _pcb->get_layer_thickness(s_list.front().layer_name);
         
         for (auto& s: s_list)
         { 
@@ -486,14 +139,14 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     
     for (auto& v: vias)
     {
-        std::vector<std::string> layers = _get_via_layers(v);
+        std::vector<std::string> layers = _pcb->get_via_layers(v);
         for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
         {
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
             
-            float z1 = _get_layer_z_axis(start);
-            float z2 = _get_layer_z_axis(end);
+            float z1 = _pcb->get_layer_z_axis(start);
+            float z2 = _pcb->get_layer_z_axis(end);
             
             henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
@@ -511,14 +164,14 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     {
         float x;
         float y;
-        _get_pad_pos(pad, x, y);
+        _pcb->get_pad_pos(pad, x, y);
         
-        std::vector<std::string> layers = _get_pad_layers(pad);
+        std::vector<std::string> layers = _pcb->get_pad_layers(pad);
         
         if (layers.size() == 1)
         {
             const std::string& layer = layers.front();
-            float z = _get_layer_z_axis(layer);
+            float z = _pcb->get_layer_z_axis(layer);
             henry.add_node(_pos2net(x, y, layer), fasthenry::point(x, y, z));
                                 
             if (have_zones)
@@ -531,8 +184,8 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
         {
             const std::string& start = layers[i - 1];
             const std::string& end = layers[i];
-            float z1 = _get_layer_z_axis(start);
-            float z2 = _get_layer_z_axis(end);
+            float z1 = _pcb->get_layer_z_axis(start);
+            float z2 = _pcb->get_layer_z_axis(end);
             
             henry.add_via(_pos2net(x, y, start), _pos2net(x, y, end),
                                 _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
@@ -556,16 +209,16 @@ bool z_extractor::gen_subckt_rl(const std::string& footprint1, const std::string
     double r_ = 0;
     double l_ = 0;
         
-    std::vector<std::string> layers1 = _get_pad_layers(pad1);
-    std::vector<std::string> layers2 = _get_pad_layers(pad2);
-    _get_pad_pos(pad1, x1, y1);
-    _get_pad_pos(pad2, x2, y2);
+    std::vector<std::string> layers1 = _pcb->get_pad_layers(pad1);
+    std::vector<std::string> layers2 = _pcb->get_pad_layers(pad2);
+    _pcb->get_pad_pos(pad1, x1, y1);
+    _pcb->get_pad_pos(pad2, x2, y2);
     henry.calc_impedance(_pos2net(x1, y1, layers1.front()), _pos2net(x2, y2, layers2.front()), r_, l_);
     
     
     char buf[512];
     std::string comment;
-    std::string subckt_name = _format_net_name(_nets[net_id] + "_" +
+    std::string subckt_name = _format_net_name(_pcb->get_net_name(net_id) + "_" +
                             footprint1 + "_" + footprint1_pad_number + "-" + 
                             footprint2 + "_" + footprint2_pad_number) + " ";
     
@@ -595,25 +248,25 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     std::string pad_ckt;
     char buf[512] = {0};
     
-    if (_check_segments(net_id) == false)
+    if (_pcb->check_segments(net_id) == false)
     {
         return false;
     }
     
-    std::list<pad> pads = get_pads(net_id);
-    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
-    std::list<via> vias = get_vias(net_id);
+    std::list<pcb::pad> pads = _pcb->get_pads(net_id);
+    std::vector<std::list<pcb::segment> > v_segments = _pcb->get_segments_sort(net_id);
+    std::list<pcb::via> vias = _pcb->get_vias(net_id);
     
     /* 生成子电路参数和调用 */
-    ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
-    call = "X" + _format_net_name(_nets[net_id]) + " ";
+    ckt = ".subckt " + _format_net_name(_pcb->get_net_name(net_id)) + " ";
+    call = "X" + _format_net_name(_pcb->get_net_name(net_id)) + " ";
     comment = std::string(ckt.length(), '*');
     for (auto& p: pads)
     {
         float x;
         float y;
-        _get_pad_pos(p, x, y);
-        std::vector<std::string> layers = _get_pad_conn_layers(p);
+        _pcb->get_pad_pos(p, x, y);
+        std::vector<std::string> layers = _pcb->get_pad_conn_layers(p);
         if (layers.size() == 0)
         {
             printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
@@ -622,10 +275,10 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
         sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
-        call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
+        call += _gen_pad_net_name(p.footprint, _format_net_name(_pcb->get_net_name(net_id)));
         call += " ";
         
-        comment += p.footprint + ":" + _nets[net_id] + " ";
+        comment += p.footprint + ":" + _pcb->get_net_name(net_id) + " ";
         footprint.insert(p.footprint);
         
         for (std::uint32_t i = 1; i < layers.size(); i++)
@@ -636,7 +289,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
         }
     }
     ckt += "\n";
-    call += _format_net_name(_nets[net_id]);
+    call += _format_net_name(_pcb->get_net_name(net_id));
     call += "\n";
 
     comment += "\n";
@@ -650,8 +303,8 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     
     for (auto& s_list: v_segments)
     {
-        float z_val = _get_layer_z_axis(s_list.front().layer_name);
-        float h_val = _get_layer_thickness(s_list.front().layer_name);
+        float z_val = _pcb->get_layer_z_axis(s_list.front().layer_name);
+        float h_val = _pcb->get_layer_thickness(s_list.front().layer_name);
         
         for (auto& s: s_list)
         { 
@@ -664,14 +317,14 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     
     for (auto& v: vias)
     {
-        std::vector<std::string> layers = _get_via_layers(v);
+        std::vector<std::string> layers = _pcb->get_via_layers(v);
         for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
         {
             const std::string& start = layers[i];
             const std::string& end = layers[i + 1];
             
-            float z1 = _get_layer_z_axis(start);
-            float z2 = _get_layer_z_axis(end);
+            float z1 = _pcb->get_layer_z_axis(start);
+            float z2 = _pcb->get_layer_z_axis(end);
             
             henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                                 _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
@@ -684,15 +337,15 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     {
         float x;
         float y;
-        _get_pad_pos(pad, x, y);
+        _pcb->get_pad_pos(pad, x, y);
         
-        std::vector<std::string> layers = _get_pad_layers(pad);
+        std::vector<std::string> layers = _pcb->get_pad_layers(pad);
         for (std::uint32_t i = 1; i < layers.size(); i++)
         {
             const std::string& start = layers[i - 1];
             const std::string& end = layers[i];
-            float z1 = _get_layer_z_axis(start);
-            float z2 = _get_layer_z_axis(end);
+            float z1 = _pcb->get_layer_z_axis(start);
+            float z2 = _pcb->get_layer_z_axis(end);
             
             henry.add_via(_pos2net(x, y, start), _pos2net(x, y, end),
                                 _format_net(_get_tstamp_short(pad.tstamp) + start + end).c_str(),
@@ -730,7 +383,7 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     /* 生成过孔参数 */
     for (auto& v: vias)
     {
-        std::vector<std::string> layers = _get_via_layers(v);
+        std::vector<std::string> layers = _pcb->get_via_layers(v);
         for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
         {
             const std::string& start = layers[i];
@@ -758,9 +411,9 @@ bool z_extractor::gen_subckt(std::uint32_t net_id, std::string& ckt, std::set<st
     {
         float x;
         float y;
-        _get_pad_pos(pad, x, y);
+        _pcb->get_pad_pos(pad, x, y);
         
-        std::vector<std::string> layers = _get_pad_layers(pad);
+        std::vector<std::string> layers = _pcb->get_pad_layers(pad);
         for (std::uint32_t i = 1; i < layers.size(); i++)
         {
             const std::string& start = layers[i - 1];
@@ -804,9 +457,9 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     call = "X";
     for (auto& net_id: net_ids)
     {
-        ckt += _format_net_name(_nets[net_id]);
-        call += _format_net_name(_nets[net_id]);
-        tmp += _format_net_name(_nets[net_id]);
+        ckt += _format_net_name(_pcb->get_net_name(net_id));
+        call += _format_net_name(_pcb->get_net_name(net_id));
+        tmp += _format_net_name(_pcb->get_net_name(net_id));
     }
     ckt += " ";
     call += " ";
@@ -819,11 +472,11 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
         {
             float x;
             float y;
-            _get_pad_pos(p, x, y);
+            _pcb->get_pad_pos(p, x, y);
             sprintf(buf, "%s ", _pos2net(x, y, p.layers.front()).c_str());
 
             ckt += buf;
-            call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
+            call += _gen_pad_net_name(p.footprint, _format_net_name(_pcb->get_net_name(net_id)));
             call += " ";
             footprint.insert(p.footprint);
         }
@@ -839,12 +492,12 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     //构建fasthenry
     for (auto& net_id: net_ids)
     {
-        std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
+        std::vector<std::list<pcb::segment> > v_segments = get_segments_sort(net_id);
         
         for (auto& s_list: v_segments)
         {
             float z_val = _get_layer_distance(_layers.front().name, s_list.front().layer_name);
-            float h_val = _get_layer_thickness(s_list.front().layer_name);
+            float h_val = _pcb->get_layer_thickness(s_list.front().layer_name);
                 
             for (auto& s: s_list)
             {
@@ -853,7 +506,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
             }
         }
         
-        std::list<via> vias = get_vias(net_id);
+        std::list<pcb::via> vias = get_vias(net_id);
         for (auto& v: vias)
         {
             std::vector<std::string> layers = _get_via_layers(v);
@@ -862,8 +515,8 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
                 const std::string& start = layers[i];
                 const std::string& end = layers[i + 1];
                 henry.add_via((_get_tstamp_short(v.tstamp) + _format_layer_name(start) + _format_layer_name(end)).c_str(),
-                                fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(start)),
-                                fasthenry::point(v.at.x, v.at.y, _get_layer_z_axis(end)),
+                                fasthenry::point(v.at.x, v.at.y, _pcb->get_layer_z_axis(start)),
+                                fasthenry::point(v.at.x, v.at.y, _pcb->get_layer_z_axis(end)),
                                 v.drill, v.size);
             }
         }
@@ -888,7 +541,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
         std::string call_param;
         for (auto& net_id: net_ids)
         {
-            std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
+            std::vector<std::list<pcb::segment> > v_segments = get_segments_sort(net_id);
             for (auto& s_list: v_segments)
             {
                 for (auto& s: s_list)
@@ -916,7 +569,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     /* 计算走线参数 并生成电路*/
     for (auto& net_id: net_ids)
     {
-        std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
+        std::vector<std::list<pcb::segment> > v_segments = get_segments_sort(net_id);
         for (auto& s_list: v_segments)
         {
             std::string ckt_net_name;
@@ -942,7 +595,7 @@ bool z_extractor::gen_subckt(std::vector<std::uint32_t> net_ids, std::vector<std
     /* 生成过孔参数 */
     for (auto& net_id: net_ids)
     {
-        std::list<via> vias = get_vias(net_id);
+        std::list<pcb::via> vias = get_vias(net_id);
     
         for (auto& v: vias)
         {
@@ -984,25 +637,25 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
     std::string pad_ckt;
     char buf[512] = {0};
     
-    if (_check_segments(net_id) == false)
+    if (_pcb->check_segments(net_id) == false)
     {
         return false;
     }
     
-    std::list<pad> pads = get_pads(net_id);
-    std::vector<std::list<z_extractor::segment> > v_segments = get_segments_sort(net_id);
-    std::list<via> vias = get_vias(net_id);
+    std::list<pcb::pad> pads = _pcb->get_pads(net_id);
+    std::vector<std::list<pcb::segment> > v_segments = _pcb->get_segments_sort(net_id);
+    std::list<pcb::via> vias = _pcb->get_vias(net_id);
     
     /* 生成子电路参数和调用 */
-    ckt = ".subckt " + _format_net_name(_nets[net_id]) + " ";
-    call = "X" + _format_net_name(_nets[net_id]) + " ";
+    ckt = ".subckt " + _format_net_name(_pcb->get_net_name(net_id)) + " ";
+    call = "X" + _format_net_name(_pcb->get_net_name(net_id)) + " ";
     comment = std::string(ckt.length(), '*');
     for (auto& p: pads)
     {
         float x;
         float y;
-        _get_pad_pos(p, x, y);
-        std::vector<std::string> layers = _get_pad_conn_layers(p);
+        _pcb->get_pad_pos(p, x, y);
+        std::vector<std::string> layers = _pcb->get_pad_conn_layers(p);
         if (layers.size() == 0)
         {
             printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
@@ -1011,10 +664,10 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
         sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
         ckt += buf;
-        call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
+        call += _gen_pad_net_name(p.footprint, _format_net_name(_pcb->get_net_name(net_id)));
         call += " ";
         
-        comment += p.footprint + ":" + _nets[net_id] + " ";
+        comment += p.footprint + ":" + _pcb->get_net_name(net_id) + " ";
         footprint.insert(p.footprint);
         
         for (std::uint32_t i = 1; i < layers.size(); i++)
@@ -1025,7 +678,7 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
         }
     }
     ckt += "\n";
-    call += _format_net_name(_nets[net_id]);
+    call += _format_net_name(_pcb->get_net_name(net_id));
     call += "\n";
 
     comment += "\n";
@@ -1041,13 +694,13 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
     for (auto& s_list: v_segments)
     {
         std::string ckt_net_name;
-        std::vector<z_extractor::segment> v_list(s_list.begin(), s_list.end());
+        std::vector<pcb::segment> v_list(s_list.begin(), s_list.end());
         
         #pragma omp parallel for
         for (std::uint32_t i = 0; i < v_list.size(); i++)
         {
             char buf[512];
-            z_extractor::segment& s = v_list[i];
+            pcb::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
             std::vector<std::pair<float, float> > v_Z0_td_;
@@ -1061,7 +714,7 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
             {
                 sub += subckt;
                 ckt += buf;
-                len += _get_segment_len(s);
+                len += _pcb->get_segment_len(s);
                 v_Z0_td.insert(v_Z0_td.end(), v_Z0_td_.begin(), v_Z0_td_.end());
                 for (const auto& Z0_td: v_Z0_td_)
                 {
@@ -1085,7 +738,7 @@ bool z_extractor::gen_subckt_zo(std::uint32_t net_id, std::vector<std::uint32_t>
             sub += _gen_via_model_ckt(v, refs_mat, via_call, td);
         }
         td_sum += td;
-        len += _get_via_conn_len(v);
+        len += _pcb->get_via_conn_len(v);
         ckt += via_call;
     }
 
@@ -1109,25 +762,24 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                         std::string& ckt, std::set<std::string>& footprint, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg)
 {
-    
-    if (_check_segments(net_id0) == false || _check_segments(net_id1) == false)
+    if (_pcb->check_segments(net_id0) == false || _pcb->check_segments(net_id1) == false)
     {
         return false;
     }
     
-    std::list<pad> pads0 = get_pads(net_id0);
-    std::vector<std::list<z_extractor::segment> > v_segments0 = get_segments_sort(net_id0);
-    std::list<via> vias0 = get_vias(net_id0);
+    std::list<pcb::pad> pads0 = _pcb->get_pads(net_id0);
+    std::vector<std::list<pcb::segment> > v_segments0 = _pcb->get_segments_sort(net_id0);
+    std::list<pcb::via> vias0 = _pcb->get_vias(net_id0);
     
-    std::list<pad> pads1 = get_pads(net_id1);
-    std::vector<std::list<z_extractor::segment> > v_segments1 = get_segments_sort(net_id1);
-    std::list<via> vias1 = get_vias(net_id1);
+    std::list<pcb::pad> pads1 = _pcb->get_pads(net_id1);
+    std::vector<std::list<pcb::segment> > v_segments1 = _pcb->get_segments_sort(net_id1);
+    std::list<pcb::via> vias1 = _pcb->get_vias(net_id1);
     
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC3, cv::Scalar(0, 0, 0));
 #endif
 
-    std::multimap<float, std::pair<z_extractor::segment, z_extractor::segment> > coupler_segment;
+    std::multimap<float, std::pair<pcb::segment, pcb::segment> > coupler_segment;
     /* 找到符合耦合条件的走线 */
     for (auto& s_list0: v_segments0)
     {
@@ -1156,12 +808,12 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
                                                         aox1, aoy1, aox2, aoy2,
                                                         box1, boy1, box2, boy2))
                         {
-                            std::list<z_extractor::segment> ss0;
-                            std::list<z_extractor::segment> ss1;
+                            std::list<pcb::segment> ss0;
+                            std::list<pcb::segment> ss1;
                             _split_segment(s0, ss0, aox1, aoy1, aox2, aoy2);
                             _split_segment(s1, ss1, box1, boy1, box2, boy2);
                             double couple_len = calc_dist(aox1, aoy1, aox2, aoy2);
-                            coupler_segment.emplace(1.0 / couple_len, std::pair<z_extractor::segment, z_extractor::segment>(ss0.front(), ss1.front()));
+                            coupler_segment.emplace(1.0 / couple_len, std::pair<pcb::segment, pcb::segment>(ss0.front(), ss1.front()));
                             
                             ss0.pop_front();
                             ss1.pop_front();
@@ -1234,9 +886,9 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     
     for (auto& net_id: net_ids)
     {
-        ckt += _format_net_name(_nets[net_id]);
-        call += _format_net_name(_nets[net_id]);
-        tmp += _format_net_name(_nets[net_id]);
+        ckt += _format_net_name(_pcb->get_net_name(net_id));
+        call += _format_net_name(_pcb->get_net_name(net_id));
+        tmp += _format_net_name(_pcb->get_net_name(net_id));
     }
     
     ckt += " ";
@@ -1246,14 +898,14 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     
     for (auto& net_id: net_ids)
     {
-        std::list<pad> pads = get_pads(net_id);
+        std::list<pcb::pad> pads = _pcb->get_pads(net_id);
         
         for (auto& p: pads)
         {
             float x;
             float y;
-            _get_pad_pos(p, x, y);
-            std::vector<std::string> layers = _get_pad_conn_layers(p);
+            _pcb->get_pad_pos(p, x, y);
+            std::vector<std::string> layers = _pcb->get_pad_conn_layers(p);
             if (layers.size() == 0)
             {
                 printf("err: %s.%s no connection.\n", p.footprint.c_str(), p.pad_number.c_str());
@@ -1262,10 +914,10 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
             sprintf(buf, "%s ", _pos2net(x, y, layers.front()).c_str());
 
             ckt += buf;
-            call += _gen_pad_net_name(p.footprint, _format_net_name(_nets[net_id]));
+            call += _gen_pad_net_name(p.footprint, _format_net_name(_pcb->get_net_name(net_id)));
             call += " ";
             
-            comment += p.footprint + ":" + _nets[net_id];
+            comment += p.footprint + ":" + _pcb->get_net_name(net_id);
             comment += " ";
             footprint.insert(p.footprint);
             
@@ -1294,7 +946,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     std::map<std::string, cv::Mat> refs_mat;
     _create_refs_mat(refs_id, refs_mat);
     
-    std::vector<std::pair<z_extractor::segment, z_extractor::segment> > v_coupler_segment;
+    std::vector<std::pair<pcb::segment, pcb::segment> > v_coupler_segment;
     for (auto& ss_item: coupler_segment)
     {
         v_coupler_segment.push_back(ss_item.second);
@@ -1303,8 +955,8 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     #pragma omp parallel for
     for (std::uint32_t i = 0; i < v_coupler_segment.size(); i++)
     {
-        z_extractor::segment& s0 = v_coupler_segment[i].first;
-        z_extractor::segment& s1 = v_coupler_segment[i].second;
+        pcb::segment& s0 = v_coupler_segment[i].first;
+        pcb::segment& s1 = v_coupler_segment[i].second;
         
         std::vector<std::pair<float, float> > v_Z0_td_[2];
         std::vector<std::pair<float, float> > v_Zodd_td_;
@@ -1323,8 +975,8 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
         {
             sub += subckt;
             ckt += buf;
-            len[0] += _get_segment_len(s0);
-            len[1] += _get_segment_len(s1);
+            len[0] += _pcb->get_segment_len(s0);
+            len[1] += _pcb->get_segment_len(s1);
             
             v_Z0_td[0].insert(v_Z0_td[0].end(), v_Z0_td_[0].begin(), v_Z0_td_[0].end());
             v_Z0_td[1].insert(v_Z0_td[1].end(), v_Z0_td_[1].begin(), v_Z0_td_[1].end());
@@ -1346,13 +998,13 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     for (auto& s_list: v_segments0)
     {
         std::string ckt_net_name;
-        std::vector<z_extractor::segment> v_list(s_list.begin(), s_list.end());
+        std::vector<pcb::segment> v_list(s_list.begin(), s_list.end());
         
         #pragma omp parallel for
         for (std::uint32_t i = 0; i < v_list.size(); i++)
         {
             char buf[512];
-            z_extractor::segment& s = v_list[i];
+            pcb::segment& s = v_list[i];
             std::string tstamp = _get_tstamp_short(s.tstamp);
             std::string subckt;
             std::vector<std::pair<float, float> > v_Z0_td_;
@@ -1369,7 +1021,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
             {
                 sub += subckt;
                 ckt += buf;
-                len[idx] += _get_segment_len(s);
+                len[idx] += _pcb->get_segment_len(s);
                 v_Z0_td[idx].insert(v_Z0_td[idx].end(), v_Z0_td_.begin(), v_Z0_td_.end());
                 for (const auto& Z0_td: v_Z0_td_)
                 {
@@ -1383,7 +1035,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
     /* 生成过孔参数 */
     for (std::uint32_t i = 0; i < sizeof(net_ids) / sizeof(net_ids[0]); i++)
     {
-        std::list<via> vias = get_vias(net_ids[i]);
+        std::list<pcb::via> vias = _pcb->get_vias(net_ids[i]);
     
         for (auto& v: vias)
         {
@@ -1399,7 +1051,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
             }
             
             td_sum[i] += td;
-            len[i] += _get_via_conn_len(v);
+            len[i] += _pcb->get_via_conn_len(v);
             ckt += via_call;
         }
     }
@@ -1446,7 +1098,7 @@ bool z_extractor::gen_subckt_coupled_tl(std::uint32_t net_id0, std::uint32_t net
 }
 
 #if 0
-std::string z_extractor::gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points)
+std::string z_extractor::gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb::point>& points)
 {
     std::string text;
     char buf[512];
@@ -1527,100 +1179,6 @@ void z_extractor::set_calc(std::uint32_t type)
 }
 
 
-void z_extractor::dump()
-{
-    for (auto& i : _nets)
-    {
-        printf("net: id:%d name:%s\n", i.first, i.second.c_str());
-        auto s = _segments.equal_range(i.first);
-        if(s.first != std::end(_segments))
-        {
-            for (auto it = s.first; it != s.second; ++it)
-            {
-                printf("segment: start:(%f %f) end:(%f %f) width:%f layer:%s tstamp:%s\n",
-                    it->second.start.x, it->second.start.y,
-                    it->second.end.x, it->second.end.y,
-                    it->second.width,
-                    it->second.layer_name.c_str(), it->second.tstamp.c_str());
-            }
-        }
-        
-        auto v = _vias.equal_range(i.first);
-        if(v.first != std::end(_vias))
-        {
-            for (auto it = v.first; it != v.second; ++it)
-            {
-                printf("via: at:(%f %f) size:%f drill:%f ",
-                    it->second.at.x, it->second.at.y,
-                    it->second.size, it->second.drill);
-                    
-                printf("layers:");
-                for (auto layer : it->second.layers)
-                {
-                    printf(" %s", layer.c_str());
-                }
-                printf(" tstamp:%s\n", it->second.tstamp.c_str());
-            }
-        }
-        
-        auto p = _pads.equal_range(i.first);
-        if(p.first != std::end(_pads))
-        {
-            for (auto it = p.first; it != p.second; ++it)
-            {
-                float angle = it->second.at_angle * M_PI / 180;
-                float x = it->second.at.x;
-                float y = it->second.at.y;
-                
-                float x1 = cosf(angle) * x - sinf(angle) * y;
-                float y1 = cosf(angle) * y + sinf(angle) * x;
-                printf("pad: ref at:(%f %f %f) ",
-                    it->second.ref_at.x, it->second.ref_at.y, it->second.ref_at_angle);
-                
-                printf("at:(%f %f %f) ",
-                    it->second.at.x, it->second.at.y, it->second.at_angle);
-                    
-                printf("pad:(%f %f) ",
-                    it->second.ref_at.x + x1, it->second.ref_at.y + y1);
-                
-                printf("layers:");
-                for (auto layer : it->second.layers)
-                {
-                    printf(" %s", layer.c_str());
-                }
-                
-                printf(" net:%d net_name:%s", it->second.net, it->second.net_name.c_str());
-                printf(" tstamp:%s\n", it->second.tstamp.c_str());
-                
-            }
-        }
-    }
-}
-
-bool z_extractor::_float_equal(float a, float b)
-{
-    return fabs(a - b) < _float_epsilon;
-}
-
-
-bool z_extractor::_point_equal(float x1, float y1, float x2, float y2)
-{
-    return _float_equal(x1, x2) && _float_equal(y1, y2);
-}
-
-
-void z_extractor::_get_pad_pos(const pad& p, float& x, float& y)
-{
-    float angle = p.ref_at_angle * M_PI / 180;
-    float at_x = p.at.x;
-    float at_y = -p.at.y;
-                
-    float x1 = cosf(angle) * at_x - sinf(angle) * at_y;
-    float y1 = sinf(angle) * at_x + cosf(angle) * at_y;
-    
-    x = p.ref_at.x + x1;
-    y = p.ref_at.y - y1;
-}
 
 std::string z_extractor::_get_tstamp_short(const std::string& tstamp)
 {
@@ -1675,724 +1233,6 @@ std::string z_extractor::_gen_pad_net_name(const std::string& footprint, const s
     char buf[256] = {0};
     sprintf(buf, "%s_%s", footprint.c_str(), net_name.c_str());
     return std::string(buf);
-}
-
-
-std::vector<std::string> z_extractor::_get_all_cu_layer()
-{
-    std::vector<std::string> layers;
-    for (auto& l: _layers)
-    {
-        if (l.type != "copper")
-        {
-            continue;
-        }
-        layers.push_back(l.name);
-    }
-    return layers;
-}
-
-std::vector<std::string> z_extractor::_get_all_dielectric_layer()
-{
-    std::vector<std::string> layers;
-    for (auto& l: _layers)
-    {
-        if (l.type != "core"
-            && l.type != "prepreg"
-            && l.type != "Top Solder Mask"
-            && l.type != "Bottom Solder Mask")
-        {
-            continue;
-        }
-        layers.push_back(l.name);
-    }
-    return layers;
-}
-
-std::vector<std::string> z_extractor::_get_all_mask_layer()
-{
-    std::vector<std::string> layers;
-    for (auto& l: _layers)
-    {
-        if (l.type != "Top Solder Mask" && l.type != "Bottom Solder Mask")
-        {
-            continue;
-        }
-        layers.push_back(l.name);
-    }
-    return layers;
-}
-
-
-std::vector<std::string> z_extractor::_get_via_layers(const via& v)
-{
-    std::vector<std::string> layers;
-    bool flag = false;
-    for (auto& l: _layers)
-    {
-        if (l.type != "copper")
-        {
-            continue;
-        }
-        
-        if (l.name == v.layers.front() || l.name == v.layers.back())
-        {
-            if (!flag)
-            {
-                flag = true;
-                layers.push_back(l.name);
-                continue;
-            }
-            else
-            {
-                layers.push_back(l.name);
-                break;
-            }
-        }
-        
-        if (flag)
-        {
-            layers.push_back(l.name);
-        }
-    }
-    return layers;
-}
-
-
-std::vector<std::string> z_extractor::_get_via_conn_layers(const z_extractor::via& v)
-{
-    std::vector<std::string> layers;
-    std::set<std::string> layer_set;
-    std::list<z_extractor::segment> segments = get_segments(v.net);
-    for (const auto& s: segments)
-    {
-        if (_point_equal(s.start.x, s.start.y, v.at.x, v.at.y) || _point_equal(s.end.x, s.end.y, v.at.x, v.at.y))
-        {
-            layer_set.insert(s.layer_name);
-        }
-    }
-    
-    for (auto& l: _layers)
-    {
-        if (layer_set.count(l.name))
-        {
-            layers.push_back(l.name);
-        }
-    }
-    return layers;
-}
-
-
-float z_extractor::_get_via_conn_len(const z_extractor::via& v)
-{
-    float min_z = 1;
-    float max_z = -1;
-    float len = 0;
-    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
-    for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
-    {
-        const std::string& layer_name = conn_layers[i];
-        float z = _get_layer_z_axis(layer_name);
-        if (z < min_z)
-        {
-            min_z = z;
-        }
-        if (z > max_z)
-        {
-            max_z = z;
-        }
-    }
-    if (max_z > min_z)
-    {
-        len = max_z - min_z;
-    }
-    return len;
-}
-
-bool z_extractor::_is_cu_layer(const std::string& layer)
-{
-    for (const auto& l: _layers)
-    {
-        if (layer == l.name)
-        {
-            return l.type == "copper";
-        }
-    }
-    return false;
-}
-
-std::vector<std::string> z_extractor::_get_pad_conn_layers(const z_extractor::pad& p)
-{
-    float x;
-    float y;
-    _get_pad_pos(p, x, y);
-    
-    std::set<std::string> layer_set;
-    std::list<z_extractor::segment> segments = get_segments(p.net);
-    for (const auto& s: segments)
-    {
-        if (_point_equal(s.start.x, s.start.y, x, y) || _point_equal(s.end.x, s.end.y, x, y))
-        {
-            layer_set.insert(s.layer_name);
-        }
-    }
-    
-    std::vector<std::string> layers;
-    std::vector<std::string> layers_tmp;
-    for (const auto& layer: p.layers)
-    {
-        if (layer.find("*") != layer.npos)
-        {
-            layers_tmp = _get_all_cu_layer();
-        }
-        else
-        {
-            layers_tmp.push_back(layer);
-        }
-    }
-    
-    for (const auto& layer_name: layers_tmp)
-    {
-        if (layer_set.count(layer_name))
-        {
-            layers.push_back(layer_name);
-        }
-    }
-    return layers;
-}
-
-std::vector<std::string> z_extractor::_get_pad_layers(const pad& p)
-{
-    std::vector<std::string> layers;
-    for (const auto& layer: p.layers)
-    {
-        if (layer.find("*") != layer.npos)
-        {
-            layers = _get_all_cu_layer();
-        }
-        else
-        {
-            layers.push_back(layer);
-        }
-    }
-    return layers;
-}
-
-
-float z_extractor::_get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
-{
-    bool flag = false;
-    float dist = 0;
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name1 || l.name == layer_name2)
-        {
-            if (!flag)
-            {
-                flag = true;
-                continue;
-            }
-            else
-            {
-                return dist;
-            }
-        }
-        if (flag)
-        {
-            dist += l.thickness;
-        }
-    }
-    return 0;
-}
-
-
-float z_extractor::_get_layer_thickness(const std::string& layer_name)
-{
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name)
-        {
-            return l.thickness;
-        }
-    }
-    return 0;
-}
-
-
-float z_extractor::_get_layer_z_axis(const std::string& layer_name)
-{
-    float dist = 0;
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name)
-        {
-            break;
-        }
-        dist += l.thickness;
-    }
-    return dist;
-}
-
-float z_extractor::_get_layer_epsilon_r(const std::string& layer_name)
-{
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name)
-        {
-            return l.epsilon_r;
-        }
-    }
-    return 1;
-}
-
-/* 取上下两层介电常数的均值 */
-float z_extractor::_get_cu_layer_epsilon_r(const std::string& layer_name)
-{
-    layer up;
-    layer down;
-    std::int32_t state = 0;
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name)
-        {
-            state = 1;
-            continue;
-        }
-        if (state == 0)
-        {
-            up = l;
-        }
-        else if (state == 1)
-        {
-            down = l;
-            break;
-        }
-    }
-    
-    
-    if (up.type == "Top Solder Mask" || up.type == "Bottom Solder Mask")
-    {
-        return up.epsilon_r;
-    }
-    
-    if (down.type == "Top Solder Mask" || down.type == "Bottom Solder Mask")
-    {
-        return down.epsilon_r;
-    }
-    
-    return (up.epsilon_r + down.epsilon_r) * 0.5;
-}
-
-float z_extractor::_get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end)
-{
-    float epsilon_r = 0;
-    bool flag = false;
-    
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_start || l.name == layer_end)
-        {
-            if (!flag)
-            {
-                flag = true;
-                continue;
-            }
-            else
-            {
-                return epsilon_r;
-            }
-        }
-        if (flag)
-        {
-            epsilon_r = l.epsilon_r;
-        }
-    }
-    return 1;
-}
-
-float z_extractor::_get_board_thickness()
-{
-    float dist = 0;
-    for (auto& l: _layers)
-    {
-        dist += l.thickness;
-    }
-    return dist;
-}
-
-
-float z_extractor::_get_cu_min_thickness()
-{
-    float thickness = 1;
-    for (const auto& l: _layers)
-    {
-        if (l.type == "copper")
-        {
-            if (l.thickness < thickness)
-            {
-                thickness = l.thickness;
-            }
-        }
-    }
-    return thickness;
-}
-
-
-bool z_extractor::_cu_layer_is_outer_layer(const std::string& layer_name)
-{
-    layer up;
-    layer down;
-    std::int32_t state = 0;
-    for (auto& l: _layers)
-    {
-        if (l.name == layer_name)
-        {
-            state = 1;
-            continue;
-        }
-        if (state == 0)
-        {
-            up = l;
-        }
-        else if (state == 1)
-        {
-            down = l;
-            break;
-        }
-    }
-    
-    if (up.type == "Top Solder Mask"
-        || up.type == "Bottom Solder Mask"
-        || down.type == "Top Solder Mask"
-        || down.type == "Bottom Solder Mask")
-    {
-        return true;
-    }
-    return false;
-}
-
-std::uint32_t z_extractor::_segment_is_inside_pad(const z_extractor::segment& s, const z_extractor::pad& p)
-{
-    std::vector<std::string> layers = _get_pad_layers(p);
-    bool brk = true;
-    for (const auto& l: layers)
-    {
-        if (l == s.layer_name)
-        {
-            brk = false;
-            break;
-        }
-    }
-            
-    if (brk)
-    {
-        return 0;
-    }
-            
-    float x;
-    float y;
-    _get_pad_pos(p, x, y);
-    std::uint32_t ret = 0;
-    
-    if ((s.start.x >= x - p.size_w * 0.5 && s.start.x <= x + p.size_w * 0.5)
-        && (s.start.y >= y - p.size_h * 0.5 && s.start.y <= y + p.size_h * 0.5))
-    {
-        ret |= 1;
-    }
-    
-    if ((s.end.x >= x - p.size_w * 0.5 && s.end.x <= x + p.size_w * 0.5)
-        && (s.end.y >= y - p.size_h * 0.5 && s.end.y <= y + p.size_h * 0.5))
-    {
-        ret |= 2;
-    }
-    return ret;
-}
-
-float z_extractor::_get_segment_len(const z_extractor::segment& s)
-{
-    if (s.is_arc())
-    {
-        double cx;
-        double cy;
-        double radius;
-        double angle;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
-        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius, angle);
-        return calc_arc_len(radius, angle);
-    }
-    else
-    {
-        return hypot(s.end.x - s.start.x, s.end.y - s.start.y);
-    }
-}
-
-void z_extractor::_get_segment_pos(const z_extractor::segment& s, float offset, float& x, float& y)
-{
-    if (s.is_arc())
-    {
-        double cx;
-        double cy;
-        double arc_radius;
-        double arc_angle;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
-        calc_arc_angle(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius, arc_angle);
-        double arc_len = calc_arc_len(arc_radius, arc_angle);
-        
-        double angle = arc_angle * offset / arc_len;
-        
-        double x1 = cosf(angle) * (s.start.x - cx) - sinf(angle) * -(s.start.y - cy);
-        double y1 = sinf(angle) * (s.start.x - cx) + cosf(angle) * -(s.start.y - cy);
-    
-        x = cx + x1;
-        y = cy - y1;
-    }
-    else
-    {
-        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-        x = s.start.x + offset * cos(angle);
-        y = -(-s.start.y + offset * sin(angle));
-    }
-}
-
-
-void z_extractor::_get_segment_perpendicular(const z_extractor::segment& s, float offset, float w, float& x_left, float& y_left, float& x_right, float& y_right)
-{
-    if (s.is_arc())
-    {
-        float x = 0;
-        float y = 0;
-        double cx;
-        double cy;
-        double arc_radius;
-        calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, arc_radius);
-        
-        _get_segment_pos(s, offset, x, y);
-        
-        double rad_left = calc_angle(cx, cy, x, y);
-        double rad_right = rad_left - (double)M_PI;
-        
-        /* >0 弧线为逆时针方向 */
-        if ((s.mid.x - s.start.x) * (-s.end.y - -s.mid.y) - (-s.mid.y - -s.start.y) * (s.end.x - s.mid.x) > 0)
-        {
-            std::swap(rad_left, rad_right);
-        }
-        
-        x_left = x + w * 0.5 * cos(rad_left);
-        y_left = -(-y + w * 0.5 * sin(rad_left));
-        x_right = x + w * 0.5 * cos(rad_right);
-        y_right = -(-y + w * 0.5 * sin(rad_right));
-    }
-    else
-    {
-        float x = 0;
-        float y = 0;
-        float angle = calc_angle(s.start.x, s.start.y, s.end.x, s.end.y);
-        float rad_left = angle + (float)M_PI_2;
-        float rad_right = angle - (float)M_PI_2;
-        
-        _get_segment_pos(s, offset, x, y);
-        
-        x_left = x + w * 0.5 * cos(rad_left);
-        y_left = -(-y + w * 0.5 * sin(rad_left));
-        x_right = x + w * 0.5 * cos(rad_right);
-        y_right = -(-y + w * 0.5 * sin(rad_right));
-    }
-}
-
-bool z_extractor::_segments_get_next(std::list<z_extractor::segment>& segments, z_extractor::segment& s, float x, float y, const std::string& layer_name)
-{
-    for (auto it = segments.begin(); it != segments.end(); it++)
-    {
-        if (it->layer_name != layer_name)
-        {
-            continue;
-        }
-        
-        if (_point_equal(x, y, it->start.x, it->start.y)
-            || _point_equal(x, y, it->end.x, it->end.y))
-        {
-            s = *it;
-            segments.erase(it);
-            return true;
-            break;
-        }
-    }
-    return false;
-}
-
-
-bool z_extractor::_check_segments(std::uint32_t net_id)
-{
-    std::list<std::pair<std::uint32_t, z_extractor::segment> > no_conn;
-    std::list<z_extractor::segment> conn;
-    _get_no_conn_segments(net_id, no_conn, conn);
-    
-    for (const auto& s: no_conn)
-    {
-        if (s.first & 0x01)
-        {
-            printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.second.net).c_str(), s.second.start.x, s.second.start.y);
-        }
-        if (s.first & 0x02)
-        {
-            printf("err: no connection (net:%s x:%.4f y:%.4f).\n", get_net_name(s.second.net).c_str(), s.second.end.x, s.second.end.y);
-        }
-    }
-    return no_conn.empty();
-}
-
-void z_extractor::_get_no_conn_segments(std::uint32_t net_id, std::list<std::pair<std::uint32_t, z_extractor::segment> >& no_conn, std::list<z_extractor::segment>& conn)
-{
-    std::list<z_extractor::segment> segments = get_segments(net_id);
-    std::list<z_extractor::pad> pads = get_pads(net_id);
-    std::list<z_extractor::via> vias = get_vias(net_id);
-    
-    
-    while (!segments.empty())
-    {
-        z_extractor::segment s = segments.front();
-        segments.pop_front();
-        bool start = false;
-        bool end = false;
-        for (const auto& it: segments)
-        {
-            if (it.layer_name != s.layer_name)
-            {
-                continue;
-            }
-            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
-                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
-            {
-                start = true;
-            }
-            
-            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
-                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
-            {
-                end = true;
-            }
-        }
-        
-        for (const auto& it: conn)
-        {
-            if (it.layer_name != s.layer_name)
-            {
-                continue;
-            }
-            if (_point_equal(s.start.x, s.start.y, it.start.x, it.start.y)
-                || _point_equal(s.start.x, s.start.y, it.end.x, it.end.y))
-            {
-                start = true;
-            }
-            
-            if (_point_equal(s.end.x, s.end.y, it.start.x, it.start.y)
-                || _point_equal(s.end.x, s.end.y, it.end.x, it.end.y))
-            {
-                end = true;
-            }
-        }
-        
-        for (const auto& it: no_conn)
-        {
-            if (it.second.layer_name != s.layer_name)
-            {
-                continue;
-            }
-            if (_point_equal(s.start.x, s.start.y, it.second.start.x, it.second.start.y)
-                || _point_equal(s.start.x, s.start.y, it.second.end.x, it.second.end.y))
-            {
-                start = true;
-            }
-            
-            if (_point_equal(s.end.x, s.end.y, it.second.start.x, it.second.start.y)
-                || _point_equal(s.end.x, s.end.y, it.second.end.x, it.second.end.y))
-            {
-                end = true;
-            }
-        }
-        
-        for (const auto&p: pads)
-        {
-            std::vector<std::string> layers = _get_pad_conn_layers(p);
-            bool brk = true;
-            for (const auto& l: layers)
-            {
-                if (l == s.layer_name)
-                {
-                    brk = false;
-                    break;
-                }
-            }
-            
-            if (brk)
-            {
-                continue;
-            }
-            
-            float x;
-            float y;
-            _get_pad_pos(p, x, y);
-            
-            if (_point_equal(s.start.x, s.start.y, x, y))
-            {
-                start = true;
-            }
-            
-            if (_point_equal(s.end.x, s.end.y, x, y))
-            {
-                end = true;
-            }
-        }
-        
-        
-        for (const auto&v: vias)
-        {
-            std::vector<std::string> layers = _get_via_conn_layers(v);
-            bool brk = true;
-            for (const auto& l: layers)
-            {
-                if (l == s.layer_name)
-                {
-                    brk = false;
-                    break;
-                }
-            }
-            if (brk)
-            {
-                continue;
-            }
-            
-            if (_point_equal(s.start.x, s.start.y, v.at.x, v.at.y))
-            {
-                start = true;
-            }
-            
-            if (_point_equal(s.end.x, s.end.y, v.at.x, v.at.y))
-            {
-                end = true;
-            }
-        }
-        
-        if (start && end)
-        {
-            conn.push_back(s);
-        }
-        else
-        {
-            std::uint32_t flag = 0;
-            if (!start)
-            {
-                flag |= 1;
-            }
-            if (!end)
-            {
-                flag |= 2;
-            }
-            
-            no_conn.push_back(std::pair<std::uint32_t, z_extractor::segment>(flag, s));
-        }
-    }
-
 }
 
 
@@ -2469,7 +1309,7 @@ void z_extractor::_get_zone_cond(std::uint32_t net_id, const std::map<std::strin
                 {
                     //cv::line(img2, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(255, 255, 255));
                     float w_ratio = 1;
-                    pcb_point p;
+                    pcb::point p;
                     cond c;
                     c.start.x = _cvt_pcb_x(x1);
                     c.start.y = _cvt_pcb_y(y1);
@@ -2521,8 +1361,8 @@ void z_extractor::_add_zone(fasthenry& henry, std::uint32_t net_id, const std::m
         const std::string& layer_name = cond.first;
         const std::list<z_extractor::cond>& cond_list = cond.second;
         
-        float z_val = _get_layer_z_axis(layer_name);
-        float h_val = _get_layer_thickness(layer_name);
+        float z_val = _pcb->get_layer_z_axis(layer_name);
+        float h_val = _pcb->get_layer_thickness(layer_name);
         for (auto& c: cond_list)
         {
             std::string node1 = _pos2net(c.start.x, c.start.y, layer_name);
@@ -2581,19 +1421,19 @@ void z_extractor::_conn_to_zone(fasthenry& henry, float x, float y, std::map<std
 
 
 
-void z_extractor::_draw_segment(cv::Mat& img, z_extractor::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
+void z_extractor::_draw_segment(cv::Mat& img, pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r)
 {
     if (s.is_arc())
     {
-        float s_len = _get_segment_len(s);
+        float s_len = _pcb->get_segment_len(s);
         for (float i = 0; i <= s_len - 0.01; i += 0.01)
         {
             float x1 = 0;
             float y1 = 0;
             float x2 = 0;
             float y2 = 0;
-            _get_segment_pos(s, i, x1, y1);
-            _get_segment_pos(s, i + 0.01, x2, y2);
+            _pcb->get_segment_pos(s, i, x1, y1);
+            _pcb->get_segment_pos(s, i + 0.01, x2, y2);
             
             cv::line(img,
                 cv::Point(_cvt_img_x(x1), _cvt_img_y(y1)),
@@ -2615,7 +1455,7 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
 {
     for (auto ref_id: refs_id)
     {
-        std::list<z_extractor::zone> zones = get_zones(ref_id);
+        std::list<pcb::zone> zones = _pcb->get_zones(ref_id);
         for (auto& zone: zones)
         {
             if (zone.pts.size() == 0)
@@ -2645,7 +1485,7 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
         
         if (use_segment)
         {
-            std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
+            std::vector<std::list<pcb::segment> > segments = _pcb->get_segments_sort(ref_id);
             for (auto& segment: segments)
             {
                 for (auto& s: segment)
@@ -2671,7 +1511,7 @@ void z_extractor::_create_refs_mat(std::vector<std::uint32_t> refs_id, std::map<
         }
         else if (clean_segment) /*为提取rl提供 清理走线跟覆铜重叠的区域 避免重复计算电阻*/
         {
-            std::vector<std::list<z_extractor::segment> > segments = get_segments_sort(ref_id);
+            std::vector<std::list<pcb::segment> > segments = _pcb->get_segments_sort(ref_id);
             for (auto& segment: segments)
             {
                 for (auto& s: segment)
@@ -2767,19 +1607,19 @@ std::list<std::pair<float, float> > z_extractor::_get_mat_line(const cv::Mat& im
 }
 
 
-std::list<std::pair<float, float> > z_extractor::_get_segment_ref_plane(const z_extractor::segment& s, const cv::Mat& ref, float offset, float w)
+std::list<std::pair<float, float> > z_extractor::_get_segment_ref_plane(const pcb::segment& s, const cv::Mat& ref, float offset, float w)
 {
     float x_left = 0;
     float y_left = 0;
     float x_right = 0;
     float y_right = 0;
     
-    _get_segment_perpendicular(s, offset, w, x_left, y_left, x_right, y_right);
+    _pcb->get_segment_perpendicular(s, offset, w, x_left, y_left, x_right, y_right);
     return _get_mat_line(ref, x_left, y_left, x_right, y_right);
 }
 
 
-float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
+float z_extractor::_get_via_anti_pad_diameter(const pcb::via& v,  const std::map<std::string, cv::Mat>& refs_mat, std::string layer)
 {
     float diameter = v.size * 5;
     if (refs_mat.count(layer) == 0)
@@ -2823,16 +1663,16 @@ float z_extractor::_get_via_anti_pad_diameter(const z_extractor::via& v,  const 
 
 
 
-float z_extractor::_calc_segment_r(const segment& s)
+float z_extractor::_calc_segment_r(const pcb::segment& s)
 {
     //R = ρ * l / (w * h)  ρ:电导率(cu:0.0172) l:长度(m) w:线宽(mm) h:线厚度(mm) R:电阻(欧姆)
     float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
     
-    return _resistivity * l * 0.001 / (s.width * _get_layer_thickness(s.layer_name));
+    return _resistivity * l * 0.001 / (s.width * _pcb->get_layer_thickness(s.layer_name));
 }
 
 
-float z_extractor::_calc_segment_l(const segment& s)
+float z_extractor::_calc_segment_l(const pcb::segment& s)
 {
     float l = sqrt((s.start.x - s.end.x) * (s.start.x - s.end.x) + (s.start.y - s.end.y) * (s.start.y - s.end.y));
     return 2 * l * (log(2 * l / s.width) + 0.5 + 0.2235 * s.width / l);
@@ -2841,12 +1681,12 @@ float z_extractor::_calc_segment_l(const segment& s)
 
 float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
 {
-    float h = _get_layer_distance(layer_name1, layer_name2);
+    float h = _pcb->get_layer_distance(layer_name1, layer_name2);
     return h / 5 * (1 + log(4.0 * h / v.drill));
 }
 
 
-bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor::segment& s2, float coupled_max_gap, float coupled_min_len)
+bool z_extractor::_is_coupled(const pcb::segment& s1, const pcb::segment& s2, float coupled_max_gap, float coupled_min_len)
 {
     if (s1.is_arc() || s2.is_arc())
     {
@@ -2878,7 +1718,7 @@ bool z_extractor::_is_coupled(const z_extractor::segment& s1, const z_extractor:
 
 
 
-void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extractor::segment>& ss, float x1, float y1, float x2, float y2)
+void z_extractor::_split_segment(const pcb::segment& s, std::list<pcb::segment>& ss, float x1, float y1, float x2, float y2)
 {
     float d1 = calc_dist(x1, y1, s.start.x, s.start.y);
     float d2 = calc_dist(x2, y2, s.start.x, s.start.y);
@@ -2886,13 +1726,13 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
     float limit = 0.0254;
     
     std::uint32_t idx = 0;
-    std::vector<pcb_point> ps;
+    std::vector<pcb::point> ps;
     ps.push_back(s.start);
     if (d1 < d2)
     {
         if (d1 > limit)
         {
-            pcb_point p;
+            pcb::point p;
             p.x = x1;
             p.y = y1;
             ps.push_back(p);
@@ -2905,7 +1745,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
         float d = calc_dist(x2, y2, s.end.x, s.end.y);
         if (d > limit)
         {
-            pcb_point p;
+            pcb::point p;
             p.x = x2;
             p.y = y2;
             ps.push_back(p);
@@ -2915,7 +1755,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
     {
         if (d2 > limit)
         {
-            pcb_point p;
+            pcb::point p;
             p.x = x2;
             p.y = y2;
             ps.push_back(p);
@@ -2928,7 +1768,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
         float d = calc_dist(x1, y1, s.end.x, s.end.y);
         if (d > limit)
         {
-            pcb_point p;
+            pcb::point p;
             p.x = x1;
             p.y = y1;
             ps.push_back(p);
@@ -2940,7 +1780,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
     const char *str[] = {"0", "1", "2", "3", "4"};
     for (std::uint32_t i = 0; i < ps.size() - 1; i++)
     {
-        z_extractor::segment tmp = s;
+        pcb::segment tmp = s;
         tmp.tstamp = str[i] + tmp.tstamp;
         tmp.start = ps[i];
         tmp.end = ps[i + 1];
@@ -2956,7 +1796,7 @@ void z_extractor::_split_segment(const z_extractor::segment& s, std::list<z_extr
 }
 
 
-std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s, const std::map<std::string, cv::Mat>& refs_mat, std::vector<std::pair<float, float> >& v_Z0_td)
+std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name, pcb::segment& s, const std::map<std::string, cv::Mat>& refs_mat, std::vector<std::pair<float, float> >& v_Z0_td)
 {
 #if DBG_IMG
     cv::Mat img(_get_pcb_img_rows(), _get_pcb_img_cols(), CV_8UC1, cv::Scalar(0, 0, 0));
@@ -2966,20 +1806,20 @@ std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name,
 #endif
 
     std::string cir;
-    float s_len = _get_segment_len(s);
+    float s_len = _pcb->get_segment_len(s);
     if (s_len < _segment_min_len)
     {
         return  ".subckt " + cir_name + " pin1 pin2\nR1 pin1 pin2 0\n.ends\n";
     }
     
-    std::vector<std::string> layers = _get_all_dielectric_layer();
+    std::vector<std::string> layers = _pcb->get_all_dielectric_layer();
     float box_w = s.width * _Z0_w_ratio;
-    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
-    float box_y_offset = _get_board_thickness() * -0.5;
-    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
-    if (box_h < _get_board_thickness() * 1.5)
+    float box_h = _pcb->get_cu_min_thickness() * _Z0_h_ratio;
+    float box_y_offset = _pcb->get_board_thickness() * -0.5;
+    float atlc_pix_unit = _pcb->get_cu_min_thickness() * 0.5;
+    if (box_h < _pcb->get_board_thickness() * 1.5)
     {
-        box_h = _get_board_thickness() * 1.5;
+        box_h = _pcb->get_board_thickness() * 1.5;
     }
     
     
@@ -3028,8 +1868,8 @@ std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name,
         
         for (auto& l: layers)
         {
-            float y = _get_layer_z_axis(l);
-            calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            float y = _pcb->get_layer_z_axis(l);
+            calc->add_elec(0, y + box_y_offset, box_w, _pcb->get_layer_thickness(l), _pcb->get_layer_epsilon_r(l));
         }
         
         std::set<std::string> elec_add;
@@ -3042,18 +1882,18 @@ std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name,
                 if (elec_add.count(refs.first) == 0)
                 {
                     elec_add.insert(refs.first);
-                    calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                    calc->add_elec(0, _pcb->get_layer_z_axis(refs.first) + box_y_offset, box_w, _pcb->get_layer_thickness(refs.first), _pcb->get_cu_layer_epsilon_r(refs.first));
                 }
-                calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                calc->add_ground(g.first, _pcb->get_layer_z_axis(refs.first) + box_y_offset, g.second, _pcb->get_layer_thickness(refs.first));
             }
         }
         
         if (elec_add.count(s.layer_name) == 0)
         {
             elec_add.insert(s.layer_name);
-            calc->add_elec(0, _get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _get_layer_thickness(s.layer_name), _get_cu_layer_epsilon_r(s.layer_name));
+            calc->add_elec(0, _pcb->get_layer_z_axis(s.layer_name) + box_y_offset, box_w, _pcb->get_layer_thickness(s.layer_name), _pcb->get_cu_layer_epsilon_r(s.layer_name));
         }
-        calc->add_wire(0, _get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _get_layer_thickness(s.layer_name), _conductivity);
+        calc->add_wire(0, _pcb->get_layer_z_axis(s.layer_name) + box_y_offset, s.width, _pcb->get_layer_thickness(s.layer_name), _conductivity);
         
         
         float Z0;
@@ -3139,7 +1979,7 @@ std::string z_extractor::_gen_segment_Z0_ckt_openmp(const std::string& cir_name,
 
 
 
-std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, z_extractor::segment& s0, z_extractor::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
+std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& cir_name, pcb::segment& s0, pcb::segment& s1, const std::map<std::string, cv::Mat>& refs_mat,
                                                                 std::vector<std::pair<float, float> > v_Z0_td[2],
                                                                 std::vector<std::pair<float, float> >& v_Zodd_td,
                                                                 std::vector<std::pair<float, float> >& v_Zeven_td)
@@ -3150,25 +1990,25 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
         std::swap(s1.start, s1.end);
     }
     
-    z_extractor::segment s;
+    pcb::segment s;
     s.start.x = (s0.start.x + s1.start.x) * 0.5;
     s.start.y = (s0.start.y + s1.start.y) * 0.5;
     s.end.x = (s0.end.x + s1.end.x) * 0.5;
     s.end.y = (s0.end.y + s1.end.y) * 0.5;
     s.width = calc_p2line_dist(s0.start.x, s0.start.y, s0.end.x, s0.end.y, s1.start.x, s1.start.y);
     
-    float s_len = _get_segment_len(s);
+    float s_len = _pcb->get_segment_len(s);
     bool s0_is_left = ((s.start.y - s.end.y) * s0.start.x + (s.end.x - s.start.x) * s0.start.y + s.start.x * s.end.y - s.end.x * s.start.y) > 0;
 
-    std::vector<std::string> layers = _get_all_dielectric_layer();
+    std::vector<std::string> layers = _pcb->get_all_dielectric_layer();
     float box_w = std::min(std::max(s0.width, s1.width) * _Z0_w_ratio, s.width * _Z0_w_ratio);
     box_w = std::max(box_w, s.width * 2);
-    float box_h = _get_cu_min_thickness() * _Z0_h_ratio;
-    float box_y_offset = _get_board_thickness() * - 0.5;
-    float atlc_pix_unit = _get_cu_min_thickness() * 0.5;
-    if (box_h < _get_board_thickness() * 1.5)
+    float box_h = _pcb->get_cu_min_thickness() * _Z0_h_ratio;
+    float box_y_offset = _pcb->get_board_thickness() * - 0.5;
+    float atlc_pix_unit = _pcb->get_cu_min_thickness() * 0.5;
+    if (box_h < _pcb->get_board_thickness() * 1.5)
     {
-        box_h = _get_board_thickness() * 1.5;
+        box_h = _pcb->get_board_thickness() * 1.5;
     }
     
     struct Z0_item
@@ -3220,8 +2060,8 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
         
         for (auto& l: layers)
         {
-            float y = _get_layer_z_axis(l);
-            calc->add_elec(0, y + box_y_offset, box_w, _get_layer_thickness(l), _get_layer_epsilon_r(l));
+            float y = _pcb->get_layer_z_axis(l);
+            calc->add_elec(0, y + box_y_offset, box_w, _pcb->get_layer_thickness(l), _pcb->get_layer_epsilon_r(l));
         }
         
         std::set<std::string> elec_add;
@@ -3234,33 +2074,33 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
                 if (elec_add.count(refs.first) == 0)
                 {
                     elec_add.insert(refs.first);
-                    calc->add_elec(0, _get_layer_z_axis(refs.first) + box_y_offset, box_w, _get_layer_thickness(refs.first), _get_cu_layer_epsilon_r(refs.first));
+                    calc->add_elec(0, _pcb->get_layer_z_axis(refs.first) + box_y_offset, box_w, _pcb->get_layer_thickness(refs.first), _pcb->get_cu_layer_epsilon_r(refs.first));
                 }
-                calc->add_ground(g.first, _get_layer_z_axis(refs.first) + box_y_offset, g.second, _get_layer_thickness(refs.first));
+                calc->add_ground(g.first, _pcb->get_layer_z_axis(refs.first) + box_y_offset, g.second, _pcb->get_layer_thickness(refs.first));
             }
         }
         
         if (elec_add.count(s0.layer_name) == 0)
         {
             elec_add.insert(s0.layer_name);
-            calc->add_elec(0, _get_layer_z_axis(s0.layer_name) + box_y_offset, box_w, _get_layer_thickness(s0.layer_name), _get_cu_layer_epsilon_r(s0.layer_name));
+            calc->add_elec(0, _pcb->get_layer_z_axis(s0.layer_name) + box_y_offset, box_w, _pcb->get_layer_thickness(s0.layer_name), _pcb->get_cu_layer_epsilon_r(s0.layer_name));
         }
         if (elec_add.count(s1.layer_name) == 0)
         {
             elec_add.insert(s1.layer_name);
-            calc->add_elec(0, _get_layer_z_axis(s1.layer_name) + box_y_offset, box_w, _get_layer_thickness(s1.layer_name), _get_cu_layer_epsilon_r(s1.layer_name));
+            calc->add_elec(0, _pcb->get_layer_z_axis(s1.layer_name) + box_y_offset, box_w, _pcb->get_layer_thickness(s1.layer_name), _pcb->get_cu_layer_epsilon_r(s1.layer_name));
         }
         
         if (s0_is_left)
         {
                 
-            calc->add_wire(0 - s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            calc->add_coupler(0 + s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            calc->add_wire(0 - s.width * 0.5, _pcb->get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _pcb->get_layer_thickness(s0.layer_name), _conductivity);
+            calc->add_coupler(0 + s.width * 0.5, _pcb->get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _pcb->get_layer_thickness(s1.layer_name), _conductivity);
         }
         else
         {
-            calc->add_wire(0 + s.width * 0.5, _get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _get_layer_thickness(s0.layer_name), _conductivity);
-            calc->add_coupler(0 - s.width * 0.5, _get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _get_layer_thickness(s1.layer_name), _conductivity);
+            calc->add_wire(0 + s.width * 0.5, _pcb->get_layer_z_axis(s0.layer_name) + box_y_offset, s0.width, _pcb->get_layer_thickness(s0.layer_name), _conductivity);
+            calc->add_coupler(0 - s.width * 0.5, _pcb->get_layer_z_axis(s1.layer_name) + box_y_offset, s1.width, _pcb->get_layer_thickness(s1.layer_name), _conductivity);
         }
         
         
@@ -3349,15 +2189,15 @@ std::string z_extractor::_gen_segment_coupled_Z0_ckt_openmp(const std::string& c
     return  strbuf + cir;
 }
 
-std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, const std::vector<std::uint32_t>& refs_id, std::string& call, float& td)
+std::string z_extractor::_gen_via_Z0_ckt(pcb::via& v, std::map<std::string, cv::Mat>& refs_mat, const std::vector<std::uint32_t>& refs_id, std::string& call, float& td)
 {
     char buf[2048] = {0};
     std::string ckt;
     ckt = ".subckt VIA" + _get_tstamp_short(v.tstamp) + " ";
     call = "XVIA" + _get_tstamp_short(v.tstamp) + " ";
     
-    std::list<via> vias = get_vias(refs_id);
-    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
+    std::list<pcb::via> vias = _pcb->get_vias(refs_id);
+    std::vector<std::string> conn_layers = _pcb->get_via_conn_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
     {
         const std::string& layer_name = conn_layers[i];
@@ -3380,19 +2220,19 @@ std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::stri
     
     
     std::uint32_t id = 0;
-    std::vector<std::string> layers = _get_via_layers(v);
+    std::vector<std::string> layers = _pcb->get_via_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
     {
         const std::string& start = layers[i];
         const std::string& end = layers[i + 1];
         
-        float h = _get_layer_distance(start, end);
+        float h = _pcb->get_layer_distance(start, end);
         float start_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, start);
         float end_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, end);
         float anti_pad_diameter = std::min(start_anti_pad_d, end_anti_pad_d);
         
         float max_d = sqrt(h * h + anti_pad_diameter * 0.5 * anti_pad_diameter * 0.5);
-        float er = _get_layer_epsilon_r(start, end);
+        float er = _pcb->get_layer_epsilon_r(start, end);
         
         
         float Z0;
@@ -3450,14 +2290,14 @@ std::string z_extractor::_gen_via_Z0_ckt(z_extractor::via& v, std::map<std::stri
 }
 
 
-std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
+std::string z_extractor::_gen_via_model_ckt(pcb::via& v, std::map<std::string, cv::Mat>& refs_mat, std::string& call, float& td)
 {
     char buf[2048] = {0};
     std::string ckt;
     ckt = ".subckt VIA" + _get_tstamp_short(v.tstamp) + " ";
     call = "XVIA" + _get_tstamp_short(v.tstamp) + " ";
     
-    std::vector<std::string> conn_layers = _get_via_conn_layers(v);
+    std::vector<std::string> conn_layers = _pcb->get_via_conn_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)conn_layers.size(); i++)
     {
         const std::string& layer_name = conn_layers[i];
@@ -3474,13 +2314,13 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
     henry.set_conductivity(_conductivity);
     
     std::uint32_t id = 0;
-    std::vector<std::string> layers = _get_via_layers(v);
+    std::vector<std::string> layers = _pcb->get_via_layers(v);
     for (std::int32_t i = 0; i < (std::int32_t)layers.size() - 1; i++)
     {
         const std::string& start = layers[i];
         const std::string& end = layers[i + 1];
-        float z_start = _get_layer_z_axis(start);
-        float z_end = _get_layer_z_axis(end);
+        float z_start = _pcb->get_layer_z_axis(start);
+        float z_end = _pcb->get_layer_z_axis(end);
         henry.add_via(_pos2net(v.at.x, v.at.y, start), _pos2net(v.at.x, v.at.y, end),
                         _format_net(_get_tstamp_short(v.tstamp) + start + end).c_str(),
                         fasthenry::point(v.at.x, v.at.y, z_start),
@@ -3495,8 +2335,8 @@ std::string z_extractor::_gen_via_model_ckt(z_extractor::via& v, std::map<std::s
         float end_anti_pad_d = _get_via_anti_pad_diameter(v, refs_mat, end);
         float anti_pad_diameter = std::min(start_anti_pad_d, end_anti_pad_d);
         
-        float h = _get_layer_distance(start, end);
-        float er = _get_layer_epsilon_r(start, end);
+        float h = _pcb->get_layer_distance(start, end);
+        float er = _pcb->get_layer_epsilon_r(start, end);
         
         float c = 1.41 * er * (h / 25.4) * v.size / (anti_pad_diameter - v.size); //pF
         //float l = h / 5 * (1 + log(4 * h / v.drill)); //nH
