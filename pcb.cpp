@@ -45,42 +45,48 @@ pcb::~pcb()
 bool pcb::add_net(std::uint32_t id, std::string name)
 {
     _nets.emplace(id, name);
-    return 0;
+    return true;
 }
 
 
 bool pcb::add_segment(const segment& s)
 {
     _segments.emplace(s.net, s);
-    return 0;
+    return true;
 }
 
 
 bool pcb::add_via(const via& v)
 {
     _vias.emplace(v.net, v);
-    return 0;
+    return true;
 }
 
 
 bool pcb::add_zone(const zone& z)
 {
     _zones.emplace(z.net, z);
-    return 0;
+    return true;
 }
 
 
 bool pcb::add_pad(const pad& p)
 {
     _pads.emplace(p.net, p);
-    return 0;
+    return true;
 }
 
 
 bool pcb::add_layer(const layer& l)
 {
     _layers.push_back(l);
-    return 0;
+    return true;
+}
+
+bool pcb::add_gr(const gr& g)
+{
+    _grs.push_back(g);
+    return true;
 }
 
 
@@ -161,6 +167,20 @@ void pcb::dump()
             }
         }
     }
+}
+
+cv::Mat pcb::draw(const std::string& layer_name, float pix_unit)
+{
+    cv::Mat img(_get_pcb_img_rows(pix_unit), _get_pcb_img_cols(pix_unit), CV_8UC3, cv::Scalar(0, 0, 0));
+    for (const auto& it: _segments)
+    {
+        const segment& s = it.second;
+        if (s.layer_name == layer_name)
+        {
+            _draw_segment(img, s, 0, 0, 255, pix_unit);
+        }
+    }
+    return img;
 }
 
 /* 如果线段在焊盘内但没有连接到中心点 就添加一个等宽线段连接到中心 */
@@ -1263,3 +1283,37 @@ bool pcb::_point_equal(float x1, float y1, float x2, float y2)
     return _float_equal(x1, x2) && _float_equal(y1, y2);
 }
 
+
+void pcb::_draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
+{
+    if (s.is_arc())
+    {
+        float s_len = get_segment_len(s);
+        for (float i = 0; i <= s_len - 0.01; i += 0.01)
+        {
+            float x1 = 0;
+            float y1 = 0;
+            float x2 = 0;
+            float y2 = 0;
+            get_segment_pos(s, i, x1, y1);
+            get_segment_pos(s, i + 0.01, x2, y2);
+            
+            cv::line(img,
+                cv::Point(_cvt_img_x(x1, pix_unit), _cvt_img_y(y1, pix_unit)),
+                cv::Point(_cvt_img_x(x2, pix_unit), _cvt_img_y(y2, pix_unit)),
+                cv::Scalar(b, g, r), _cvt_img_len(s.width, pix_unit), cv::LINE_4);
+        }
+    }
+    else
+    {
+        cv::line(img,
+            cv::Point(_cvt_img_x(s.start.x, pix_unit), _cvt_img_y(s.start.y, pix_unit)),
+            cv::Point(_cvt_img_x(s.end.x, pix_unit), _cvt_img_y(s.end.y, pix_unit)),
+            cv::Scalar(b, g, r), _cvt_img_len(s.width, pix_unit), cv::LINE_4);
+    }
+}
+
+void pcb::_draw_zone(cv::Mat& img, const pcb::zone& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
+{
+    
+}

@@ -41,6 +41,39 @@ public:
         }
     };
 
+    struct gr
+    {
+        enum
+        {
+            GR_POLY = 0,
+            GR_ARC,
+            GR_CIRCLE,
+            GR_LINE,
+            GR_RECT,
+            GR_TEXT
+        };
+        
+        enum
+        {
+            FILL_NONE,
+            FILL_SOLID
+        };
+        
+        std::string tstamp;
+        std::string layer_name;
+        
+        std::int32_t gr_type;
+        std::int32_t fill_type;
+        
+        std::list<point> pts;
+        
+        point start;
+        point mid;
+        point end;
+        
+        float width;
+    };
+    
     struct zone
     {
         std::list<point> pts;
@@ -139,9 +172,11 @@ public:
     bool add_zone(const zone& z);
     bool add_pad(const pad& p);
     bool add_layer(const layer& l);
+    bool add_gr(const gr& g);
     void set_edge(float top, float bottom, float left, float right);
     
     void dump();
+    cv::Mat draw(const std::string& layer_name, float pix_unit = 0.1);
     
     void clean_segment();
     
@@ -218,6 +253,17 @@ private:
     bool _float_equal(float a, float b);
     bool _point_equal(float x1, float y1, float x2, float y2);
     
+    float _cvt_img_x(float x, float pix_unit) { return round((x - _pcb_left) / pix_unit); }
+    float _cvt_img_y(float y, float pix_unit) { return round((y - _pcb_top) / pix_unit); }
+    float _cvt_img_len(float len, float pix_unit) { return round(len / pix_unit); }
+    
+    float _get_pcb_img_cols(float pix_unit) { return round((_pcb_right - _pcb_left) / pix_unit); }
+    float _get_pcb_img_rows(float pix_unit) { return round((_pcb_bottom - _pcb_top) / pix_unit); }
+    
+    
+    void _draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_zone(cv::Mat& img, const pcb::zone& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    
     
 private:
     std::map<std::uint32_t, std::string> _nets;
@@ -226,6 +272,7 @@ private:
     std::multimap<std::uint32_t, pad> _pads;
     std::multimap<std::uint32_t, zone> _zones;
     
+    std::vector<gr> _grs;
     std::vector<layer> _layers;
     
     
