@@ -70,6 +70,16 @@ bool pcb::add_zone(const zone& z)
 }
 
 
+bool pcb::add_footprint(const footprint& f)
+{
+    _footprints.push_back(f);
+    for (const auto& p: f.pads)
+    {
+        _pads.emplace(p.net, p);
+    }
+    return true;
+}
+
 bool pcb::add_pad(const pad& p)
 {
     _pads.emplace(p.net, p);
@@ -178,6 +188,25 @@ cv::Mat pcb::draw(const std::string& layer_name, float pix_unit)
         if (s.layer_name == layer_name)
         {
             _draw_segment(img, s, 0, 0, 255, pix_unit);
+        }
+    }
+    
+    for (const auto& it: _zones)
+    {
+        const zone& z = it.second;
+        if (z.layer_name == layer_name)
+        {
+            _draw_zone(img, z, 0, 0, 255, pix_unit);
+        }
+    }
+    
+    
+    
+    for (const auto& gr: _grs)
+    {
+        if (gr.layer_name == layer_name)
+        {
+            _draw_gr(img, gr, 0, 0, 255, pix_unit);
         }
     }
     return img;
@@ -1313,7 +1342,63 @@ void pcb::_draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std
     }
 }
 
-void pcb::_draw_zone(cv::Mat& img, const pcb::zone& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
+void pcb::_draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
 {
-    
+    std::vector<cv::Point> pts;
+    for (const auto& xy : z.pts)
+    {
+        cv::Point p(_cvt_img_x(xy.x, pix_unit), _cvt_img_y(xy.y, pix_unit));
+        pts.push_back(p);
+    }
+    cv::fillPoly(img, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(b, g, r));
+}
+
+void pcb::_draw_gr(cv::Mat& img, const pcb::gr& gr, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
+{
+    if (gr.gr_type == pcb::gr::GR_POLY)
+    {
+        std::vector<cv::Point> pts;
+        for (const auto& xy : gr.pts)
+        {
+            cv::Point p(_cvt_img_x(xy.x, pix_unit), _cvt_img_y(xy.y, pix_unit));
+            pts.push_back(p);
+        }
+        
+        cv::polylines(img, std::vector<std::vector<cv::Point>>{pts}, true, cv::Scalar(b, g, r), _cvt_img_len(gr.stroke_width, pix_unit));
+        if (gr.fill_type == pcb::gr::FILL_SOLID)
+        {
+            cv::fillPoly(img, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(b, g, r));
+        }
+    }
+    else if (gr.gr_type == pcb::gr::GR_RECT)
+    {
+        cv::Point p1(_cvt_img_x(gr.start.x, pix_unit), _cvt_img_y(gr.start.y, pix_unit));
+        cv::Point p2(_cvt_img_x(gr.end.x, pix_unit), _cvt_img_y(gr.end.y, pix_unit));
+        float thickness = _cvt_img_len(gr.stroke_width, pix_unit);
+        cv::rectangle(img, p1, p2, cv::Scalar(b, g, r), thickness);
+        
+        if (gr.fill_type == pcb::gr::FILL_SOLID)
+        {
+            cv::rectangle(img, p1, p2, cv::Scalar(b, g, r), -1);
+        }
+    }
+    else if (gr.gr_type == pcb::gr::GR_LINE)
+    {
+        cv::Point p1(_cvt_img_x(gr.start.x, pix_unit), _cvt_img_y(gr.start.y, pix_unit));
+        cv::Point p2(_cvt_img_x(gr.end.x, pix_unit), _cvt_img_y(gr.end.y, pix_unit));
+        float thickness = _cvt_img_len(gr.stroke_width, pix_unit);
+        cv::line(img, p1, p2, cv::Scalar(b, g, r), thickness);
+    }
+    else if (gr.gr_type == pcb::gr::GR_CIRCLE)
+    {
+        cv::Point center(_cvt_img_x(gr.start.x, pix_unit), _cvt_img_y(gr.start.y, pix_unit));
+        float radius = calc_dist(gr.start.x, gr.start.y, gr.end.x, gr.end.y);
+        radius = _cvt_img_len(radius, pix_unit);
+        float thickness = _cvt_img_len(gr.stroke_width, pix_unit);
+        cv::circle(img, center, radius, cv::Scalar(b, g, r), thickness);
+        if (gr.fill_type == pcb::gr::FILL_SOLID)
+        {
+            cv::circle(img, center, radius, cv::Scalar(b, g, r), -1);
+        }
+    }
 }

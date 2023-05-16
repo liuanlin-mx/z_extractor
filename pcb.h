@@ -59,6 +59,21 @@ public:
             FILL_SOLID
         };
         
+        enum
+        {
+            STROKE_NONE,
+            STROKE_SOLID
+        };
+        
+        gr()
+            : gr_type(GR_LINE)
+            , fill_type(FILL_SOLID)
+            , stroke_width(0)
+            , stroke_type(STROKE_SOLID)
+        {
+            
+        }
+        
         std::string tstamp;
         std::string layer_name;
         
@@ -67,11 +82,14 @@ public:
         
         std::list<point> pts;
         
-        point start;
+        point start; //start or center
         point mid;
         point end;
         
-        float width;
+        //float width;
+        
+        float stroke_width;
+        std::int32_t stroke_type;
     };
     
     struct zone
@@ -128,14 +146,28 @@ public:
     
     struct pad
     {
+        enum
+        {
+            SHAPE_RECT,
+            SHAPE_CIRCLE,
+            SHAPE_ROUNDRECT,
+            SHAPE_OVAL,
+        };
+        enum
+        {
+            TYPE_CONNECT,
+            TYPE_THRU_HOLE,
+        };
+        
         pad()
-            : type(0), net(0), ref_at_angle(0), at_angle(0)
+            : /*type(0), */net(0), ref_at_angle(0), at_angle(0)
             , size_w(0)
             , size_h(0)
             {}
         std::string footprint;
         std::string pad_number;
         std::uint32_t type;
+        std::uint32_t shape;
         std::uint32_t net;
         std::string net_name;
         
@@ -148,6 +180,21 @@ public:
         float size_h;
         std::list<std::string> layers;
         std::string tstamp;
+    };
+    
+    struct footprint
+    {
+        footprint()
+            : at_angle(0)
+        {
+        }
+        std::string layer;
+        std::string tstamp;
+        std::string reference;
+        point at;
+        float at_angle;
+        std::vector<gr> grs;
+        std::vector<pad> pads;
     };
     
     struct layer
@@ -170,6 +217,7 @@ public:
     bool add_segment(const segment& s);
     bool add_via(const via& v);
     bool add_zone(const zone& z);
+    bool add_footprint(const footprint& f);
     bool add_pad(const pad& p);
     bool add_layer(const layer& l);
     bool add_gr(const gr& g);
@@ -262,7 +310,8 @@ private:
     
     
     void _draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
-    void _draw_zone(cv::Mat& img, const pcb::zone& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_gr(cv::Mat& img, const pcb::gr& gr, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     
     
 private:
@@ -274,6 +323,7 @@ private:
     
     std::vector<gr> _grs;
     std::vector<layer> _layers;
+    std::vector<footprint> _footprints;
     
     
     float _pcb_top;

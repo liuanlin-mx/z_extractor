@@ -214,7 +214,14 @@ int main(int argc, char **argv)
         return 0;
     }
     pcb_->clean_segment();
+#if 0
+    parser.print_pcb();
     
+    cv::Mat img = pcb_->draw("F.Cu", 0.05);
+    cv::imshow("img", img);
+    cv::waitKey();
+    return 0;
+#endif
     z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);
     z_extr->enable_lossless_tl(lossless_tl);

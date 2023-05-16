@@ -23,41 +23,69 @@
 
 class kicad_pcb_parser
 {
+    struct pcb_object
+    {
+        std::string label;
+        std::vector<std::string> params;
+        std::list<std::shared_ptr<pcb_object> > childs;
+        
+        std::shared_ptr<pcb_object> find_child(const std::string& label)
+        {
+            for (auto& child: childs)
+            {
+                if (child->label == label)
+                {
+                    return child;
+                }
+            }
+            return NULL;
+        }
+        
+        std::list<std::shared_ptr<pcb_object> > find_childs(const std::string& label)
+        {
+            std::list<std::shared_ptr<pcb_object> > tmp;
+            for (auto& child: childs)
+            {
+                if (child->label == label)
+                {
+                    tmp.push_back(child);
+                }
+            }
+            return tmp;
+        }
+    };
+    
 public:
     kicad_pcb_parser();
     ~kicad_pcb_parser();
     
 public:
     bool parse(const char *filepath, std::shared_ptr<pcb> z_extr);
+    void print_pcb();
     
 private:
-    bool _parse(const char *str);
-    const char *_parse_label(const char *str, std::string& label);
-    const char *_skip(const char *str);
-    const char *_parse_zone(const char *str, std::vector<pcb::zone>& zones);
-    const char *_parse_filled_polygon(const char *str, pcb::zone& z);
-    const char *_parse_net(const char *str, std::uint32_t& id, std::string& name);
-    const char *_parse_segment(const char *str, pcb::segment& s);
-    const char *_parse_via(const char *str, pcb::via& v);
-    const char *_parse_number(const char *str, float &num);
-    const char *_parse_string(const char *str, std::string& text);
-    const char *_parse_postion(const char *str, float &x, float& y);
-    const char *_parse_tstamp(const char *str, std::string& tstamp);
-    const char *_parse_layers(const char *str, std::list<std::string>& layers);
-    const char *_parse_footprint(const char *str);
-    const char *_parse_at(const char *str, float &x, float& y, float& angle);
-    const char *_parse_pad_size(const char *str, float& w, float& h);
-    const char *_parse_reference(const char *str, std::string& footprint_name);
-    const char *_parse_pad(const char *str, pcb::pad& v);
+    bool _parse_pcb(const char *str);
+    const char *_parse_object(std::shared_ptr<pcb_object> obj, const char *str);
+    const char *_parse_param(std::shared_ptr<pcb_object> obj, const char *str);
+    const char *_parse_string2(const char *str, std::string& text);
+    const char *_skip_space(const char *str);
+    void _print_object(std::shared_ptr<pcb_object> obj, std::int32_t tabs = 0);
     
-    const char *_parse_setup(const char *str);
-    const char *_parse_stackup(const char *str);
-    const char *_parse_stackup_layer(const char *str);
-    const char *_parse_edge(const char *str);
     
+    void _add_to_pcb();
+    void _add_layers();
+    void _add_net_to_pcb();
+    void _add_segment_to_pcb();
+    void _add_via_to_pcb();
+    void _add_zone_to_pcb();
+    void _add_footprint_to_pcb();
+    void _add_gr_to_pcb();
+    void _update_edge(const pcb::gr& g);
+    
+    std::string _strip_string(const std::string& str);
 private:
-    std::shared_ptr<pcb> _z_extr;
-    
+    std::shared_ptr<pcb> _pcb;
+    std::shared_ptr<pcb_object> _root;
     float _pcb_top;
     float _pcb_bottom;
     float _pcb_left;

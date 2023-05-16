@@ -34,7 +34,7 @@ kicad_pcb_parser::~kicad_pcb_parser()
 
 bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> z_extr)
 {
-    _z_extr = z_extr;
+    _pcb = z_extr;
     
     
     FILE *fp = fopen(filepath, "rb");
@@ -65,858 +65,567 @@ bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> z_extr)
     }
     buf[rlen] = 0;
     
-    bool ret = _parse(buf);
+    bool ret = _parse_pcb(buf);
+    
     free(buf);
     if (ret)
     {
-        _z_extr->set_edge(_pcb_top, _pcb_bottom, _pcb_left, _pcb_right);
+        _add_to_pcb();
+        _pcb->set_edge(_pcb_top, _pcb_bottom, _pcb_left, _pcb_right);
     }
     return ret;
 }
 
 
-bool kicad_pcb_parser::_parse(const char *str)
+
+void kicad_pcb_parser::print_pcb()
 {
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "kicad_pcb")
-            {
-                continue;
-            }
-            else if (label == "net")
-            {
-                std::uint32_t id = 0;
-                std::string name;
-                str = _parse_net(str, id, name);
-                _z_extr->add_net(id, name);
-                continue;
-            }
-            else if (label == "segment" || label == "arc")
-            {
-                pcb::segment s;
-                str = _parse_segment(str, s);
-                _z_extr->add_segment(s);
-                continue;
-            }
-            else if (label == "gr_line" || label == "gr_circle" || label == "gr_rect" || label == "gr_arc")
-            {
-                str = _parse_edge(str);
-                continue;
-            }
-            else if (label == "via")
-            {
-                pcb::via v;
-                str = _parse_via(str, v);
-                _z_extr->add_via(v);
-                continue;
-            }
-            else if (label == "footprint")
-            {
-                str = _parse_footprint(str);
-                continue;
-            }
-            else if (label == "setup")
-            {
-                str = _parse_setup(str);
-                continue;
-            }
-            else if (label == "zone")
-            {
-                std::vector<pcb::zone> zones;
-                str = _parse_zone(str, zones);
-                for (auto& z: zones)
-                {
-                    _z_extr->add_zone(z);
-                }
-                continue;
-            }
-            
-            str = _skip(str + 1);
-            continue;
-        }
-        str++;
-    }
-    
-    if (_pcb_top > _pcb_bottom || _pcb_left > _pcb_right)
-    {
-        printf("err: not found pcb edge.\n");
-        return false;
-    }
-    
-    if (_layers == 0)
-    {
-        printf("err: not found physical stackup.\n");
-        return false;
-    }
-    
+    _print_object(_root);
+}
+
+bool kicad_pcb_parser::_parse_pcb(const char *str)
+{
+    _root.reset(new pcb_object());
+    _parse_object(_root, str);
     return true;
 }
 
-const char *kicad_pcb_parser::_parse_label(const char *str, std::string& label)
+const char *kicad_pcb_parser::_parse_object(std::shared_ptr<pcb_object> obj, const char *str)
 {
-    while (*str != ' ' && *str != ')' && *str != '\r' && *str != '\n')
+    str = _parse_string2(str + 1, obj->label);
+    
+    while (str && *str)
     {
-        label += *str;
-        str++;
-    }
-    return str;
-}
-const char *kicad_pcb_parser::_skip(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-        }
-        if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
+        str = _skip_space(str);
+        if (!str || *str == 0)
         {
             break;
-        }
-    }
-    return str;
-}
-
-const char *kicad_pcb_parser::_parse_zone(const char *str, std::vector<pcb::zone>& zones)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    pcb::zone z;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                z.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, z.tstamp);
-            }
-            else if (label == "filled_polygon")
-            {
-                str = _parse_filled_polygon(str, z);
-                zones.push_back(z);
-                z.pts.clear();
-                z.layer_name.clear();
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_filled_polygon(const char *str, pcb::zone& z)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, z.layer_name);
-            }
-            else if (label == "xy")
-            {
-                pcb::point p;
-                str = _parse_postion(str, p.x, p.y);
-                z.pts.push_back(p);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_net(const char *str, std::uint32_t& id, std::string& name)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '"')
-        {
-            str = _parse_string(str, name);
-            continue;
-        }
-        else if (*str >= '0' && *str <= '9')
-        {
-            float num = 0;
-            str = _parse_number(str, num);
-            id = num;
-            continue;
-        }
-        else if (*str == '(')
-        {
-            left++;
-        }
-        else if (*str == ')')
-        {
-            right++;
         }
         
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_segment(const char *str, pcb::segment& s)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
         if (*str == '(')
         {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "start")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.start.x = x;
-                s.start.y = y;
-            }
-            else if (label == "mid")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.mid.x = x;
-                s.mid.y = y;
-            }
-            else if (label == "end")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                s.end.x = x;
-                s.end.y = y;
-            }
-            else if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, s.layer_name);
-            }
-            else if (label == "width")
-            {
-                float w;
-                str = _parse_number(str, w);
-                s.width = w;
-            }
-            else if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                s.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, s.tstamp);
-            }
-            continue;
+            std::shared_ptr<pcb_object> child(new pcb_object());
+            str = _parse_object(child, str);
+            obj->childs.push_back(child);
         }
         else if (*str == ')')
         {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
+            str++;
             break;
         }
-    }
-    return str;
-}
-
-const char *kicad_pcb_parser::_parse_via(const char *str, pcb::via& v)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    while (*str)
-    {
-        if (*str == '(')
+        else
         {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "at")
-            {
-                float x;
-                float y;
-                str = _parse_postion(str, x, y);
-                v.at.x = x;
-                v.at.y = y;
-            }
-            else if (label == "size")
-            {
-                float size;
-                str = _parse_number(str, size);
-                v.size = size;
-            }
-            else if (label == "drill")
-            {
-                float drill;
-                str = _parse_number(str, drill);
-                v.drill = drill;
-            }
-            else if (label == "layers")
-            {
-                str = _parse_layers(str, v.layers);
-            }
-            else if (label == "net")
-            {
-                float id;
-                str = _parse_number(str, id);
-                v.net = (std::uint32_t)id;
-            }
-            else if (label == "tstamp")
-            {
-                str = _parse_tstamp(str, v.tstamp);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
+            str = _parse_param(obj, str);
         }
     }
     return str;
 }
 
-
-const char *kicad_pcb_parser::_parse_number(const char *str, float &num)
+const char *kicad_pcb_parser::_parse_param(std::shared_ptr<pcb_object> obj, const char *str)
 {
-    char tmp[32] = {0};
-    std::uint32_t i = 0;
-    
-    while (*str == ' ') str++;
-    
-    while (((*str >= '0' && *str <= '9') || *str == '.' || *str == '-') && i < sizeof(tmp) - 1)
-    {
-        tmp[i++] = *str;
-        str++;
-    }
-    tmp[i] = 0;
-    sscanf(tmp, "%f", &num);
+    std::string param;
+    str = _parse_string2(str, param);
+    obj->params.push_back(param);
     return str;
 }
 
-
-const char *kicad_pcb_parser::_parse_string(const char *str, std::string& text)
+const char *kicad_pcb_parser::_parse_string2(const char *str, std::string& text)
 {
-    if (*str == '"')
+    str = _skip_space(str);
+    if (*str == '\"')
     {
         str++;
-        while (*str != '"')
+        while (*str && *str != '\"')
         {
-            text += *str;
+            text.push_back(*str);
             str++;
         }
-        return str + 1;
+        str++;
     }
     else
     {
-        while (*str != ' ' && *str != ')')
+        while (*str && *str != ' ' && *str != '\r' && *str != '\n' && *str != ')')
         {
-            text += *str;
+            text.push_back(*str);
             str++;
         }
-        return str;
     }
-}
-
-
-const char *kicad_pcb_parser::_parse_postion(const char *str, float &x, float& y)
-{
-    while (*str == ' ') str++;
-    str = _parse_number(str, x);
-    while (*str == ' ') str++;
-    str = _parse_number(str, y);
     return str;
 }
-
-
-
-const char *kicad_pcb_parser::_parse_tstamp(const char *str, std::string& tstamp)
+    
+const char *kicad_pcb_parser::_skip_space(const char *str)
 {
-    while (*str == ' ') str++;
-    while (*str != ')')
+    while (*str == ' ' || *str == '\r' || *str == '\n')
     {
-        tstamp += *str;
         str++;
     }
     return str;
 }
 
 
-const char *kicad_pcb_parser::_parse_layers(const char *str, std::list<std::string>& layers)
+
+void kicad_pcb_parser::_print_object(std::shared_ptr<pcb_object> obj, std::int32_t tabs)
 {
-    while (*str != ')')
+    for (std::int32_t i = 0; i < tabs; i++)
     {
-        std::string text;
-        while (*str == ' ') str++;
-        str = _parse_string(str, text);
-        if (text.npos != text.find(".Cu"))
+        printf(" ");
+    }
+    
+    printf("(%s ", obj->label.c_str());
+    for (const auto& param: obj->params)
+    {
+        printf(" %s ", param.c_str());
+    }
+    
+    for (const auto& child: obj->childs)
+    {
+        _print_object(child, tabs + 1);
+    }
+    
+    for (std::int32_t i = 0; i < tabs; i++)
+    {
+        printf(" ");
+    }
+    printf(")\n");
+}
+
+void kicad_pcb_parser::_add_to_pcb()
+{
+    _add_layers();
+    _add_net_to_pcb();
+    _add_segment_to_pcb();
+    _add_via_to_pcb();
+    _add_zone_to_pcb();
+    _add_footprint_to_pcb();
+    _add_gr_to_pcb();
+}
+
+void kicad_pcb_parser::_add_layers()
+{
+    std::shared_ptr<pcb_object> setup = _root->find_child("setup");
+    if (!setup)
+    {
+        return;
+    }
+    
+    std::shared_ptr<pcb_object> stackup = setup->find_child("stackup");
+    if (!stackup)
+    {
+        return;
+    }
+    
+    for (const auto& layer: stackup->find_childs("layer"))
+    {
+        std::shared_ptr<pcb_object> type = layer->find_child("type");
+        std::shared_ptr<pcb_object> thickness = layer->find_child("thickness");
+        std::shared_ptr<pcb_object> epsilon_r = layer->find_child("epsilon_r");
+        //std::shared_ptr<pcb_object> loss_tangent = layer->find_child("loss_tangent");
+        
+        if (layer->params.size() > 0 && type && type->params.size() == 1)
         {
-            layers.push_back(text);
+            pcb::layer l;
+            l.name = layer->params[0];
+            l.type = _strip_string(type->params[0]);
+            
+            if (thickness && thickness->params.size() > 0)
+            {
+                l.thickness = atof(thickness->params[0].c_str());
+            }
+            
+            if (epsilon_r && epsilon_r->params.size() > 0)
+            {
+                l.epsilon_r = atof(epsilon_r->params[0].c_str());
+            }
+            
+    
+            if (l.type == "copper"
+                || l.type == "core"
+                || l.type == "prepreg"
+                || l.type == "Top Solder Mask"
+                || l.type == "Bottom Solder Mask")
+            {
+                if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
+                {
+                    printf("warn: not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
+                    l.epsilon_r  = 3.8;
+                }
+                
+                if (l.thickness == 0)
+                {
+                    printf("warn: not found thickness (%s). use default 0.1.\n", l.name.c_str());
+                    l.thickness = 0.035;
+                }
+                
+                _pcb->add_layer(l);
+                _layers++;
+            }
         }
     }
-    return str;
+}
+
+void kicad_pcb_parser::_add_net_to_pcb()
+{
+    for (const auto& child: _root->childs)
+    {
+        if (child->label == "net" && child->params.size() >= 2)
+        {
+            _pcb->add_net(atoi(child->params[0].c_str()), _strip_string(child->params[1]));
+        }
+    }
+}
+
+void kicad_pcb_parser::_add_segment_to_pcb()
+{
+    for (const auto& segment: _root->childs)
+    {
+        if (segment->label == "segment" || segment->label == "arc")
+        {
+            std::shared_ptr<pcb_object> start = segment->find_child("start");
+            std::shared_ptr<pcb_object> mid = segment->find_child("mid");
+            std::shared_ptr<pcb_object> end = segment->find_child("end");
+            std::shared_ptr<pcb_object> width = segment->find_child("width");
+            std::shared_ptr<pcb_object> layer = segment->find_child("layer");
+            std::shared_ptr<pcb_object> net = segment->find_child("net");
+            std::shared_ptr<pcb_object> tstamp = segment->find_child("tstamp");
+            if (start && start->params.size() == 2
+                && end && end->params.size() == 2
+                && width && width->params.size() == 1
+                && layer && layer->params.size() == 1
+                && net && net->params.size() == 1
+                && tstamp && tstamp->params.size())
+            {
+                pcb::segment s;
+                s.start.x = atof(start->params[0].c_str());
+                s.start.y = atof(start->params[1].c_str());
+                
+                s.end.x = atof(end->params[0].c_str());
+                s.end.y = atof(end->params[1].c_str());
+                
+                s.width = atof(width->params[0].c_str());
+                
+                s.layer_name = _strip_string(layer->params[0]);
+                s.net = atoi(net->params[0].c_str());
+                s.tstamp = tstamp->params[0];
+                
+                if (segment->label == "arc" && mid && mid->params.size() == 2)
+                {
+                    s.mid.x = atof(mid->params[0].c_str());
+                    s.mid.y = atof(mid->params[1].c_str());
+                }
+                _pcb->add_segment(s);
+            }
+        }
+    }
 }
 
 
-const char *kicad_pcb_parser::_parse_footprint(const char *str)
+void kicad_pcb_parser::_add_via_to_pcb()
 {
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    std::string footprint;
-    float x;
-    float y;
-    float angle;
-                
-    while (*str)
+    for (const auto& child: _root->childs)
     {
-        if (*str == '(')
+        if (child->label == "via")
         {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "at")
+            std::shared_ptr<pcb_object> at = child->find_child("at");
+            std::shared_ptr<pcb_object> size = child->find_child("size");
+            std::shared_ptr<pcb_object> drill = child->find_child("drill");
+            std::shared_ptr<pcb_object> layers = child->find_child("layers");
+            std::shared_ptr<pcb_object> net = child->find_child("net");
+            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            if (at && at->params.size() == 2
+                && size && size->params.size() == 1
+                && drill && drill->params.size() == 1
+                && layers && layers->params.size() >= 1
+                && net && net->params.size() == 1
+                && tstamp && tstamp->params.size())
             {
-                str = _parse_at(str, x, y, angle);
-            }
-            else if (label == "fp_text")
-            {
-                std::string label;
-                while (*str == ' ') str++;
-                str = _parse_label(str, label);
-                if (label == "reference")
+                pcb::via v;
+                v.at.x = atof(at->params[0].c_str());
+                v.at.y = atof(at->params[1].c_str());
+                
+                v.size = atof(size->params[0].c_str());
+                
+                v.drill = atof(drill->params[0].c_str());
+                
+                for (const auto& layer_name: layers->params)
                 {
-                    str = _parse_reference(str, footprint);
+                    v.layers.push_back(_strip_string(layer_name));
                 }
-                str = _skip(str);
-                right++;
+                v.net = atoi(net->params[0].c_str());
+                v.tstamp = tstamp->params[0];
+                
+                _pcb->add_via(v);
             }
-            else if (label == "pad")
+        }
+    }
+}
+
+
+void kicad_pcb_parser::_add_zone_to_pcb()
+{
+    for (const auto& child: _root->find_childs("zone"))
+    {
+        std::shared_ptr<pcb_object> net = child->find_child("net");
+        std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+        
+        if (net && net->params.size() == 1
+                && tstamp && tstamp->params.size())
+        {
+            for (const auto& filled_polygon: child->find_childs("filled_polygon"))
             {
+                pcb::zone z;
+                std::shared_ptr<pcb_object> layer = filled_polygon->find_child("layer");
+                std::shared_ptr<pcb_object> pts = filled_polygon->find_child("pts");
+                
+                if (layer && layer->params.size() >= 1 && pts)
+                {
+                    z.layer_name = _strip_string(layer->params[0]);
+                    z.net = atoi(net->params[0].c_str());
+                    z.tstamp = tstamp->params[0];
+                    for (const auto& xy: pts->find_childs("xy"))
+                    {
+                        if (xy->params.size() == 2)
+                        {
+                            pcb::point p;
+                            p.x = atof(xy->params[0].c_str());
+                            p.y = atof(xy->params[1].c_str());
+                            z.pts.push_back(p);
+                        }
+                    }
+                    _pcb->add_zone(z);
+                }
+            }
+        }
+    }
+}
+
+
+void kicad_pcb_parser::_add_footprint_to_pcb()
+{
+    for (const auto& child: _root->find_childs("footprint"))
+    {
+        std::shared_ptr<pcb_object> layer = child->find_child("layer");
+        std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+        std::shared_ptr<pcb_object> at = child->find_child("at");
+        
+        pcb::footprint footprint;
+        if (layer && layer->params.size() == 1
+                && tstamp && tstamp->params.size() == 1
+                && at && at->params.size() >= 2)
+        {
+            footprint.tstamp = tstamp->params[0];
+            footprint.at.x = atof(at->params[0].c_str());
+            footprint.at.y = atof(at->params[1].c_str());
+            if (at->params.size() >= 3)
+            {
+                footprint.at_angle = atof(at->params[2].c_str());
+            }
+            
+            for (const auto& fp_text: child->find_childs("fp_text"))
+            {
+                if (fp_text->params.size() < 2)
+                {
+                    continue;
+                }
+                if (fp_text->params[0] == "reference")
+                {
+                    footprint.reference = _strip_string(fp_text->params[1]);
+                }
+            }
+            
+            
+            for (const auto& pad: child->find_childs("pad"))
+            {
+                if (pad->params.size() < 3)
+                {
+                    continue;
+                }
+                std::shared_ptr<pcb_object> layers = pad->find_child("layers");
+                std::shared_ptr<pcb_object> pad_at = pad->find_child("at");
+                std::shared_ptr<pcb_object> size = pad->find_child("size");
+                std::shared_ptr<pcb_object> pad_tstamp = pad->find_child("tstamp");
+                std::shared_ptr<pcb_object> net = pad->find_child("net");
                 pcb::pad p;
-                p.ref_at.x = x;
-                p.ref_at.y = y;
-                p.ref_at_angle = angle;
-                p.net = 0xffffffff;
-                p.footprint = footprint;
-                str = _parse_pad(str, p);
-                if (p.net != 0xffffffff)
+                p.footprint = footprint.reference;
+                p.pad_number = pad->params[0];
+                p.ref_at = footprint.at;
+                p.ref_at_angle = footprint.at_angle;
+                
+                if (pad_tstamp && !pad_tstamp->params.empty())
                 {
-                    _z_extr->add_pad(p);
+                    p.tstamp = pad_tstamp->params[0];
                 }
-                right++;
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_at(const char *str, float &x, float& y, float& angle)
-{
-    while (*str == ' ') str++;
-    str = _parse_number(str, x);
-    while (*str == ' ') str++;
-    str = _parse_number(str, y);
-    
-    while (*str == ' ') str++;
-    if (*str == ')')
-    {
-        angle = 0.0;
-        return str;
-    }
-    
-    str = _parse_number(str, angle);
-    return str;
-}
-
-const char *kicad_pcb_parser::_parse_pad_size(const char *str, float& w, float& h)
-{
-    while (*str == ' ') str++;
-    str = _parse_number(str, w);
-    while (*str == ' ') str++;
-    str = _parse_number(str, h);
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_reference(const char *str, std::string& footprint_name)
-{
-    while (*str == ' ') str++;
-    str = _parse_string(str, footprint_name);
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_pad(const char *str, pcb::pad& p)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    float x = 0.;
-    float y = 0.;
-    float angle = 0.;
-    while (*str)
-    {
-        if (*str == '"')
-        {
-            str = _parse_string(str, p.pad_number);
-            continue;
-        }
-        else if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "at")
-            {
-                str = _parse_at(str, x, y, angle);
-                p.at.x = x;
-                p.at.y = y;
-                p.at_angle = angle;
-            }
-            else if (label == "size")
-            {
-                str = _parse_pad_size(str, p.size_w, p.size_h);
-            }
-            else if (label == "net")
-            {
-                str = _parse_net(str, p.net, p.net_name);
-                right++;
-            }
-            else if (label == "tstamp")
-            {
-                std::string tstamp;
-                str = _parse_tstamp(str, p.tstamp);
-            }
-            else if (label == "layers")
-            {
-                str = _parse_layers(str, p.layers);
-            }
-            else
-            {
-                str = _skip(str + 1);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_setup(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
                 
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "stackup")
-            {
-                str = _parse_stackup(str);
-                right++;
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    return str;
-}
-
-
-const char *kicad_pcb_parser::_parse_stackup(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
+                if (layers && !layers->params.empty())
+                {
+                    std::string str = layers->params[0];
+                    p.layers.push_back(_strip_string(str));
+                }
+                if (pad_at && pad_at->params.size() >= 2)
+                {
+                    p.at.x = atof(pad_at->params[0].c_str());
+                    p.at.y = atof(pad_at->params[1].c_str());
+                }
+                if (pad_at && pad_at->params.size() >= 3)
+                {
+                    p.at_angle = atof(pad_at->params[2].c_str());
+                }
                 
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "layer")
-            {
-                str = _parse_stackup_layer(str);
-                right++;
+                if (size && size->params.size() == 2)
+                {
+                    p.size_w = atof(size->params[0].c_str());
+                    p.size_h = atof(size->params[1].c_str());
+                }
+                if (net && net->params.size() > 0)
+                {
+                    p.net = atoi(net->params[0].c_str());
+                }
+                
+                if (net && net->params.size() > 1)
+                {
+                    p.net_name = _strip_string(net->params[1]);
+                }
+                
+                footprint.pads.push_back(p);
             }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
+            _pcb->add_footprint(footprint);
         }
     }
-    return str;
-}
-
-const char *kicad_pcb_parser::_parse_stackup_layer(const char *str)
-{
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    pcb::layer l;
-    
-    while (*str != '"') str++;
-    str = _parse_string(str, l.name);
-    
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            
-            if (label == "type")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, l.type);
-            }
-            else if (label == "thickness")
-            {
-                while (*str == ' ') str++;
-                str = _parse_number(str, l.thickness);
-            }
-            else if (label == "epsilon_r")
-            {
-                while (*str == ' ') str++;
-                str = _parse_number(str, l.epsilon_r);
-            }
-            else
-            {
-                str = _skip(str);
-                right++;
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    
-    if (l.type == "copper"
-        || l.type == "core"
-        || l.type == "prepreg"
-        || l.type == "Top Solder Mask"
-        || l.type == "Bottom Solder Mask")
-    {
-        if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
-        {
-            printf("warn: not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
-            l.epsilon_r  = 3.8;
-        }
-        
-        if (l.thickness == 0)
-        {
-            printf("warn: not found thickness (%s). use default 0.1.\n", l.name.c_str());
-            l.thickness = 0.1;
-        }
-        
-        _z_extr->add_layer(l);
-        _layers++;
-    }
-    return str;
 }
 
 
-const char *kicad_pcb_parser::_parse_edge(const char *str)
+void kicad_pcb_parser::_add_gr_to_pcb()
 {
-    std::uint32_t left = 1;
-    std::uint32_t right = 0;
-    pcb::point start;
-    pcb::point mid;
-    pcb::point end;
+    for (const auto& child: _root->childs)
+    {
+        if (child->label == "gr_arc"
+            || child->label == "gr_rect"
+            || child->label == "gr_line"
+            || child->label == "gr_poly"
+            || child->label == "gr_circle")
+        {
+            std::shared_ptr<pcb_object> start = child->find_child("start");
+            std::shared_ptr<pcb_object> center = child->find_child("center");
+            std::shared_ptr<pcb_object> mid = child->find_child("mid");
+            std::shared_ptr<pcb_object> end = child->find_child("end");
+            std::shared_ptr<pcb_object> layer = child->find_child("layer");
+            std::shared_ptr<pcb_object> fill = child->find_child("fill");
+            std::shared_ptr<pcb_object> stroke = child->find_child("stroke");
+            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            std::shared_ptr<pcb_object> pts = child->find_child("pts");
+            
+            if (layer && layer->params.size() == 1
+                && stroke && stroke->childs.size() == 2
+                && tstamp && tstamp->params.size())
+            {
+                std::shared_ptr<pcb_object> stroke_width = stroke->find_child("width");
+                std::shared_ptr<pcb_object> stroke_type = stroke->find_child("type");
+                
+                pcb::gr gr;
+                if (start && start->params.size() == 2)
+                {
+                    gr.start.x = atof(start->params[0].c_str());
+                    gr.start.y = atof(start->params[1].c_str());
+                }
+                else if (center && center->params.size() == 2)
+                {
+                    gr.start.x = atof(center->params[0].c_str());
+                    gr.start.y = atof(center->params[1].c_str());
+                }
+                
+                if (mid && mid->params.size() == 2)
+                {
+                    gr.mid.x = atof(mid->params[0].c_str());
+                    gr.mid.y = atof(mid->params[1].c_str());
+                }
+                if (end && end->params.size() == 2)
+                {
+                    gr.end.x = atof(end->params[0].c_str());
+                    gr.end.y = atof(end->params[1].c_str());
+                }
+                
+                gr.layer_name = _strip_string(layer->params[0]);
+                gr.tstamp = tstamp->params[0];
+                
+                if (child->label == "gr_arc")
+                {
+                    gr.gr_type = pcb::gr::GR_ARC;
+                }
+                else if (child->label == "gr_rect")
+                {
+                    gr.gr_type = pcb::gr::GR_RECT;
+                }
+                else if (child->label == "gr_line")
+                {
+                    gr.gr_type = pcb::gr::GR_LINE;
+                }
+                else if (child->label == "gr_poly")
+                {
+                    gr.gr_type = pcb::gr::GR_POLY;
+                }
+                else if (child->label == "gr_circle")
+                {
+                    gr.gr_type = pcb::gr::GR_CIRCLE;
+                }
+                
+                if (fill && fill->params.size() == 1)
+                {
+                    if (fill->params[0] == "solid")
+                    {
+                        gr.fill_type = pcb::gr::FILL_SOLID;
+                    }
+                    else
+                    {
+                        gr.fill_type = pcb::gr::FILL_NONE;
+                    }
+                }
+                
+                
+                if (stroke_width && stroke_width->params.size() == 1)
+                {
+                    gr.stroke_width = atof(stroke_width->params[0].c_str());
+                }
+                
+                if (stroke_type && stroke_type->params.size() == 1)
+                {
+                    if (stroke_type->params[0] == "solid")
+                    {
+                        gr.stroke_type = pcb::gr::STROKE_SOLID;
+                    }
+                    else
+                    {
+                        gr.stroke_type = pcb::gr::STROKE_NONE;
+                    }
+                }
+                
+                if (pts)
+                {
+                    for (const auto& xy: pts->find_childs("xy"))
+                    {
+                        if (xy->params.size() == 2)
+                        {
+                            pcb::point p;
+                            p.x = atof(xy->params[0].c_str());
+                            p.y = atof(xy->params[1].c_str());
+                            gr.pts.push_back(p);
+                        }
+                    }
+                }
+                _pcb->add_gr(gr);
+                _update_edge(gr);
+            }
+        }
+    }
+}
+
+
+void kicad_pcb_parser::_update_edge(const pcb::gr& g)
+{
     pcb::point center;
-    std::string layer_name;
     
-    bool is_arc = false;
-    bool is_circle = false;
+    bool is_arc = g.gr_type == pcb::gr::GR_ARC;
+    bool is_circle = g.gr_type == pcb::gr::GR_CIRCLE;
     
-    while (*str)
-    {
-        if (*str == '(')
-        {
-            left++;
-            std::string label;
-            str = _parse_label(str + 1, label);
-            if (label == "start")
-            {
-                str = _parse_postion(str, start.x, start.y);
-                
-            }
-            else if (label == "end")
-            {
-                str = _parse_postion(str, end.x, end.y);
-                
-            }
-            else if (label == "mid")
-            {
-                str = _parse_postion(str, mid.x, mid.y);
-                is_arc = true;
-            }
-            else if (label == "center")
-            {
-                str = _parse_postion(str, center.x, center.y);
-                is_circle = true;
-            }
-            else if (label == "layer")
-            {
-                while (*str != '"') str++;
-                str = _parse_string(str, layer_name);
-            }
-            else if (label == "width")
-            {
-                float w;
-                str = _parse_number(str, w);
-            }
-            else if (label == "tstamp")
-            {
-                std::string tstamp;
-                str = _parse_tstamp(str, tstamp);
-            }
-            continue;
-        }
-        else if (*str == ')')
-        {
-            right++;
-        }
-        str++;
-        if (left == right)
-        {
-            break;
-        }
-    }
-    
-    if (layer_name == "Edge.Cuts")
+    if (g.layer_name == "Edge.Cuts")
     {
         float left = _pcb_left;
         float right = _pcb_right;
@@ -928,7 +637,7 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
             double x;
             double y;
             double r;
-            calc_arc_center_radius(start.x, start.y, mid.x, mid.y, end.x, end.y, x, y, r);
+            calc_arc_center_radius(g.start.x, g.start.y, g.mid.x, g.mid.y, g.end.x, g.end.y, x, y, r);
             center.x = x;
             center.y = y;
             is_circle = true;
@@ -937,7 +646,7 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
         
         if (is_circle)
         {
-            float r = calc_dist(center.x, center.y, end.x, end.y);
+            float r = calc_dist(center.x, center.y, g.end.x, g.end.y);
             left = center.x - r;
             right = center.x + r;
             top = center.y - r;
@@ -945,12 +654,10 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
         }
         else
         {
-            
-            left = std::min(start.x, end.x);
-            right = std::max(start.x, end.x);
-            top = std::min(start.y, end.y);
-            bottom = std::max(start.y, end.y);
-            
+            left = std::min(g.start.x, g.end.x);
+            right = std::max(g.start.x, g.end.x);
+            top = std::min(g.start.y, g.end.y);
+            bottom = std::max(g.start.y, g.end.y);
         }
         
         if (left < _pcb_left)
@@ -974,7 +681,18 @@ const char *kicad_pcb_parser::_parse_edge(const char *str)
         }
         
     }
-                
-    return str;
 }
 
+std::string kicad_pcb_parser::_strip_string(const std::string& str)
+{
+    std::string tmp = str;
+    if (tmp.front() == '\"')
+    {
+        tmp = tmp.substr(1);
+    }
+    if (tmp.back() == '\"')
+    {
+        tmp.pop_back();
+    }
+    return tmp;
+}
