@@ -33,95 +33,11 @@ class fasthenry;
 class z_extractor
 {
 public:
-    struct pcb_point
-    {
-        pcb_point(): x(0), y(0) { }
-        float x;
-        float y;
-        bool operator < (const pcb_point& p) const {
-            return x < p.x || (!(p.x < x) && y < p.y);
-        }
-    };
-
-    struct zone
-    {
-        std::list<pcb_point> pts;
-        std::string layer_name;
-        std::uint32_t net;
-        std::string tstamp;
-    };
-    
-    
-    struct via
-    {
-        via(): size(0), drill(0), net(0) {}
-        pcb_point at;
-        float size;
-        float drill;
-        std::list<std::string> layers;
-        std::uint32_t net;
-        std::string tstamp;
-    };
-    
-    struct net
-    {
-        net(): id(0) {}
-        std::uint32_t id;
-        std::string name;
-    };
-    
-    enum
-    {
-        PAD_THRU_HOLE_RECT,
-        PAD_SMD_ROUNDRECT,
-    };
-    
-    enum
-    {
-        LAYER_TYPE_COPPER = 0,
-        LAYER_TYPE_CORE
-    };
-    
-    struct pad
-    {
-        pad()
-            : type(0), net(0), ref_at_angle(0), at_angle(0)
-            , size_w(0)
-            , size_h(0)
-            {}
-        std::string footprint;
-        std::string pad_number;
-        std::uint32_t type;
-        std::uint32_t net;
-        std::string net_name;
-        
-        pcb_point ref_at;
-        float ref_at_angle;
-        
-        pcb_point at;
-        float at_angle;
-        float size_w;
-        float size_h;
-        std::list<std::string> layers;
-        std::string tstamp;
-    };
-    
-    
-    struct layer
-    {
-        layer(): thickness(0), epsilon_r(0) {}
-        
-        std::string name;
-        std::string type;
-        float thickness;
-        float epsilon_r;
-    };
-    
     struct cond
     {
         cond(): w(0), h(0) {}
-        z_extractor::pcb_point start;
-        z_extractor::pcb_point end;
+        pcb::point start;
+        pcb::point end;
         float w;
         float h;
     };
@@ -145,7 +61,7 @@ public:
                         std::string& ckt, std::set<std::string>& footprint, std::string& call,
                         float Z0_avg[2], float td_sum[2], float velocity_avg[2], float& Zodd_avg, float& Zeven_avg);
     
-    std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<z_extractor::pcb_point>& points);
+    std::string gen_zone_fasthenry(std::uint32_t net_id, std::set<pcb::point>& points);
     
     
     void set_freq(float freq) { _freq = freq; }
@@ -202,7 +118,7 @@ private:
     /* 单位 nH */
     float _calc_segment_l(const pcb::segment& s);
     /* 单位 nH */
-    float _calc_via_l(const via& s, const std::string& layer_name1, const std::string& layer_name2);
+    float _calc_via_l(const pcb::via& s, const std::string& layer_name1, const std::string& layer_name2);
     
     
     bool _is_coupled(const pcb::segment& s1, const pcb::segment& s2, float coupled_max_gap, float coupled_min_len);

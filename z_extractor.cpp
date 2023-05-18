@@ -1679,7 +1679,7 @@ float z_extractor::_calc_segment_l(const pcb::segment& s)
 }
 
 
-float z_extractor::_calc_via_l(const via& v, const std::string& layer_name1, const std::string& layer_name2)
+float z_extractor::_calc_via_l(const pcb::via& v, const std::string& layer_name1, const std::string& layer_name2)
 {
     float h = _pcb->get_layer_distance(layer_name1, layer_name2);
     return h / 5 * (1 + log(4.0 * h / v.drill));

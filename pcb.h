@@ -202,10 +202,19 @@ public:
     
     struct layer
     {
-        layer(): thickness(0), epsilon_r(0) {}
+        enum
+        {
+            COPPER,
+            CORE,
+            PREPREG,
+            TOP_SOLDER_MASK,
+            BOTTOM_SOLDER_MASK
+        };
+        
+        layer(): type(COPPER), thickness(0), epsilon_r(0) {}
         
         std::string name;
-        std::string type;
+        std::uint32_t type;
         float thickness;
         float epsilon_r;
     };
@@ -236,6 +245,7 @@ public:
     float get_edge_left() { return _pcb_left; }
     float get_edge_right() { return _pcb_right; }
     
+    std::vector<layer> get_layers() { return _layers; }
     std::list<segment> get_segments(std::uint32_t net_id);
     std::list<pad> get_pads(std::uint32_t net_id);
     bool get_pad(const std::string& footprint, const std::string& pad_number, pcb::pad& pad);
@@ -255,7 +265,6 @@ public:
     static std::string format_net_name(const std::string& net_name);
     std::string format_layer_name(std::string layer_name);
     static std::string gen_pad_net_name(const std::string& footprint, const std::string& net_name);
-    
     
     std::vector<std::string> get_all_cu_layer();
     std::vector<std::string> get_all_dielectric_layer();

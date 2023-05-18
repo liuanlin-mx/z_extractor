@@ -32,9 +32,9 @@ kicad_pcb_parser::~kicad_pcb_parser()
 {
 }
 
-bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> z_extr)
+bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> pcb)
 {
-    _pcb = z_extr;
+    _pcb = pcb;
     
     
     FILE *fp = fopen(filepath, "rb");
@@ -225,7 +225,7 @@ void kicad_pcb_parser::_add_layers()
         {
             pcb::layer l;
             l.name = layer->params[0];
-            l.type = _strip_string(type->params[0]);
+            std::string layer_type = _strip_string(type->params[0]);
             
             if (thickness && thickness->params.size() > 0)
             {
@@ -238,13 +238,13 @@ void kicad_pcb_parser::_add_layers()
             }
             
     
-            if (l.type == "copper"
-                || l.type == "core"
-                || l.type == "prepreg"
-                || l.type == "Top Solder Mask"
-                || l.type == "Bottom Solder Mask")
+            if (layer_type == "copper"
+                || layer_type == "core"
+                || layer_type == "prepreg"
+                || layer_type == "Top Solder Mask"
+                || layer_type == "Bottom Solder Mask")
             {
-                if ((l.type == "Top Solder Mask" || l.type == "Bottom Solder Mask") && l.epsilon_r == 0)
+                if ((layer_type == "Top Solder Mask" || layer_type == "Bottom Solder Mask") && l.epsilon_r == 0)
                 {
                     printf("warn: not found epsilon r (%s). use default 3.8.\n", l.name.c_str());
                     l.epsilon_r  = 3.8;
@@ -256,6 +256,26 @@ void kicad_pcb_parser::_add_layers()
                     l.thickness = 0.035;
                 }
                 
+                if (layer_type == "copper")
+                {
+                    l.type = pcb::layer::COPPER;
+                }
+                else if (layer_type == "core")
+                {
+                    l.type = pcb::layer::CORE;
+                }
+                else if (layer_type == "prepreg")
+                {
+                    l.type = pcb::layer::PREPREG;
+                }
+                else if (layer_type == "Top Solder Mask")
+                {
+                    l.type = pcb::layer::TOP_SOLDER_MASK;
+                }
+                else if (layer_type == "Bottom Solder Mask")
+                {
+                    l.type = pcb::layer::BOTTOM_SOLDER_MASK;
+                }
                 _pcb->add_layer(l);
                 _layers++;
             }

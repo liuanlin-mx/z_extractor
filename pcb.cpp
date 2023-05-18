@@ -608,7 +608,7 @@ std::vector<std::string> pcb::get_all_cu_layer()
     std::vector<std::string> layers;
     for (auto& l: _layers)
     {
-        if (l.type != "copper")
+        if (l.type != pcb::layer::COPPER)
         {
             continue;
         }
@@ -622,10 +622,10 @@ std::vector<std::string> pcb::get_all_dielectric_layer()
     std::vector<std::string> layers;
     for (auto& l: _layers)
     {
-        if (l.type != "core"
-            && l.type != "prepreg"
-            && l.type != "Top Solder Mask"
-            && l.type != "Bottom Solder Mask")
+        if (l.type != pcb::layer::CORE
+            && l.type != pcb::layer::PREPREG
+            && l.type != pcb::layer::TOP_SOLDER_MASK
+            && l.type != pcb::layer::BOTTOM_SOLDER_MASK)
         {
             continue;
         }
@@ -639,7 +639,7 @@ std::vector<std::string> pcb::get_all_mask_layer()
     std::vector<std::string> layers;
     for (auto& l: _layers)
     {
-        if (l.type != "Top Solder Mask" && l.type != "Bottom Solder Mask")
+        if (l.type != pcb::layer::TOP_SOLDER_MASK && l.type != pcb::layer::BOTTOM_SOLDER_MASK)
         {
             continue;
         }
@@ -655,7 +655,7 @@ std::vector<std::string> pcb::get_via_layers(const via& v)
     bool flag = false;
     for (auto& l: _layers)
     {
-        if (l.type != "copper")
+        if (l.type != pcb::layer::COPPER)
         {
             continue;
         }
@@ -740,7 +740,7 @@ bool pcb::is_cu_layer(const std::string& layer)
     {
         if (layer == l.name)
         {
-            return l.type == "copper";
+            return l.type == pcb::layer::COPPER;
         }
     }
     return false;
@@ -896,12 +896,12 @@ float pcb::get_cu_layer_epsilon_r(const std::string& layer_name)
     }
     
     
-    if (up.type == "Top Solder Mask" || up.type == "Bottom Solder Mask")
+    if (up.type == pcb::layer::TOP_SOLDER_MASK || up.type == pcb::layer::BOTTOM_SOLDER_MASK)
     {
         return up.epsilon_r;
     }
     
-    if (down.type == "Top Solder Mask" || down.type == "Bottom Solder Mask")
+    if (down.type == pcb::layer::TOP_SOLDER_MASK || down.type == pcb::layer::BOTTOM_SOLDER_MASK)
     {
         return down.epsilon_r;
     }
@@ -952,7 +952,7 @@ float pcb::get_cu_min_thickness()
     float thickness = 1;
     for (const auto& l: _layers)
     {
-        if (l.type == "copper")
+        if (l.type == pcb::layer::COPPER)
         {
             if (l.thickness < thickness)
             {
@@ -987,10 +987,10 @@ bool pcb::cu_layer_is_outer_layer(const std::string& layer_name)
         }
     }
     
-    if (up.type == "Top Solder Mask"
-        || up.type == "Bottom Solder Mask"
-        || down.type == "Top Solder Mask"
-        || down.type == "Bottom Solder Mask")
+    if (up.type == pcb::layer::TOP_SOLDER_MASK
+        || up.type == pcb::layer::BOTTOM_SOLDER_MASK
+        || down.type == pcb::layer::TOP_SOLDER_MASK
+        || down.type == pcb::layer::BOTTOM_SOLDER_MASK)
     {
         return true;
     }

@@ -60,7 +60,7 @@ public:
     ~kicad_pcb_parser();
     
 public:
-    bool parse(const char *filepath, std::shared_ptr<pcb> z_extr);
+    bool parse(const char *filepath, std::shared_ptr<pcb> pcb);
     void print_pcb();
     
 private:
