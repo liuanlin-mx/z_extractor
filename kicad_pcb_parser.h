@@ -79,6 +79,7 @@ private:
     void _add_via_to_pcb();
     void _add_zone_to_pcb();
     void _add_footprint_to_pcb();
+    void _add_gr_to_footprint(std::shared_ptr<pcb_object> fp_obj, pcb::footprint& fp);
     void _add_gr_to_pcb();
     void _update_edge(const pcb::gr& g);
     

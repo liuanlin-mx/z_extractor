@@ -34,6 +34,7 @@ public:
     struct point
     {
         point(): x(0), y(0) { }
+        point(float x_, float y_): x(x_), y(y_) { }
         float x;
         float y;
         bool operator < (const point& p) const {
@@ -160,9 +161,10 @@ public:
         };
         
         pad()
-            : /*type(0), */net(0), ref_at_angle(0), at_angle(0)
+            : type(0), shape(SHAPE_CIRCLE), net(0), ref_at_angle(0), at_angle(0)
             , size_w(0)
             , size_h(0)
+            , drill(0)
             {}
         std::string footprint;
         std::string pad_number;
@@ -178,6 +180,7 @@ public:
         float at_angle;
         float size_w;
         float size_h;
+        float drill;
         std::list<std::string> layers;
         std::string tstamp;
     };
@@ -245,6 +248,7 @@ public:
     
     
     void get_pad_pos(const pad& p, float& x, float& y);
+    void get_rotation_pos(const point& c, float rotate_angle, point& p);
     std::string get_tstamp_short(const std::string& tstamp);
     static std::string format_net(const std::string& name);
     std::string pos2net(float x, float y, const std::string& layer);
@@ -311,7 +315,9 @@ private:
     
     void _draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     void _draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
-    void _draw_gr(cv::Mat& img, const pcb::gr& gr, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_fp(cv::Mat& img, const pcb::footprint& fp, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     
     
 private:

@@ -450,6 +450,19 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 p.ref_at = footprint.at;
                 p.ref_at_angle = footprint.at_angle;
                 
+                if (pad->params[2] == "rect")
+                {
+                    p.type = pcb::pad::SHAPE_RECT;
+                }
+                else if (pad->params[2] == "circle")
+                {
+                    p.type = pcb::pad::SHAPE_CIRCLE;
+                }
+                else if (pad->params[2] == "roundrect")
+                {
+                    p.type = pcb::pad::SHAPE_ROUNDRECT;
+                }
+                
                 if (pad_tstamp && !pad_tstamp->params.empty())
                 {
                     p.tstamp = pad_tstamp->params[0];
@@ -487,11 +500,137 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 
                 footprint.pads.push_back(p);
             }
+            
+            
+            _add_gr_to_footprint(child, footprint);
             _pcb->add_footprint(footprint);
         }
     }
 }
 
+void kicad_pcb_parser::_add_gr_to_footprint(std::shared_ptr<pcb_object> fp_obj, pcb::footprint& fp)
+{
+    
+    for (const auto& child: fp_obj->childs)
+    {
+        if (child->label == "fp_arc"
+            || child->label == "fp_rect"
+            || child->label == "fp_line"
+            || child->label == "fp_poly"
+            || child->label == "fp_circle")
+        {
+            std::shared_ptr<pcb_object> start = child->find_child("start");
+            std::shared_ptr<pcb_object> center = child->find_child("center");
+            std::shared_ptr<pcb_object> mid = child->find_child("mid");
+            std::shared_ptr<pcb_object> end = child->find_child("end");
+            std::shared_ptr<pcb_object> layer = child->find_child("layer");
+            std::shared_ptr<pcb_object> fill = child->find_child("fill");
+            std::shared_ptr<pcb_object> stroke = child->find_child("stroke");
+            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            std::shared_ptr<pcb_object> pts = child->find_child("pts");
+            
+            if (layer && layer->params.size() == 1
+                && stroke && stroke->childs.size() == 2
+                && tstamp && tstamp->params.size())
+            {
+                std::shared_ptr<pcb_object> stroke_width = stroke->find_child("width");
+                std::shared_ptr<pcb_object> stroke_type = stroke->find_child("type");
+                
+                pcb::gr gr;
+                if (start && start->params.size() == 2)
+                {
+                    gr.start.x = atof(start->params[0].c_str());
+                    gr.start.y = atof(start->params[1].c_str());
+                }
+                else if (center && center->params.size() == 2)
+                {
+                    gr.start.x = atof(center->params[0].c_str());
+                    gr.start.y = atof(center->params[1].c_str());
+                }
+                
+                if (mid && mid->params.size() == 2)
+                {
+                    gr.mid.x = atof(mid->params[0].c_str());
+                    gr.mid.y = atof(mid->params[1].c_str());
+                }
+                if (end && end->params.size() == 2)
+                {
+                    gr.end.x = atof(end->params[0].c_str());
+                    gr.end.y = atof(end->params[1].c_str());
+                }
+                
+                gr.layer_name = _strip_string(layer->params[0]);
+                gr.tstamp = tstamp->params[0];
+                
+                if (child->label == "fp_arc")
+                {
+                    gr.gr_type = pcb::gr::GR_ARC;
+                }
+                else if (child->label == "fp_rect")
+                {
+                    gr.gr_type = pcb::gr::GR_RECT;
+                }
+                else if (child->label == "fp_line")
+                {
+                    gr.gr_type = pcb::gr::GR_LINE;
+                }
+                else if (child->label == "fp_poly")
+                {
+                    gr.gr_type = pcb::gr::GR_POLY;
+                }
+                else if (child->label == "fp_circle")
+                {
+                    gr.gr_type = pcb::gr::GR_CIRCLE;
+                }
+                
+                if (fill && fill->params.size() == 1)
+                {
+                    if (fill->params[0] == "solid")
+                    {
+                        gr.fill_type = pcb::gr::FILL_SOLID;
+                    }
+                    else
+                    {
+                        gr.fill_type = pcb::gr::FILL_NONE;
+                    }
+                }
+                
+                
+                if (stroke_width && stroke_width->params.size() == 1)
+                {
+                    gr.stroke_width = atof(stroke_width->params[0].c_str());
+                }
+                
+                if (stroke_type && stroke_type->params.size() == 1)
+                {
+                    if (stroke_type->params[0] == "solid")
+                    {
+                        gr.stroke_type = pcb::gr::STROKE_SOLID;
+                    }
+                    else
+                    {
+                        gr.stroke_type = pcb::gr::STROKE_NONE;
+                    }
+                }
+                
+                if (pts)
+                {
+                    for (const auto& xy: pts->find_childs("xy"))
+                    {
+                        if (xy->params.size() == 2)
+                        {
+                            pcb::point p;
+                            p.x = atof(xy->params[0].c_str());
+                            p.y = atof(xy->params[1].c_str());
+                            gr.pts.push_back(p);
+                        }
+                    }
+                }
+                fp.grs.push_back(gr);
+            }
+        }
+    }
+}
 
 void kicad_pcb_parser::_add_gr_to_pcb()
 {
