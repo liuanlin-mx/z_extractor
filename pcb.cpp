@@ -191,6 +191,12 @@ cv::Mat pcb::draw(const std::string& layer_name, float pix_unit)
         }
     }
     
+    for (const auto& it: _vias)
+    {
+        const via& v = it.second;
+        _draw_via(img, v, layer_name, 0, 0, 255, pix_unit);
+    }
+    
     for (const auto& it: _zones)
     {
         const zone& z = it.second;
@@ -372,6 +378,24 @@ std::list<pcb::segment> pcb::get_segments(std::uint32_t net_id)
     return segments;
 }
 
+
+const std::vector<pcb::footprint>& pcb::get_footprints()
+{
+    return _footprints;
+}
+
+bool pcb::get_footprint(const std::string& fp_ref, footprint& fp)
+{
+    for (const auto& fp_: _footprints)
+    {
+        if (fp_.reference == fp_ref)
+        {
+            fp = fp_;
+            return true;
+        }
+    }
+    return false;
+}
 
 std::list<pcb::pad> pcb::get_pads(std::uint32_t net_id)
 {
@@ -865,6 +889,10 @@ float pcb::get_layer_epsilon_r(const std::string& layer_name)
     {
         if (l.name == layer_name)
         {
+            if (l.type == pcb::layer::COPPER)
+            {
+                return get_cu_layer_epsilon_r(layer_name);
+            }
             return l.epsilon_r;
         }
     }
@@ -1367,6 +1395,25 @@ void pcb::_draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std
     }
 }
 
+void pcb::_draw_via(cv::Mat& img, const pcb::via& v, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
+{
+    std::vector<std::string> layers = get_via_layers(v);
+    
+    for (const auto& layer: layers)
+    {
+        if (layer_name == layer)
+        {
+            pcb::point c(v.at);
+            
+            cv::Point center(_cvt_img_x(c.x, pix_unit), _cvt_img_y(c.y, pix_unit));
+            float radius = v.size / 2;
+            radius = _cvt_img_len(radius, pix_unit);
+            cv::circle(img, center, radius, cv::Scalar(b, g, r), -1);
+        }
+    }
+    
+}
+
 void pcb::_draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)
 {
     std::vector<cv::Point> pts;
@@ -1483,7 +1530,7 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
         return;
     }
     
-    if (p.type == pcb::pad::SHAPE_RECT || p.type == pcb::pad::SHAPE_ROUNDRECT)
+    if (p.shape == pcb::pad::SHAPE_RECT || p.shape == pcb::pad::SHAPE_ROUNDRECT)
     {
         point p1(p.at.x - p.size_w / 2, p.at.y + p.size_h / 2);
         point p2(p.at.x + p.size_w / 2, p.at.y + p.size_h / 2);
@@ -1504,7 +1551,7 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
         
         cv::fillPoly(img, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(b, g, r));
     }
-    else if (p.type == pcb::pad::SHAPE_CIRCLE)
+    else if (p.shape == pcb::pad::SHAPE_CIRCLE)
     {
         point c(p.at);
         
@@ -1514,7 +1561,7 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
         radius = _cvt_img_len(radius, pix_unit);
         cv::circle(img, center, radius, cv::Scalar(b, g, r), -1);
     }
-    else if (p.type == pcb::pad::SHAPE_OVAL)
+    else if (p.shape == pcb::pad::SHAPE_OVAL)
     {
         
     }

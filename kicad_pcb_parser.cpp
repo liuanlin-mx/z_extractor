@@ -462,8 +462,10 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 std::shared_ptr<pcb_object> layers = pad->find_child("layers");
                 std::shared_ptr<pcb_object> pad_at = pad->find_child("at");
                 std::shared_ptr<pcb_object> size = pad->find_child("size");
+                std::shared_ptr<pcb_object> drill = pad->find_child("drill");
                 std::shared_ptr<pcb_object> pad_tstamp = pad->find_child("tstamp");
                 std::shared_ptr<pcb_object> net = pad->find_child("net");
+                
                 pcb::pad p;
                 p.footprint = footprint.reference;
                 p.pad_number = pad->params[0];
@@ -472,15 +474,28 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 
                 if (pad->params[2] == "rect")
                 {
-                    p.type = pcb::pad::SHAPE_RECT;
+                    p.shape = pcb::pad::SHAPE_RECT;
                 }
                 else if (pad->params[2] == "circle")
                 {
-                    p.type = pcb::pad::SHAPE_CIRCLE;
+                    p.shape = pcb::pad::SHAPE_CIRCLE;
                 }
                 else if (pad->params[2] == "roundrect")
                 {
-                    p.type = pcb::pad::SHAPE_ROUNDRECT;
+                    p.shape = pcb::pad::SHAPE_ROUNDRECT;
+                }
+                
+                if (pad->params[1] == "thru_hole")
+                {
+                    p.type = pcb::pad::TYPE_THRU_HOLE;
+                }
+                else if (pad->params[1] == "connect")
+                {
+                    p.type = pcb::pad::TYPE_CONNECT;
+                }
+                else if (pad->params[1] == "smd")
+                {
+                    p.type = pcb::pad::TYPE_SMD;
                 }
                 
                 if (pad_tstamp && !pad_tstamp->params.empty())
@@ -493,11 +508,13 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                     std::string str = layers->params[0];
                     p.layers.push_back(_strip_string(str));
                 }
+                
                 if (pad_at && pad_at->params.size() >= 2)
                 {
                     p.at.x = atof(pad_at->params[0].c_str());
                     p.at.y = atof(pad_at->params[1].c_str());
                 }
+                
                 if (pad_at && pad_at->params.size() >= 3)
                 {
                     p.at_angle = atof(pad_at->params[2].c_str());
@@ -508,6 +525,12 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                     p.size_w = atof(size->params[0].c_str());
                     p.size_h = atof(size->params[1].c_str());
                 }
+                
+                if (drill && drill->params.size() == 1)
+                {
+                    p.drill = atof(drill->params[0].c_str());
+                }
+                
                 if (net && net->params.size() > 0)
                 {
                     p.net = atoi(net->params[0].c_str());

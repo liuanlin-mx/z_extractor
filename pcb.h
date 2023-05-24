@@ -156,12 +156,13 @@ public:
         };
         enum
         {
-            TYPE_CONNECT,
+            TYPE_SMD,
             TYPE_THRU_HOLE,
+            TYPE_CONNECT,
         };
         
         pad()
-            : type(0), shape(SHAPE_CIRCLE), net(0), ref_at_angle(0), at_angle(0)
+            : type(TYPE_SMD), shape(SHAPE_CIRCLE), net(0), ref_at_angle(0), at_angle(0)
             , size_w(0)
             , size_h(0)
             , drill(0)
@@ -244,10 +245,14 @@ public:
     float get_edge_bottom() { return _pcb_bottom; }
     float get_edge_left() { return _pcb_left; }
     float get_edge_right() { return _pcb_right; }
+    float get_edge_size_x() { return fabs(_pcb_right - _pcb_left); }
+    float get_edge_size_y() { return fabs(_pcb_bottom - _pcb_top); }
     
     std::vector<layer> get_layers() { return _layers; }
     std::list<segment> get_segments(std::uint32_t net_id);
+    const std::vector<footprint>& get_footprints();
     std::list<pad> get_pads(std::uint32_t net_id);
+    bool get_footprint(const std::string& fp_ref, footprint& fp);
     bool get_pad(const std::string& footprint, const std::string& pad_number, pcb::pad& pad);
     std::list<via> get_vias(std::uint32_t net_id);
     std::list<via> get_vias(const std::vector<std::uint32_t>& net_ids);
@@ -323,6 +328,7 @@ private:
     
     
     void _draw_segment(cv::Mat& img, const pcb::segment& s, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
+    void _draw_via(cv::Mat& img, const pcb::via& v, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     void _draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     void _draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     void _draw_fp(cv::Mat& img, const pcb::footprint& fp, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);

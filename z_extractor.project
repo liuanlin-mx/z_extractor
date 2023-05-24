@@ -12,6 +12,8 @@
     <File Name="plugin/z_extractor.py"/>
   </VirtualDirectory>
   <VirtualDirectory Name="z_extractor">
+    <File Name="openems_model_gen.h"/>
+    <File Name="openems_model_gen.cpp"/>
     <File Name="pcb.h"/>
     <File Name="pcb.cpp"/>
     <File Name="fdm_Z0_calc.h"/>
