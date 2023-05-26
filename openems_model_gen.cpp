@@ -212,17 +212,16 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
 
 
 )";
-    gen_model("load_pcb_model");
-    gen_mesh("load_pcb_mesh");
     FILE *fp = fopen("antenna_simulation_scripts.m", "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 60000; min_decrement = 1e-5;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-1;\n");
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
+        //fprintf(fp, "lambda = c0 / (f0 + fc) / unit;\n");
         fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
         fprintf(fp, "BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'};\n");
         fprintf(fp, "FDTD = SetBoundaryCond(FDTD, BC);\n");
@@ -250,12 +249,18 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "%s\n", plot_nf);
         
         fclose(fp);
+    
     }
+    gen_model("load_pcb_model");
+    gen_mesh("load_pcb_mesh");
 }
 
 void openems_model_gen::_gen_mesh_z(FILE *fp)
 {
     std::string str;
+    
+    std::set<float> mesh_z = _mesh_z;
+    _mesh_z.clear();
     
     float min_z = _pcb->get_cu_min_thickness();
     std::vector<pcb::layer> layers = _pcb->get_layers();
@@ -281,10 +286,17 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
     
     
-    float thickness = _pcb->get_board_thickness();
-    float margin = std::max(thickness * 20, std::min(_pcb->get_edge_size_x(), _pcb->get_edge_size_y()));
-    fprintf(fp, "margin = %g;\n", margin);
-    fprintf(fp, "mesh.z = unique([mesh.z, -margin, margin]);\n");
+    
+    float margin = _pcb->get_board_thickness() * 20;
+    if (mesh_z.size() > 1)
+    {
+        fprintf(fp, "mesh.z = unique([mesh.z, %f, %f]);\n", std::min(-margin, *mesh_z.begin()), std::max(margin, *mesh_z.rbegin()));
+    }
+    else
+    {
+        fprintf(fp, "margin = %g;\n", margin);
+        fprintf(fp, "mesh.z = unique([mesh.z, -margin, margin]);\n");
+    }
     
     fprintf(fp, "max_res = c0 / (max_freq) / unit / 20;\n");
     fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
@@ -300,11 +312,6 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     float y1 = _pcb->get_edge_top();
     float y2 = _pcb->get_edge_bottom();
     
-    float pcb_size_x = x2 - x1;
-    float pcb_size_y = y2 - y1;
-    
-    //_mesh_x.clear();
-    //_mesh_y.clear();
     
     _mesh_x.insert(x1);
     _mesh_x.insert(x2);
@@ -312,89 +319,6 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     _mesh_y.insert(y1);
     _mesh_y.insert(y2);
     
-#if 0
-    float grid_size = 0.1;
-    float margin = 10;
-    
-    for (float x = 148; x < 168; x += grid_size)
-    {
-        bool brk = false;
-        for (auto tmp: _mesh_x)
-        {
-            if (fabs(tmp - x) < grid_size)
-            {
-                brk = true;
-            }
-        }
-        if (brk)
-        {
-            continue;
-        }
-        _mesh_x.insert(x);
-    }
-    
-    for (float y = 86; y < 94; y += grid_size)
-    {
-        bool brk = false;
-        for (auto tmp: _mesh_y)
-        {
-            if (fabs(tmp - y) < grid_size)
-            {
-                brk = true;
-            }
-        }
-        if (brk)
-        {
-            continue;
-        }
-        _mesh_y.insert(y);
-    }
-    
-    
-    
-    
-#if 0
-    grid_size = 0.5;
-    
-    
-    
-    for (float x = x1 - margin; x < x2 + margin; x += grid_size)
-    {
-        bool brk = false;
-        for (auto tmp: _mesh_x)
-        {
-            if (fabs(tmp - x) < grid_size)
-            {
-                brk = true;
-            }
-        }
-        if (brk)
-        {
-            continue;
-        }
-        _mesh_x.insert(x);
-    }
-    
-    for (float y = y1 - margin; y < y2 + margin; y += grid_size)
-    {
-        bool brk = false;
-        for (auto tmp: _mesh_y)
-        {
-            if (fabs(tmp - y) < grid_size)
-            {
-                brk = true;
-            }
-        }
-        if (brk)
-        {
-            continue;
-        }
-        _mesh_y.insert(y);
-    }
-#endif
-
-#endif
-
     fprintf(fp, "mesh.x = [");
     for (auto x: _mesh_x)
     {
@@ -409,19 +333,19 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     }
     fprintf(fp, "];\n");
     
-    //return;
     //fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
     //fprintf(fp, "max_res = %f;\n", 1);
     //fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.4);\n");
     //fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.4);\n");
     
-    fprintf(fp, "mesh.x = unique([mesh.x %f %f]);\n", x1 - pcb_size_x, x2 + pcb_size_x);
+    float lambda = 299792458. / (_f0 + _fc) * 1e3;
     
-    fprintf(fp, "mesh.y = unique([mesh.y %f %f]);\n", y1 - pcb_size_y, y2 + pcb_size_y);
+    fprintf(fp, "max_res = c0 / (max_freq) / unit / 20;\n");
+    fprintf(fp, "mesh.x = unique([mesh.x %f %f]);\n", x1 - lambda / 10, x2 + lambda / 10);
+    fprintf(fp, "mesh.y = unique([mesh.y %f %f]);\n", y1 - lambda / 10, y2 + lambda / 10);
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / 10;\n");
-    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.2);\n");
-    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.2);\n");
+    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.3);\n");
+    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.3);\n");
 }
 
 
@@ -907,9 +831,21 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
             nf2ff_cy = fp.at.y;
         }
     }
-    float x_margin = std::max(fabs(nf2ff_cx - _pcb->get_edge_left()), fabs(nf2ff_cx - _pcb->get_edge_right())) + 2;
-    float y_margin = std::max(fabs(nf2ff_cy - _pcb->get_edge_top()), fabs(nf2ff_cy - _pcb->get_edge_bottom())) + 2;
-    float z_margin = std::min(_pcb->get_board_thickness() * 15, std::min(x_margin, y_margin));
+    //float lambda = 299792458. / (_f0 + _fc) * 1e3;
+    float lambda = 299792458. / (_far_field_freq) * 1e3;
+    float x_margin = std::max(fabs(nf2ff_cx - _pcb->get_edge_left()) + lambda / 10, fabs(nf2ff_cx - _pcb->get_edge_right())  + lambda / 10);
+    x_margin = std::max(x_margin, lambda / 2);
+    float y_margin = std::max(fabs(nf2ff_cy - _pcb->get_edge_top()) + lambda / 10, fabs(nf2ff_cy - _pcb->get_edge_bottom()) + lambda / 10);
+    y_margin = std::max(y_margin, lambda / 2);
+    float z_margin = std::max(_pcb->get_board_thickness() * 10, lambda / 2);
+    
+    _mesh_x.insert(nf2ff_cx - x_margin - lambda / 10);
+    _mesh_x.insert(nf2ff_cx + x_margin + lambda / 10);
+    _mesh_y.insert(nf2ff_cy - y_margin - lambda / 10);
+    _mesh_y.insert(nf2ff_cy + y_margin + lambda / 10);
+    _mesh_z.insert(nf2ff_cz - z_margin - lambda / 10);
+    _mesh_z.insert(nf2ff_cz + z_margin + lambda / 10);
+    
     fprintf(fp, "far_field_freq = %g;\n", _far_field_freq);
     fprintf(fp, "nf2ff_cx = %e; nf2ff_cy = %e; nf2ff_cz = %e;\n", nf2ff_cx, nf2ff_cy, nf2ff_cz);
     fprintf(fp, "x_margin = %e; y_margin = %e; z_margin = %e;\n", x_margin, y_margin, z_margin);
