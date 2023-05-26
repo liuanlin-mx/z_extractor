@@ -33,6 +33,7 @@ pcb::pcb()
     , _pcb_bottom(0)
     , _pcb_left(10000.)
     , _pcb_right(0)
+    , _ignore_cu_thickness(false)
     , _float_epsilon(0.00005)
 {
     
@@ -862,6 +863,10 @@ float pcb::get_layer_thickness(const std::string& layer_name)
     {
         if (l.name == layer_name)
         {
+            if (_ignore_cu_thickness && l.type == layer::COPPER)
+            {
+                return 0;
+            }
             return l.thickness;
         }
     }
@@ -877,6 +882,11 @@ float pcb::get_layer_z_axis(const std::string& layer_name)
         if (l.name == layer_name)
         {
             break;
+        }
+        
+        if (_ignore_cu_thickness && l.type == layer::COPPER)
+        {
+            continue;
         }
         dist += l.thickness;
     }
@@ -905,6 +915,10 @@ float pcb::get_cu_layer_epsilon_r(const std::string& layer_name)
     layer up;
     layer down;
     std::int32_t state = 0;
+    if (_ignore_cu_thickness)
+    {
+        return 1;
+    }
     for (auto& l: _layers)
     {
         if (l.name == layer_name)
@@ -969,6 +983,10 @@ float pcb::get_board_thickness()
     float dist = 0;
     for (auto& l: _layers)
     {
+        if (_ignore_cu_thickness && l.type == layer::COPPER)
+        {
+            continue;
+        }
         dist += l.thickness;
     }
     return dist;
@@ -978,9 +996,36 @@ float pcb::get_board_thickness()
 float pcb::get_cu_min_thickness()
 {
     float thickness = 1;
+    if (_ignore_cu_thickness)
+    {
+        return 0;
+    }
+    
     for (const auto& l: _layers)
     {
         if (l.type == pcb::layer::COPPER)
+        {
+            if (l.thickness < thickness)
+            {
+                thickness = l.thickness;
+            }
+        }
+    }
+    return thickness;
+}
+
+
+float pcb::get_min_thickness(std::uint32_t layer_type)
+{
+    float thickness = 10;
+    if (_ignore_cu_thickness && layer_type == layer::COPPER)
+    {
+        return 0;
+    }
+    
+    for (const auto& l: _layers)
+    {
+        if (l.type == layer_type)
         {
             if (l.thickness < thickness)
             {

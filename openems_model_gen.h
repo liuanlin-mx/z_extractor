@@ -71,6 +71,8 @@ private:
     std::set<float> _mesh_y;
     std::set<float> _mesh_z;
     
+    bool _ignore_cu_thickness;
+    
     float _f0;
     float _fc;
     float _far_field_freq;

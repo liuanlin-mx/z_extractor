@@ -19,11 +19,13 @@
 #include "openems_model_gen.h"
 openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     : _pcb(pcb)
+    , _ignore_cu_thickness(true)
     , _f0(0e9)
     , _fc(3.5e9)
     , _far_field_freq(2.4e9)
     , _exc_dir(0)
 {
+    _pcb->ignore_cu_thickness(_ignore_cu_thickness);
 }
 
 openems_model_gen::~openems_model_gen()
@@ -263,17 +265,28 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     _mesh_z.clear();
     
     float min_z = _pcb->get_cu_min_thickness();
+    if (_ignore_cu_thickness)
+    {
+        min_z = _pcb->get_min_thickness(pcb::layer::DIELECTRIC);
+    }
+    
     std::vector<pcb::layer> layers = _pcb->get_layers();
+    std::string last_layer;
     for (const auto& layer: layers)
     {
         if (layer.type == pcb::layer::TOP_SOLDER_MASK || layer.type == pcb::layer::BOTTOM_SOLDER_MASK)
         {
             continue;
         }
+        if (_ignore_cu_thickness && layer.type == pcb::layer::COPPER)
+        {
+            continue;
+        }
         float z = _pcb->get_layer_z_axis(layer.name);
         _mesh_z.insert(z);
+        last_layer = layer.name;
     }
-    _mesh_z.insert(_pcb->get_layer_z_axis(layers.back().name) + _pcb->get_layer_thickness(layers.back().name));
+    _mesh_z.insert(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer));
     
     fprintf(fp, "mesh.z = [");
     for (auto z: _mesh_z)

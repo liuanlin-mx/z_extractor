@@ -206,8 +206,9 @@ public:
         enum
         {
             COPPER,
-            CORE,
-            PREPREG,
+            DIELECTRIC,
+            CORE = DIELECTRIC,
+            PREPREG = DIELECTRIC,
             TOP_SOLDER_MASK,
             BOTTOM_SOLDER_MASK
         };
@@ -236,6 +237,7 @@ public:
     bool add_gr(const gr& g);
     void set_edge(float top, float bottom, float left, float right);
     
+    void ignore_cu_thickness(bool b) { _ignore_cu_thickness = b; }
     void dump();
     cv::Mat draw(const std::string& layer_name, float pix_unit = 0.1);
     
@@ -292,6 +294,7 @@ public:
     float get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end);
     float get_board_thickness();
     float get_cu_min_thickness();
+    float get_min_thickness(std::uint32_t layer_type);
     bool cu_layer_is_outer_layer(const std::string& layer_name);
     
     
@@ -351,6 +354,8 @@ private:
     float _pcb_bottom;
     float _pcb_left;
     float _pcb_right;
+    
+    bool _ignore_cu_thickness;
     
     /* 仅仅是坐标精度 */
     const float _float_epsilon;
