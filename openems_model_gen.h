@@ -25,11 +25,44 @@
 
 class openems_model_gen
 {
+public:
     struct point
     {
+        point() : x(0), y(0), z(0) {}
+        point(float x, float y, float z) : x(x), y(y), z(z) {}
         float x;
         float y;
         float z;
+    };
+    
+    struct excitation
+    {
+        enum
+        {
+            DIR_X,
+            DIR_Y,
+            DIR_Z,
+        };
+        
+        excitation()
+            : dir(DIR_X)
+            , R(50)
+        {
+        }
+        
+        std::string footprint1;
+        std::string footprint1_pad_number;
+        std::string footprint1_layer_name;
+        
+        std::string footprint2;
+        std::string footprint2_pad_number;
+        std::string footprint2_layer_name;
+        
+        point start;
+        point end;
+        
+        std::uint32_t dir;
+        float R;
     };
     
 public:
@@ -40,7 +73,10 @@ public:
     void add_net(std::uint32_t net_id);
     void add_footprint(const std::string& fp_ref);
     void add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
-                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir);
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50);
+                        
+    void add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R = 50);
+                        
     void set_nf2ff(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
     void set_far_field_freq(float freq);
@@ -62,6 +98,7 @@ private:
     void _add_excitation(FILE *fp);
     void _add_nf2ff_box(FILE *fp);
     
+    void _clean_mesh_lines(std::set<float>& mesh_lines);
 private:
     std::shared_ptr<pcb> _pcb;
     std::set<std::uint32_t> _nets;
@@ -78,13 +115,7 @@ private:
     float _far_field_freq;
     std::string _nf2ff_fp;
     
-    std::string _exc_fp1;
-    std::string _exc_fp1_pad_number;
-    std::string _exc_fp1_layer_name;
-    std::string _exc_fp2;
-    std::string _exc_fp2_pad_number;
-    std::string _exc_fp2_layer_name;
-    std::uint32_t _exc_dir;
+    std::vector<excitation> _excitations;
 };
 
 #endif

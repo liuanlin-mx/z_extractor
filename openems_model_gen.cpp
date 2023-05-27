@@ -23,7 +23,6 @@ openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     , _f0(0e9)
     , _fc(3.5e9)
     , _far_field_freq(2.4e9)
-    , _exc_dir(0)
 {
     _pcb->ignore_cu_thickness(_ignore_cu_thickness);
 }
@@ -43,16 +42,74 @@ void openems_model_gen::add_footprint(const std::string & footprint)
 }
 
 void openems_model_gen::add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
-                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir)
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R)
 {
-    _exc_fp1 = fp1;
-    _exc_fp1_pad_number = fp1_pad_number;
-    _exc_fp1_layer_name = fp1_layer_name;
-    _exc_fp2 = fp2;
-    _exc_fp2_pad_number = fp2_pad_number;
-    _exc_fp2_layer_name = fp2_layer_name;
-    _exc_dir = dir;
+    pcb::pad pad1;
+    pcb::pad pad2;
+    pcb::footprint footprint1;
+    pcb::footprint footprint2;
+    if (_pcb->get_footprint(fp1, footprint1) && _pcb->get_footprint(fp2, footprint2)
+            && _pcb->get_pad(fp1, fp1_pad_number, pad1)
+            && _pcb->get_pad(fp2, fp2_pad_number, pad2))
+    {
+        pcb::point p1 = pad1.at;
+        pcb::point p2 = pad2.at;
+        _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
+        _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
+        
     
+        excitation ex;
+        ex.R = R;
+        ex.dir = dir;
+        
+        ex.start.z = _pcb->get_layer_z_axis(fp1_layer_name);
+        ex.end.z = _pcb->get_layer_z_axis(fp2_layer_name);
+        
+        if (dir == excitation::DIR_X)
+        {
+            ex.start.x = p1.x;
+            ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
+            //ex.start.y = p1.y;
+            ex.end.x = p2.x;
+            ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            //ex.end.y = p2.y;
+        }
+        else if (dir == excitation::DIR_Y)
+        {
+            ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            ex.start.y = p1.y;
+            
+            ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.end.y = p2.y;
+        }
+        else if (dir == excitation::DIR_Z)
+        {
+            ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
+            
+            ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+        }
+        _excitations.push_back(ex);
+    }
+    else
+    {
+        printf("add_excitation err\n");
+    }
+}
+
+void openems_model_gen::add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R)
+{
+    excitation ex;
+    ex.R = R;
+    ex.dir = dir;
+    ex.start.x = start.x;
+    ex.start.y = start.y;
+    ex.start.z = _pcb->get_layer_z_axis(start_layer);
+    ex.end.x = end.x;
+    ex.end.y = end.y;
+    ex.end.z = _pcb->get_layer_z_axis(end_layer);
+    _excitations.push_back(ex);
 }
 
 void openems_model_gen::set_nf2ff(const std::string& fp)
@@ -220,7 +277,7 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-1;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-5;\n");
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         //fprintf(fp, "lambda = c0 / (f0 + fc) / unit;\n");
@@ -288,6 +345,8 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     }
     _mesh_z.insert(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer));
     
+    _clean_mesh_lines(_mesh_z);
+    
     fprintf(fp, "mesh.z = [");
     for (auto z: _mesh_z)
     {
@@ -296,7 +355,7 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     fprintf(fp, "];\n");
     
     fprintf(fp, "max_res = %f;\n", min_z);
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
+    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.5);\n");
     
     
     
@@ -311,8 +370,8 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
         fprintf(fp, "mesh.z = unique([mesh.z, -margin, margin]);\n");
     }
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / 20;\n");
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
+    fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
+    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.5);\n");
     
     fprintf(fp, "\n\n");
 }
@@ -326,11 +385,8 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     float y2 = _pcb->get_edge_bottom();
     
     
-    _mesh_x.insert(x1);
-    _mesh_x.insert(x2);
-    
-    _mesh_y.insert(y1);
-    _mesh_y.insert(y2);
+    _clean_mesh_lines(_mesh_x);
+    _clean_mesh_lines(_mesh_y);
     
     fprintf(fp, "mesh.x = [");
     for (auto x: _mesh_x)
@@ -346,19 +402,14 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     }
     fprintf(fp, "];\n");
     
-    //fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
-    //fprintf(fp, "max_res = %f;\n", 1);
-    //fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.4);\n");
-    //fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.4);\n");
-    
     float lambda = 299792458. / (_f0 + _fc) * 1e3;
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / 20;\n");
+    fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
     fprintf(fp, "mesh.x = unique([mesh.x %f %f]);\n", x1 - lambda / 10, x2 + lambda / 10);
     fprintf(fp, "mesh.y = unique([mesh.y %f %f]);\n", y1 - lambda / 10, y2 + lambda / 10);
     
-    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.3);\n");
-    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.3);\n");
+    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.5);\n");
+    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.5);\n");
 }
 
 
@@ -436,7 +487,6 @@ void openems_model_gen::_add_via(FILE *fp)
     
             float min_z = 10000;
             float max_z = -10000;
-        
             for (const auto& layer: layers)
             {
                 pcb::point c(v.at);
@@ -464,16 +514,17 @@ void openems_model_gen::_add_via(FILE *fp)
                     max_z = z2;
                 }
                 
+        #if 0
                 float radius = v.size / 2;
                 
                 fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
                         net_name.c_str(),
                         c.x, c.y, z1,
-                        c.x, c.y, z2,
+                        c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
+        #endif
                         
             }
-            
             if (min_z < 10000 && max_z > -10000)
             {
                 pcb::point c(v.at);
@@ -484,6 +535,12 @@ void openems_model_gen::_add_via(FILE *fp)
                             c.x, c.y, min_z,
                             c.x, c.y, max_z,
                             radius);
+                _mesh_x.insert(c.x);
+                //_mesh_x.insert(c.x + radius);
+                //_mesh_x.insert(c.x - radius);
+                _mesh_y.insert(c.y);
+                //_mesh_y.insert(c.y + radius);
+                //_mesh_y.insert(c.y - radius);
             }
         }
     }
@@ -685,8 +742,12 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, min_z,
                         c.x, c.y, max_z,
                         radius);
-            _mesh_x.insert(c.x);
-            _mesh_y.insert(c.y);
+            //_mesh_x.insert(c.x);
+            _mesh_x.insert(c.x + radius);
+            _mesh_x.insert(c.x - radius);
+            //_mesh_y.insert(c.y);
+            _mesh_y.insert(c.y + radius);
+            _mesh_y.insert(c.y - radius);
         }
     }
     
@@ -733,7 +794,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
                         c.x, c.y, z1,
-                        c.x, c.y, z2,
+                        c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
                         
             _mesh_x.insert(c.x);
@@ -752,45 +813,22 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
 
 void openems_model_gen::_add_excitation(FILE *fp)
 {
-    if (_exc_fp1.empty())
+    std::uint32_t portnr = 1;
+    for (const auto& ex: _excitations)
     {
-        return;
-    }
-    
-    if (_exc_dir == 0)
-    {
-        float z1 = _pcb->get_layer_z_axis(_exc_fp1_layer_name);
-        float thickness = _pcb->get_layer_thickness(_exc_fp1_layer_name);
-        float z2 = z1 + thickness;
-        pcb::pad pad1;
-        pcb::pad pad2;
-        pcb::footprint footprint1;
-        pcb::footprint footprint2;
-        if (_pcb->get_footprint(_exc_fp1, footprint1) && _pcb->get_footprint(_exc_fp2, footprint2)
-                && _pcb->get_pad(_exc_fp1, _exc_fp1_pad_number, pad1)
-                && _pcb->get_pad(_exc_fp2, _exc_fp2_pad_number, pad2))
-        {
-            pcb::point p1 = pad1.at;
-            pcb::point p2 = pad2.at;
-            _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
-            _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
-            float y1 = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            float y2 = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            fprintf(fp, "[CSX] = AddLumpedPort(CSX, 1, 1, 50, [%f %f %f], [%f %f %f], [1 0 0], true);\n",
-                    p1.x, y1, z1,
-                    p2.x, y2, z2);
-                    
-            _mesh_x.insert(p1.x);
-            _mesh_y.insert(y1);
-            _mesh_x.insert(p2.x);
-            _mesh_y.insert(y2);
-        }
-    }
-    else if (_exc_dir == 1)
-    {
-        float z1 = _pcb->get_layer_z_axis(_exc_fp1_layer_name);
-        float thickness = _pcb->get_layer_thickness(_exc_fp1_layer_name);
-        float z2 = z1 + thickness;
+        fprintf(fp, "[CSX] = AddLumpedPort(CSX, 1, %u, %f, [%f %f %f], [%f %f %f], [%d %d %d], true);\n",
+                portnr,
+                ex.R,
+                ex.start.x, ex.start.y, ex.start.z,
+                ex.end.x, ex.end.y, ex.end.z,
+                (ex.dir == excitation::DIR_X)? 1: 0,
+                (ex.dir == excitation::DIR_Y)? 1: 0,
+                (ex.dir == excitation::DIR_Z)? 1: 0);
+        portnr++;
+        _mesh_x.insert(ex.start.x);
+        _mesh_x.insert(ex.end.x);
+        _mesh_y.insert(ex.start.y);
+        _mesh_y.insert(ex.end.y);
     }
     fprintf(fp, "\n\n");
     fprintf(fp, "\n\n");
@@ -805,33 +843,12 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
     
     if (_nf2ff_fp.empty())
     {
-        if (_exc_fp1.empty())
+        if (!_excitations.empty())
         {
-            return;
-        }
-        
-        if (_exc_dir == 0 || _exc_dir == 1)
-        {
-            float z1 = _pcb->get_layer_z_axis(_exc_fp1_layer_name);
-            float thickness = _pcb->get_layer_thickness(_exc_fp1_layer_name);
-            float z2 = z1 + thickness;
-            pcb::pad pad1;
-            pcb::pad pad2;
-            pcb::footprint footprint1;
-            pcb::footprint footprint2;
-            if (_pcb->get_footprint(_exc_fp1, footprint1) && _pcb->get_footprint(_exc_fp2, footprint2)
-                    && _pcb->get_pad(_exc_fp1, _exc_fp1_pad_number, pad1)
-                    && _pcb->get_pad(_exc_fp2, _exc_fp2_pad_number, pad2))
-            {
-                pcb::point p1 = pad1.at;
-                pcb::point p2 = pad2.at;
-                _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
-                _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
-                
-                nf2ff_cx = (p1.x + p2.x) / 2;
-                nf2ff_cy = (p1.y + p2.y) / 2;
-                nf2ff_cz = (z1 + z2) / 2;
-            }
+            auto ex = _excitations.front();
+            nf2ff_cx = (ex.start.x + ex.end.x) / 2;
+            nf2ff_cy = (ex.start.y + ex.end.y) / 2;
+            nf2ff_cz = (ex.start.z + ex.end.z) / 2;
         }
     }
     else
@@ -869,4 +886,31 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
 
     fprintf(fp, "\n\n");
     fprintf(fp, "\n\n");
+}
+
+
+
+void openems_model_gen::_clean_mesh_lines(std::set<float>& mesh_lines)
+{
+    return;
+    if (mesh_lines.size() < 2)
+    {
+        return;
+    }
+    
+    auto it1 = mesh_lines.begin();
+    auto it2 = it1;
+    it2++;
+    for (; it2 != mesh_lines.end(); )
+    {
+        if (fabs(*it2 - *it1) < 0.001)
+        {
+            it1 = mesh_lines.erase(it2);
+            it2 = it1;
+            it2++;
+            continue;
+        }
+        it1++;
+        it2++;
+    }
 }
