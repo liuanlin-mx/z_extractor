@@ -385,8 +385,8 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     float y2 = _pcb->get_edge_bottom();
     
     
-    _clean_mesh_lines(_mesh_x);
-    _clean_mesh_lines(_mesh_y);
+    _clean_mesh_lines(_mesh_x, 0.1);
+    _clean_mesh_lines(_mesh_y, 0.1);
     
     fprintf(fp, "mesh.x = [");
     for (auto x: _mesh_x)
@@ -890,9 +890,8 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
 
 
 
-void openems_model_gen::_clean_mesh_lines(std::set<float>& mesh_lines)
+void openems_model_gen::_clean_mesh_lines(std::set<float>& mesh_lines, float min_gap)
 {
-    return;
     if (mesh_lines.size() < 2)
     {
         return;
@@ -903,7 +902,7 @@ void openems_model_gen::_clean_mesh_lines(std::set<float>& mesh_lines)
     it2++;
     for (; it2 != mesh_lines.end(); )
     {
-        if (fabs(*it2 - *it1) < 0.001)
+        if (fabs(*it2 - *it1) < min_gap)
         {
             it1 = mesh_lines.erase(it2);
             it2 = it1;

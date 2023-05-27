@@ -98,7 +98,7 @@ private:
     void _add_excitation(FILE *fp);
     void _add_nf2ff_box(FILE *fp);
     
-    void _clean_mesh_lines(std::set<float>& mesh_lines);
+    void _clean_mesh_lines(std::set<float>& mesh_lines, float min_gap = 0.01);
 private:
     std::shared_ptr<pcb> _pcb;
     std::set<std::uint32_t> _nets;
