@@ -50,19 +50,32 @@ public:
         {
         }
         
-        std::string footprint1;
-        std::string footprint1_pad_number;
-        std::string footprint1_layer_name;
-        
-        std::string footprint2;
-        std::string footprint2_pad_number;
-        std::string footprint2_layer_name;
-        
         point start;
         point end;
         
         std::uint32_t dir;
         float R;
+    };
+    
+    struct mesh
+    {
+        struct line
+        {
+            line() : v(0), prio(0) {}
+            line(float v_, std::uint32_t prio_) : v(v_), prio(prio_) {}
+            float v;
+            std::uint32_t prio;
+            
+            bool operator <(const line& b) const
+            {
+                return this->v < b.v;
+            }
+        };
+        
+        
+        std::set<line> x;
+        std::set<line> y;
+        std::set<line> z;
     };
     
 public:
@@ -80,7 +93,9 @@ public:
     void set_nf2ff(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
     void set_far_field_freq(float freq);
-    void gen_model(const std::string& func_name);
+    void gen_model(const std::string& func_name,
+                    std::uint32_t segment_prio, std::uint32_t via_prio,
+                    std::uint32_t zone_prio, std::uint32_t fp_prio);
     void gen_mesh(const std::string& func_name);
     void gen_antenna_simulation_scripts();
 private:
@@ -88,25 +103,24 @@ private:
     void _gen_mesh_xy(FILE *fp);
     void _add_dielectric(FILE *fp);
     void _add_metal(FILE *fp);
-    void _add_segment(FILE *fp);
-    void _add_via(FILE *fp);
-    void _add_zone(FILE *fp);
-    void _add_footprint(FILE *fp);
-    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp);
-    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp);
+    void _add_segment(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_via(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_zone(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_footprint(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
     
-    void _add_excitation(FILE *fp);
-    void _add_nf2ff_box(FILE *fp);
+    void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio = 0);
     
-    void _clean_mesh_lines(std::set<float>& mesh_lines, float min_gap = 0.01);
+    void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
 private:
     std::shared_ptr<pcb> _pcb;
     std::set<std::uint32_t> _nets;
     std::set<std::string> _footprints;
     
-    std::set<float> _mesh_x;
-    std::set<float> _mesh_y;
-    std::set<float> _mesh_z;
+    
+    mesh _mesh;
     
     bool _ignore_cu_thickness;
     

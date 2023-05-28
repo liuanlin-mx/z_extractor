@@ -128,7 +128,9 @@ void openems_model_gen::set_far_field_freq(float freq)
     _far_field_freq = freq;
 }
 
-void openems_model_gen::gen_model(const std::string& func_name)
+void openems_model_gen::gen_model(const std::string& func_name,
+                    std::uint32_t segment_prio, std::uint32_t via_prio,
+                    std::uint32_t zone_prio, std::uint32_t fp_prio)
 {
     FILE *fp = fopen((func_name + ".m").c_str(), "wb");
     if (fp)
@@ -140,10 +142,10 @@ void openems_model_gen::gen_model(const std::string& func_name)
         //_gen_mesh_z(fp);
         _add_dielectric(fp);
         _add_metal(fp);
-        _add_segment(fp);
-        _add_via(fp);
-        _add_zone(fp);
-        _add_footprint(fp);
+        _add_segment(fp, segment_prio);
+        _add_via(fp, via_prio);
+        _add_zone(fp, zone_prio);
+        _add_footprint(fp, fp_prio);
         //_gen_mesh_xy(fp);
         fprintf(fp, "end\n");
         fclose(fp);
@@ -290,7 +292,7 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "[CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
         fprintf(fp, "\n");
         
-        _add_excitation(fp);
+        _add_excitation(fp, 3);
         _add_nf2ff_box(fp);
         
         fprintf(fp, "Sim_Path = 'ant_sim'; Sim_CSX = 'ant.xml';\n");
@@ -310,7 +312,7 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fclose(fp);
     
     }
-    gen_model("load_pcb_model");
+    gen_model("load_pcb_model", 1, 1, 0, 2);
     gen_mesh("load_pcb_mesh");
 }
 
@@ -318,8 +320,8 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
 {
     std::string str;
     
-    std::set<float> mesh_z = _mesh_z;
-    _mesh_z.clear();
+    std::set<mesh::line> mesh_z = _mesh.z;
+    _mesh.z.clear();
     
     float min_z = _pcb->get_cu_min_thickness();
     if (_ignore_cu_thickness)
@@ -340,17 +342,17 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
             continue;
         }
         float z = _pcb->get_layer_z_axis(layer.name);
-        _mesh_z.insert(z);
+        _mesh.z.insert(mesh::line(z, 0));
         last_layer = layer.name;
     }
-    _mesh_z.insert(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer));
+    _mesh.z.insert(mesh::line(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer), 0));
     
-    _clean_mesh_lines(_mesh_z);
+    _clean_mesh_line(_mesh.z);
     
     fprintf(fp, "mesh.z = [");
-    for (auto z: _mesh_z)
+    for (auto z: _mesh.z)
     {
-        fprintf(fp, "%f ", z);
+        fprintf(fp, "%f ", z.v);
     }
     fprintf(fp, "];\n");
     
@@ -362,7 +364,7 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     float margin = _pcb->get_board_thickness() * 20;
     if (mesh_z.size() > 1)
     {
-        fprintf(fp, "mesh.z = unique([mesh.z, %f, %f]);\n", std::min(-margin, *mesh_z.begin()), std::max(margin, *mesh_z.rbegin()));
+        fprintf(fp, "mesh.z = unique([mesh.z, %f, %f]);\n", std::min(-margin, mesh_z.begin()->v), std::max(margin, mesh_z.rbegin()->v));
     }
     else
     {
@@ -384,30 +386,55 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     float y1 = _pcb->get_edge_top();
     float y2 = _pcb->get_edge_bottom();
     
+    float lambda = 299792458. / (_f0 + _fc) * 1e3;
     
-    _clean_mesh_lines(_mesh_x, 0.1);
-    _clean_mesh_lines(_mesh_y, 0.1);
+    float left = x1 - lambda / 10;
+    float right = x2 + lambda / 10;
+    float top = y1 - lambda / 10;
+    float bottom = y2 + lambda / 10;
+    
+    if (!_mesh.x.empty() && _mesh.x.begin()->v > left)
+    {
+        _mesh.x.insert(mesh::line(left, _mesh.x.begin()->prio));
+    }
+    
+    if (!_mesh.x.empty() && _mesh.x.rbegin()->v < right)
+    {
+        _mesh.x.insert(mesh::line(right, _mesh.x.rbegin()->prio));
+    }
+    
+    if (!_mesh.y.empty() && _mesh.y.begin()->v > top)
+    {
+        _mesh.y.insert(mesh::line(top, _mesh.y.begin()->prio));
+    }
+    
+    if (!_mesh.y.empty() && _mesh.y.rbegin()->v < bottom)
+    {
+        _mesh.y.insert(mesh::line(bottom, _mesh.y.rbegin()->prio));
+    }
+    
+    
+    
+    
+    _clean_mesh_line(_mesh.x, 0.1);
+    _clean_mesh_line(_mesh.y, 0.1);
     
     fprintf(fp, "mesh.x = [");
-    for (auto x: _mesh_x)
+    for (auto x: _mesh.x)
     {
-        fprintf(fp, "%f ", x);
+        fprintf(fp, "%f ", x.v);
     }
     fprintf(fp, "];\n");
     
     fprintf(fp, "mesh.y = [");
-    for (auto y: _mesh_y)
+    for (auto y: _mesh.y)
     {
-        fprintf(fp, "%f ", y);
+        fprintf(fp, "%f ", y.v);
     }
     fprintf(fp, "];\n");
     
-    float lambda = 299792458. / (_f0 + _fc) * 1e3;
     
     fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
-    fprintf(fp, "mesh.x = unique([mesh.x %f %f]);\n", x1 - lambda / 10, x2 + lambda / 10);
-    fprintf(fp, "mesh.y = unique([mesh.y %f %f]);\n", y1 - lambda / 10, y2 + lambda / 10);
-    
     fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.5);\n");
     fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.5);\n");
 }
@@ -455,7 +482,7 @@ void openems_model_gen::_add_metal(FILE *fp)
 }
 
 
-void openems_model_gen::_add_segment(FILE *fp)
+void openems_model_gen::_add_segment(FILE *fp, std::uint32_t mesh_prio)
 {
     for (auto net_id: _nets)
     {
@@ -475,7 +502,7 @@ void openems_model_gen::_add_segment(FILE *fp)
 }
 
 
-void openems_model_gen::_add_via(FILE *fp)
+void openems_model_gen::_add_via(FILE *fp, std::uint32_t mesh_prio)
 {
     for (auto net_id: _nets)
     {
@@ -535,10 +562,10 @@ void openems_model_gen::_add_via(FILE *fp)
                             c.x, c.y, min_z,
                             c.x, c.y, max_z,
                             radius);
-                _mesh_x.insert(c.x);
+                _mesh.x.insert(mesh::line(c.x, mesh_prio));
                 //_mesh_x.insert(c.x + radius);
                 //_mesh_x.insert(c.x - radius);
-                _mesh_y.insert(c.y);
+                _mesh.y.insert(mesh::line(c.y, mesh_prio));
                 //_mesh_y.insert(c.y + radius);
                 //_mesh_y.insert(c.y - radius);
             }
@@ -549,7 +576,7 @@ void openems_model_gen::_add_via(FILE *fp)
 }
 
 
-void openems_model_gen::_add_zone(FILE *fp)
+void openems_model_gen::_add_zone(FILE *fp, std::uint32_t mesh_prio)
 {
     for (auto net_id: _nets)
     {
@@ -565,8 +592,8 @@ void openems_model_gen::_add_zone(FILE *fp)
             {
                 fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.x, idx, p.y);
                 idx++;
-                //_mesh_x.insert(p.x);
-                //_mesh_y.insert(p.y);
+                _mesh.x.insert(mesh::line(p.x, mesh_prio));
+                _mesh.y.insert(mesh::line(p.y, mesh_prio));
             }
             
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(z.net).c_str(), z1, thickness);
@@ -577,7 +604,7 @@ void openems_model_gen::_add_zone(FILE *fp)
     fprintf(fp, "\n\n");
 }
 
-void openems_model_gen::_add_footprint(FILE *fp)
+void openems_model_gen::_add_footprint(FILE *fp, std::uint32_t mesh_prio)
 {
     const std::vector<pcb::footprint>& footprints = _pcb->get_footprints();
     for (const auto& footprint: footprints)
@@ -604,7 +631,7 @@ void openems_model_gen::_add_footprint(FILE *fp)
 }
 
 
-void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp)
+void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio)
 {
     const std::string& layer = gr.layer_name;
     float z1 = _pcb->get_layer_z_axis(layer);
@@ -619,9 +646,8 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             _pcb->get_rotation_pos(at, angle, xy);
             fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, xy.x, idx, xy.y);
             idx++;
-            
-            _mesh_x.insert(xy.x);
-            _mesh_y.insert(xy.y);
+            _mesh.x.insert(mesh::line(xy.x, mesh_prio));
+            _mesh.y.insert(mesh::line(xy.y, mesh_prio));
         }
         
         fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
@@ -651,10 +677,10 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
-            _mesh_x.insert(p1.x); _mesh_y.insert(p1.y);
-            _mesh_x.insert(p2.x); _mesh_y.insert(p2.y);
-            _mesh_x.insert(p3.x); _mesh_y.insert(p3.y);
-            _mesh_x.insert(p4.x); _mesh_y.insert(p4.y);
+            _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
         }
     }
     else if (gr.gr_type == pcb::gr::GR_LINE)
@@ -684,8 +710,8 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
                         start.x, start.y, z2,
                         radius);
                         
-            _mesh_x.insert(start.x);
-            _mesh_y.insert(start.y);
+            _mesh.x.insert(mesh::line(start.x, mesh_prio));
+            _mesh.y.insert(mesh::line(start.y, mesh_prio));
         }
         else
         {
@@ -696,7 +722,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
 }
 
 
-void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp)
+void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio)
 {
     std::vector<std::string> layers = _pcb->get_pad_layers(p);
     
@@ -743,11 +769,11 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, max_z,
                         radius);
             //_mesh_x.insert(c.x);
-            _mesh_x.insert(c.x + radius);
-            _mesh_x.insert(c.x - radius);
+            _mesh.x.insert(mesh::line(c.x + radius, mesh_prio));
+            _mesh.x.insert(mesh::line(c.x - radius, mesh_prio));
             //_mesh_y.insert(c.y);
-            _mesh_y.insert(c.y + radius);
-            _mesh_y.insert(c.y - radius);
+            _mesh.y.insert(mesh::line(c.y + radius, mesh_prio));
+            _mesh.y.insert(mesh::line(c.y - radius, mesh_prio));
         }
     }
     
@@ -779,10 +805,10 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
-            _mesh_x.insert(p1.x); _mesh_y.insert(p1.y);
-            _mesh_x.insert(p2.x); _mesh_y.insert(p2.y);
-            _mesh_x.insert(p3.x); _mesh_y.insert(p3.y);
-            _mesh_x.insert(p4.x); _mesh_y.insert(p4.y);
+            _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
+            _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
         }
         else if (p.shape == pcb::pad::SHAPE_CIRCLE)
         {
@@ -797,8 +823,8 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
                         
-            _mesh_x.insert(c.x);
-            _mesh_y.insert(c.y);
+            _mesh.x.insert(mesh::line(c.x, mesh_prio));
+            _mesh.y.insert(mesh::line(c.y, mesh_prio));
         }
         else if (p.shape == pcb::pad::SHAPE_OVAL)
         {
@@ -811,7 +837,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
 }
 
 
-void openems_model_gen::_add_excitation(FILE *fp)
+void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
 {
     std::uint32_t portnr = 1;
     for (const auto& ex: _excitations)
@@ -825,17 +851,17 @@ void openems_model_gen::_add_excitation(FILE *fp)
                 (ex.dir == excitation::DIR_Y)? 1: 0,
                 (ex.dir == excitation::DIR_Z)? 1: 0);
         portnr++;
-        _mesh_x.insert(ex.start.x);
-        _mesh_x.insert(ex.end.x);
-        _mesh_y.insert(ex.start.y);
-        _mesh_y.insert(ex.end.y);
+        _mesh.x.insert(mesh::line(ex.start.x, mesh_prio));
+        _mesh.x.insert(mesh::line(ex.end.x, mesh_prio));
+        _mesh.y.insert(mesh::line(ex.start.y, mesh_prio));
+        _mesh.y.insert(mesh::line(ex.end.y, mesh_prio));
     }
     fprintf(fp, "\n\n");
     fprintf(fp, "\n\n");
     
 }
 
-void openems_model_gen::_add_nf2ff_box(FILE *fp)
+void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
 {
     float nf2ff_cx = 0;
     float nf2ff_cy = 0;
@@ -869,12 +895,12 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
     y_margin = std::max(y_margin, lambda / 2);
     float z_margin = std::max(_pcb->get_board_thickness() * 10, lambda / 2);
     
-    _mesh_x.insert(nf2ff_cx - x_margin - lambda / 10);
-    _mesh_x.insert(nf2ff_cx + x_margin + lambda / 10);
-    _mesh_y.insert(nf2ff_cy - y_margin - lambda / 10);
-    _mesh_y.insert(nf2ff_cy + y_margin + lambda / 10);
-    _mesh_z.insert(nf2ff_cz - z_margin - lambda / 10);
-    _mesh_z.insert(nf2ff_cz + z_margin + lambda / 10);
+    _mesh.x.insert(mesh::line(nf2ff_cx - x_margin - lambda / 10, mesh_prio));
+    _mesh.x.insert(mesh::line(nf2ff_cx + x_margin + lambda / 10, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy - y_margin - lambda / 10, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy + y_margin + lambda / 10, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz - z_margin - lambda / 10, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz + z_margin + lambda / 10, mesh_prio));
     
     fprintf(fp, "far_field_freq = %g;\n", _far_field_freq);
     fprintf(fp, "nf2ff_cx = %e; nf2ff_cy = %e; nf2ff_cz = %e;\n", nf2ff_cx, nf2ff_cy, nf2ff_cz);
@@ -890,26 +916,51 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp)
 
 
 
-void openems_model_gen::_clean_mesh_lines(std::set<float>& mesh_lines, float min_gap)
+void openems_model_gen::_clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap)
 {
-    if (mesh_lines.size() < 2)
+    if (mesh_line.size() < 2)
     {
         return;
     }
     
-    auto it1 = mesh_lines.begin();
-    auto it2 = it1;
-    it2++;
-    for (; it2 != mesh_lines.end(); )
+    bool brk = true;
+    do
     {
-        if (fabs(*it2 - *it1) < min_gap)
-        {
-            it1 = mesh_lines.erase(it2);
-            it2 = it1;
-            it2++;
-            continue;
-        }
-        it1++;
+        brk = true;
+        auto it1 = mesh_line.begin();
+        auto it2 = it1;
         it2++;
-    }
+        for (; it2 != mesh_line.end(); )
+        {
+            if (fabs(it2->v - it1->v) < min_gap)
+            {
+                brk = false;
+                if (it1->prio == it2->prio)
+                {
+                    mesh::line tmp((it1->v + it2->v) * 0.5, it1->prio);
+                    
+                    it1 = mesh_line.erase(it1);
+                    it1 = mesh_line.erase(it1);
+                    auto r = mesh_line.insert(tmp);
+                    if (r.second)
+                    {
+                        it1 = r.first;
+                    }
+                }
+                else if (it1->prio > it2->prio)
+                {
+                    it1 = mesh_line.erase(it2);
+                }
+                else
+                {
+                    it1 = mesh_line.erase(it1);
+                }
+                it2 = it1;
+                it2++;
+                continue;
+            }
+            it1++;
+            it2++;
+        }
+    } while (brk == false);
 }
