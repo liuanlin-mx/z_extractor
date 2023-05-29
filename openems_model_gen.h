@@ -26,6 +26,12 @@
 class openems_model_gen
 {
 public:
+    enum
+    {
+        BC_MUR,
+        BC_PML,
+    };
+    
     struct point
     {
         point() : x(0), y(0), z(0) {}
@@ -117,6 +123,7 @@ public:
     
     void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
     
+    void set_boundary_cond(std::uint32_t bc);
     void set_nf2ff_footprint(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
     void set_far_field_freq(float freq);
@@ -156,9 +163,11 @@ private:
     float _mesh_x_min_gap;
     float _mesh_y_min_gap;
     float _mesh_z_min_gap;
+    float _lambda_mesh_ratio;
     
     bool _ignore_cu_thickness;
     
+    std::uint32_t _bc;
     float _f0;
     float _fc;
     float _far_field_freq;

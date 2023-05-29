@@ -23,6 +23,8 @@ openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     , _mesh_y_min_gap(0.1)
     , _mesh_z_min_gap(0.01)
     , _ignore_cu_thickness(true)
+    , _lambda_mesh_ratio(20)
+    , _bc(BC_PML)
     , _f0(1.8e9)
     , _fc(100)
     , _far_field_freq(2.4e9)
@@ -131,6 +133,12 @@ void openems_model_gen::add_mesh_range(float start, float end, float gap, std::u
     {
         _mesh.z_range.insert(range);
     }
+}
+
+
+void openems_model_gen::set_boundary_cond(std::uint32_t bc)
+{
+    _bc = bc;
 }
 
 void openems_model_gen::set_nf2ff_footprint(const std::string& fp)
@@ -314,7 +322,14 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         //fprintf(fp, "lambda = c0 / (f0 + fc) / unit;\n");
         fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
-        fprintf(fp, "BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'};\n");
+        if (_bc == BC_PML)
+        {
+            fprintf(fp, "BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};\n");
+        }
+        else
+        {
+            fprintf(fp, "BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'};\n");
+        }
         fprintf(fp, "FDTD = SetBoundaryCond(FDTD, BC);\n");
         fprintf(fp, "\n");
         fprintf(fp, "CSX = InitCSX();\n");
@@ -402,7 +417,7 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
         fprintf(fp, "mesh.z = unique([mesh.z, -margin, margin]);\n");
     }
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
+    fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
     fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.5);\n");
     
     fprintf(fp, "\n\n");
@@ -418,10 +433,12 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     float lambda = 299792458. / (_f0 + _fc) * 1e3;
     
-    float left = x1 - lambda / 10;
-    float right = x2 + lambda / 10;
-    float top = y1 - lambda / 10;
-    float bottom = y2 + lambda / 10;
+    float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio;
+    
+    float left = x1 - lambda / ratio;
+    float right = x2 + lambda / ratio;
+    float top = y1 - lambda / ratio;
+    float bottom = y2 + lambda / ratio;
     
     if (!_mesh.x.empty() && _mesh.x.begin()->v > left)
     {
@@ -464,7 +481,7 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     fprintf(fp, "];\n");
     
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / 30;\n");
+    fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
     fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.5);\n");
     fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.5);\n");
 }
@@ -917,20 +934,22 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
             nf2ff_cy = fp.at.y;
         }
     }
+    
+    float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio;
     //float lambda = 299792458. / (_f0 + _fc) * 1e3;
     float lambda = 299792458. / (_far_field_freq) * 1e3;
-    float x_margin = std::max(fabs(nf2ff_cx - _pcb->get_edge_left()) + lambda / 10, fabs(nf2ff_cx - _pcb->get_edge_right())  + lambda / 10);
+    float x_margin = std::max(fabs(nf2ff_cx - _pcb->get_edge_left()) + lambda / ratio, fabs(nf2ff_cx - _pcb->get_edge_right())  + lambda / ratio);
     x_margin = std::max(x_margin, lambda / 2);
-    float y_margin = std::max(fabs(nf2ff_cy - _pcb->get_edge_top()) + lambda / 10, fabs(nf2ff_cy - _pcb->get_edge_bottom()) + lambda / 10);
+    float y_margin = std::max(fabs(nf2ff_cy - _pcb->get_edge_top()) + lambda / ratio, fabs(nf2ff_cy - _pcb->get_edge_bottom()) + lambda / ratio);
     y_margin = std::max(y_margin, lambda / 2);
-    float z_margin = std::max(_pcb->get_board_thickness() * 10, lambda / 2);
+    float z_margin = std::max(_pcb->get_board_thickness() * ratio, lambda / 2);
     
-    _mesh.x.insert(mesh::line(nf2ff_cx - x_margin - lambda / 10, mesh_prio));
-    _mesh.x.insert(mesh::line(nf2ff_cx + x_margin + lambda / 10, mesh_prio));
-    _mesh.y.insert(mesh::line(nf2ff_cy - y_margin - lambda / 10, mesh_prio));
-    _mesh.y.insert(mesh::line(nf2ff_cy + y_margin + lambda / 10, mesh_prio));
-    _mesh.z.insert(mesh::line(nf2ff_cz - z_margin - lambda / 10, mesh_prio));
-    _mesh.z.insert(mesh::line(nf2ff_cz + z_margin + lambda / 10, mesh_prio));
+    _mesh.x.insert(mesh::line(nf2ff_cx - x_margin - lambda / ratio, mesh_prio));
+    _mesh.x.insert(mesh::line(nf2ff_cx + x_margin + lambda / ratio, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy - y_margin - lambda / ratio, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy + y_margin + lambda / ratio, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz - z_margin - lambda / ratio, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz + z_margin + lambda / ratio, mesh_prio));
     
     fprintf(fp, "far_field_freq = %g;\n", _far_field_freq);
     fprintf(fp, "nf2ff_cx = %e; nf2ff_cy = %e; nf2ff_cz = %e;\n", nf2ff_cx, nf2ff_cy, nf2ff_cz);
