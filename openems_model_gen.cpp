@@ -19,9 +19,12 @@
 #include "openems_model_gen.h"
 openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     : _pcb(pcb)
+    , _mesh_x_min_gap(0.1)
+    , _mesh_y_min_gap(0.1)
+    , _mesh_z_min_gap(0.01)
     , _ignore_cu_thickness(true)
-    , _f0(0e9)
-    , _fc(3.5e9)
+    , _f0(1.8e9)
+    , _fc(100)
     , _far_field_freq(2.4e9)
 {
     _pcb->ignore_cu_thickness(_ignore_cu_thickness);
@@ -112,7 +115,25 @@ void openems_model_gen::add_excitation(pcb::point start, const std::string& star
     _excitations.push_back(ex);
 }
 
-void openems_model_gen::set_nf2ff(const std::string& fp)
+
+void openems_model_gen::add_mesh_range(float start, float end, float gap, std::uint32_t dir, std::uint32_t prio)
+{
+    mesh::line_range range(start, end, gap, prio);
+    if (dir == mesh::DIR_X)
+    {
+        _mesh.x_range.insert(range);
+    }
+    else if (dir == mesh::DIR_Y)
+    {
+        _mesh.y_range.insert(range);
+    }
+    else if (dir == mesh::DIR_Z)
+    {
+        _mesh.z_range.insert(range);
+    }
+}
+
+void openems_model_gen::set_nf2ff_footprint(const std::string& fp)
 {
     _nf2ff_fp = fp;
 }
@@ -126,6 +147,13 @@ void openems_model_gen::set_excitation_freq(float f0, float fc)
 void openems_model_gen::set_far_field_freq(float freq)
 {
     _far_field_freq = freq;
+}
+
+void openems_model_gen::set_mesh_min_gap(float x_min_gap, float y_min_gap, float z_min_gap)
+{
+    _mesh_x_min_gap = x_min_gap;
+    _mesh_y_min_gap = y_min_gap;
+    _mesh_z_min_gap = z_min_gap;
 }
 
 void openems_model_gen::gen_model(const std::string& func_name,
@@ -161,6 +189,8 @@ void openems_model_gen::gen_mesh(const std::string& func_name)
         fprintf(fp, "function [CSX, mesh] = %s(CSX, max_freq)\n", func_name.c_str());
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
+        
+        _apply_mesh_line_range(_mesh);
         
         _gen_mesh_z(fp);
         _gen_mesh_xy(fp);
@@ -347,7 +377,7 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     }
     _mesh.z.insert(mesh::line(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer), 0));
     
-    _clean_mesh_line(_mesh.z);
+    _clean_mesh_line(_mesh.z, _mesh_z_min_gap);
     
     fprintf(fp, "mesh.z = [");
     for (auto z: _mesh.z)
@@ -416,8 +446,8 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     
     
-    _clean_mesh_line(_mesh.x, 0.1);
-    _clean_mesh_line(_mesh.y, 0.1);
+    _clean_mesh_line(_mesh.x, _mesh_x_min_gap);
+    _clean_mesh_line(_mesh.y, _mesh_y_min_gap);
     
     fprintf(fp, "mesh.x = [");
     for (auto x: _mesh.x)
@@ -915,6 +945,41 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
 }
 
 
+
+void openems_model_gen::_apply_mesh_line_range(mesh& mesh)
+{
+    _apply_mesh_line_range(mesh.x, mesh.x_range);
+    _apply_mesh_line_range(mesh.y, mesh.y_range);
+    _apply_mesh_line_range(mesh.z, mesh.z_range);
+}
+
+void openems_model_gen::_apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range)
+{
+    for (auto it = mesh_line_range.begin(); it != mesh_line_range.end(); it++)
+    {
+        float start = it->start;
+        float end = it->end;
+        float gap = it->gap;
+        
+        for (float v = start; v < end; v += gap)
+        {
+            bool continue_ = false;
+            for (auto it2 = mesh_line_range.begin(); it2 != it; it2++)
+            {
+                if (v >= it2->start && v < it2->end)
+                {
+                    continue_ = true;
+                    break;
+                }
+            }
+            if (continue_)
+            {
+                continue;
+            }
+            mesh_line.insert(mesh::line(v, it->prio));
+        }
+    }
+}
 
 void openems_model_gen::_clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap)
 {

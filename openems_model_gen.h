@@ -59,6 +59,12 @@ public:
     
     struct mesh
     {
+        enum
+        {
+            DIR_X,
+            DIR_Y,
+            DIR_Z,
+        };
         struct line
         {
             line() : v(0), prio(0) {}
@@ -72,10 +78,29 @@ public:
             }
         };
         
+        struct line_range
+        {
+            line_range() : start(0), end(0), gap(0), prio(0) {}
+            line_range(float start_, float end_, float gap_, float prio_)
+                : start(start_), end(end_), gap(gap_), prio(prio_) {}
+            
+            float start;
+            float end;
+            float gap;
+            std::uint32_t prio;
+            bool operator <(const line_range& other) const
+            {
+                return this->gap < other.gap;
+            }
+        };
         
         std::set<line> x;
         std::set<line> y;
         std::set<line> z;
+        
+        std::multiset<line_range> x_range;
+        std::multiset<line_range> y_range;
+        std::multiset<line_range> z_range;
     };
     
 public:
@@ -89,10 +114,15 @@ public:
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50);
                         
     void add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R = 50);
-                        
-    void set_nf2ff(const std::string& fp);
+    
+    void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
+    
+    void set_nf2ff_footprint(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
     void set_far_field_freq(float freq);
+    
+    void set_mesh_min_gap(float x_min_gap = 0.1, float y_min_gap = 0.1, float z_min_gap = 0.01);
+    
     void gen_model(const std::string& func_name,
                     std::uint32_t segment_prio, std::uint32_t via_prio,
                     std::uint32_t zone_prio, std::uint32_t fp_prio);
@@ -113,6 +143,8 @@ private:
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 0);
     void _add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio = 0);
     
+    void _apply_mesh_line_range(mesh& mesh);
+    void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
 private:
     std::shared_ptr<pcb> _pcb;
@@ -121,6 +153,9 @@ private:
     
     
     mesh _mesh;
+    float _mesh_x_min_gap;
+    float _mesh_y_min_gap;
+    float _mesh_z_min_gap;
     
     bool _ignore_cu_thickness;
     
