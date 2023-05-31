@@ -17,13 +17,14 @@
 *****************************************************************************/
 #include "calc.h"
 #include "openems_model_gen.h"
+float openems_model_gen::C0 = 299792458;
 openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     : _pcb(pcb)
     , _mesh_x_min_gap(0.1)
     , _mesh_y_min_gap(0.1)
     , _mesh_z_min_gap(0.01)
-    , _ignore_cu_thickness(true)
     , _lambda_mesh_ratio(20)
+    , _ignore_cu_thickness(true)
     , _bc(BC_PML)
     , _f0(1.8e9)
     , _fc(100)
@@ -202,8 +203,7 @@ void openems_model_gen::gen_mesh(const std::string& func_name)
         
         _gen_mesh_z(fp);
         _gen_mesh_xy(fp);
-        fprintf(fp, "CSX = DefineRectGrid(CSX, unit, mesh);\n\n\n");
-        fprintf(fp, "end\n");
+        fprintf(fp, "end\n\n\n");
         fclose(fp);
     }
 }
@@ -335,9 +335,10 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "CSX = InitCSX();\n");
         fprintf(fp, "CSX = load_pcb_model(CSX, f0 + fc);\n");
         fprintf(fp, "[CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
+        fprintf(fp, "CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
         
-        _add_excitation(fp, 3);
+        _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
         
         fprintf(fp, "Sim_Path = 'ant_sim'; Sim_CSX = 'ant.xml';\n");
@@ -431,7 +432,7 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     float y1 = _pcb->get_edge_top();
     float y2 = _pcb->get_edge_bottom();
     
-    float lambda = 299792458. / (_f0 + _fc) * 1e3;
+    float lambda = C0 / (_f0 + _fc) * 1e3;
     
     float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio;
     
@@ -936,8 +937,8 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
     }
     
     float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio;
-    //float lambda = 299792458. / (_f0 + _fc) * 1e3;
-    float lambda = 299792458. / (_far_field_freq) * 1e3;
+    //float lambda = C0 / (_f0 + _fc) * 1e3;
+    float lambda = C0 / (_far_field_freq) * 1e3;
     float x_margin = std::max(fabs(nf2ff_cx - _pcb->get_edge_left()) + lambda / ratio, fabs(nf2ff_cx - _pcb->get_edge_right())  + lambda / ratio);
     x_margin = std::max(x_margin, lambda / 2);
     float y_margin = std::max(fabs(nf2ff_cy - _pcb->get_edge_top()) + lambda / ratio, fabs(nf2ff_cy - _pcb->get_edge_bottom()) + lambda / ratio);

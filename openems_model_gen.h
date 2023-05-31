@@ -174,6 +174,7 @@ private:
     std::string _nf2ff_fp;
     
     std::vector<excitation> _excitations;
+    static float C0;
 };
 
 #endif
