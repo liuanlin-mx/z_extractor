@@ -74,27 +74,34 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
         if (dir == excitation::DIR_X)
         {
             ex.start.x = p1.x;
-            ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            //ex.start.y = p1.y;
+            //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
+            ex.start.y = p1.y;
             ex.end.x = p2.x;
-            ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            //ex.end.y = p2.y;
+            //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.end.y = p2.y;
         }
         else if (dir == excitation::DIR_Y)
         {
-            ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            ex.start.x = p1.x;
             ex.start.y = p1.y;
             
-            ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.end.x = p2.x;
             ex.end.y = p2.y;
         }
         else if (dir == excitation::DIR_Z)
         {
-            ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
-            ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
+            //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
             
-            ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.start.x = p1.x;
+            ex.start.y = p1.y;
+            
+            //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            ex.end.x = p2.x;
+            ex.end.y = p2.y;
         }
         _excitations.push_back(ex);
     }
