@@ -15,6 +15,8 @@
 *  limitations under the License.                                            *
 *                                                                            *
 *****************************************************************************/
+
+#include <complex>
 #include "calc.h"
 #include "openems_model_gen.h"
 float openems_model_gen::C0 = 299792458;
@@ -544,12 +546,46 @@ void openems_model_gen::_add_segment(FILE *fp, std::uint32_t mesh_prio)
         std::list<pcb::segment> segments = _pcb->get_segments(net_id);
         for (const auto& s: segments)
         {
-            //const std::string& layer = s.layer_name;
-            //float z1 = _pcb->get_layer_z_axis(layer);
-            //float z2 = z1 + _pcb->get_layer_thickness(layer);
-            //fprintf(fp, "start = [%f %f %f];\n", x1, y1, z1);
-            //fprintf(fp, "stop = [%f %f %f];\n", x2, y2, z2);
-            //fprintf(fp, "CSX = AddBox(CSX, 'copper', 2, start, stop);\n");
+            const std::string& layer = s.layer_name;
+            float z1 = _pcb->get_layer_z_axis(layer);
+            float thickness = _pcb->get_layer_thickness(layer);
+            
+            std::complex<float> start(s.start.x, s.start.y);
+            std::complex<float> end(s.end.x, s.end.y);
+            std::complex<float> unit_vector = 1;
+            if (std::abs(end - start) < s.width * 0.5)
+            {
+                continue;
+            }
+            
+            unit_vector = (end - start) / std::abs(end - start);
+            
+            std::uint32_t idx = 1;
+            
+            float n = 4;
+            for (std::int32_t i = 0; i <= n; i++)
+            {
+                std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + M_PI_2 + i * M_PI / n));
+                std::complex<float> p = start + tmp * (s.width / 2);
+                fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+                idx++;
+                _mesh.x.insert(mesh::line(p.real(), mesh_prio));
+                _mesh.y.insert(mesh::line(p.imag(), mesh_prio));
+            }
+            
+            for (std::int32_t i = 0; i <= n; i++)
+            {
+                std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + -M_PI_2 + i * M_PI / n));
+                std::complex<float> p = end + tmp * (s.width / 2);
+                fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+                idx++;
+                _mesh.x.insert(mesh::line(p.real(), mesh_prio));
+                _mesh.y.insert(mesh::line(p.imag(), mesh_prio));
+            }
+            
+            
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
+            fprintf(fp, "clear p;\n");
         }
     }
     fprintf(fp, "\n\n");
