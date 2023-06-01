@@ -20,6 +20,7 @@
 #define __OPENEMS_MODEL_GEN_H__
 
 #include <set>
+#include <map>
 #include <vector>
 #include "pcb.h"
 
@@ -109,13 +110,35 @@ public:
         std::multiset<line_range> z_range;
     };
     
+private:
+    struct mesh_info
+    {
+        mesh_info()
+            : gen_mesh(true)
+            , use_uniform_grid(false)
+            , x_gap(false)
+            , y_gap(false)
+            , zone_gen_mesh(false)
+            , mesh_prio(0)
+        {
+            
+        }
+        bool gen_mesh;
+        bool use_uniform_grid;
+        float x_gap;
+        float y_gap;
+        bool zone_gen_mesh;
+        std::uint32_t mesh_prio;
+    };
+    
 public:
     openems_model_gen(const std::shared_ptr<pcb>& pcb);
     ~openems_model_gen();
     
 public:
-    void add_net(std::uint32_t net_id);
-    void add_footprint(const std::string& fp_ref);
+    void add_net(std::uint32_t net_id, bool gen_mesh = true, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 1);
+    void add_net(std::uint32_t net_id, bool uniform_grid, float x_gap, float y_gap, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 0);
+    void add_footprint(const std::string& fp_ref, bool gen_mesh = true, std::uint32_t mesh_prio = 2);
     void add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50);
                         
@@ -130,9 +153,7 @@ public:
     
     void set_mesh_min_gap(float x_min_gap = 0.1, float y_min_gap = 0.1, float z_min_gap = 0.01);
     
-    void gen_model(const std::string& func_name,
-                    std::uint32_t segment_prio, std::uint32_t via_prio,
-                    std::uint32_t zone_prio, std::uint32_t fp_prio);
+    void gen_model(const std::string& func_name);
     void gen_mesh(const std::string& func_name);
     void gen_antenna_simulation_scripts();
 private:
@@ -140,10 +161,10 @@ private:
     void _gen_mesh_xy(FILE *fp);
     void _add_dielectric(FILE *fp);
     void _add_metal(FILE *fp);
-    void _add_segment(FILE *fp, std::uint32_t mesh_prio = 0);
-    void _add_via(FILE *fp, std::uint32_t mesh_prio = 0);
-    void _add_zone(FILE *fp, std::uint32_t mesh_prio = 0);
-    void _add_footprint(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_segment(FILE *fp);
+    void _add_via(FILE *fp);
+    void _add_zone(FILE *fp);
+    void _add_footprint(FILE *fp);
     void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
     void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
     
@@ -155,8 +176,8 @@ private:
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
 private:
     std::shared_ptr<pcb> _pcb;
-    std::set<std::uint32_t> _nets;
-    std::set<std::string> _footprints;
+    std::map<std::uint32_t, mesh_info> _nets;
+    std::map<std::string, mesh_info> _footprints;
     
     
     mesh _mesh;
