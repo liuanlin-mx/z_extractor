@@ -69,7 +69,7 @@ void openems_model_gen::add_footprint(const std::string & footprint, bool gen_me
 }
 
 void openems_model_gen::add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
-                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R)
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R, bool gen_mesh)
 {
     pcb::pad pad1;
     pcb::pad pad2;
@@ -86,6 +86,7 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
         
     
         excitation ex;
+        ex.gen_mesh = gen_mesh;
         ex.R = R;
         ex.dir = dir;
         
@@ -94,35 +95,35 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
         
         if (dir == excitation::DIR_X)
         {
-            ex.start.x = p1.x;
+            ex.start.x = _round_xy(p1.x);
             //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            ex.start.y = p1.y;
-            ex.end.x = p2.x;
+            ex.start.y = _round_xy(p1.y);
+            ex.end.x = _round_xy(p2.x);
             //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.y = p2.y;
+            ex.end.y = _round_xy(p2.y);
         }
         else if (dir == excitation::DIR_Y)
         {
             //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
-            ex.start.x = p1.x;
-            ex.start.y = p1.y;
+            ex.start.x = _round_xy(p1.x);
+            ex.start.y = _round_xy(p1.y);
             
             //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.x = p2.x;
-            ex.end.y = p2.y;
+            ex.end.x = _round_xy(p2.x);
+            ex.end.y = _round_xy(p2.y);
         }
         else if (dir == excitation::DIR_Z)
         {
             //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
             //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
             
-            ex.start.x = p1.x;
-            ex.start.y = p1.y;
+            ex.start.x = _round_xy(p1.x);
+            ex.start.y = _round_xy(p1.y);
             
             //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
             //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.x = p2.x;
-            ex.end.y = p2.y;
+            ex.end.x = _round_xy(p2.x);
+            ex.end.y = _round_xy(p2.y);
         }
         _excitations.push_back(ex);
     }
@@ -132,9 +133,10 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
     }
 }
 
-void openems_model_gen::add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R)
+void openems_model_gen::add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R, bool gen_mesh)
 {
     excitation ex;
+    ex.gen_mesh = gen_mesh;
     ex.R = R;
     ex.dir = dir;
     ex.start.x = start.x;
@@ -146,6 +148,86 @@ void openems_model_gen::add_excitation(pcb::point start, const std::string& star
     _excitations.push_back(ex);
 }
 
+void openems_model_gen::add_lumped_element(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
+                        std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh)
+{
+    
+    pcb::pad pad1;
+    pcb::pad pad2;
+    pcb::footprint footprint1;
+    pcb::footprint footprint2;
+    if (_pcb->get_footprint(fp1, footprint1) && _pcb->get_footprint(fp2, footprint2)
+            && _pcb->get_pad(fp1, fp1_pad_number, pad1)
+            && _pcb->get_pad(fp2, fp2_pad_number, pad2))
+    {
+        pcb::point p1 = pad1.at;
+        pcb::point p2 = pad2.at;
+        _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
+        _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
+        
+    
+        lumped_element element;
+        element.gen_mesh = gen_mesh;
+        element.type = type;
+        element.v = v;
+        element.dir = dir;
+        
+        element.start.z = _pcb->get_layer_z_axis(fp1_layer_name);
+        element.end.z = _pcb->get_layer_z_axis(fp2_layer_name);
+        
+        if (dir == excitation::DIR_X)
+        {
+            element.start.x = _round_xy(p1.x);
+            element.start.y = _round_xy(p1.y);
+            element.end.x = _round_xy(p2.x);
+            element.end.y = _round_xy(p2.y);
+        }
+        else if (dir == excitation::DIR_Y)
+        {
+            element.start.x = _round_xy(p1.x);
+            element.start.y = _round_xy(p1.y);
+            
+            element.end.x = _round_xy(p2.x);
+            element.end.y = _round_xy(p2.y);
+        }
+        else if (dir == excitation::DIR_Z)
+        {
+            element.start.x = _round_xy(p1.x);
+            element.start.y = _round_xy(p1.y);
+            
+            //element.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
+            //element.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
+            
+            element.end.x = _round_xy(p2.x);
+            element.end.y = _round_xy(p2.y);
+            //element.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
+            //element.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            
+        }
+        _lumped_elements.push_back(element);
+    }
+    else
+    {
+        printf("add_lumped_element err\n");
+    }
+}
+                        
+void openems_model_gen::add_lumped_element(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh)
+{
+    lumped_element element;
+    element.gen_mesh = gen_mesh;
+    element.type = type;
+    element.v = v;
+    element.dir = dir;
+    element.start.x = start.x;
+    element.start.y = start.y;
+    element.start.z = _pcb->get_layer_z_axis(start_layer);
+    element.end.x = end.x;
+    element.end.y = end.y;
+    element.end.z = _pcb->get_layer_z_axis(end_layer);
+    _lumped_elements.push_back(element);
+}
 
 void openems_model_gen::add_mesh_range(float start, float end, float gap, std::uint32_t dir, std::uint32_t prio)
 {
@@ -364,6 +446,8 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
         
+        
+        _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
         
@@ -619,10 +703,10 @@ void openems_model_gen::_add_segment(FILE *fp)
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
-            x_min = std::min(x_min, std::min(s.start.x, s.end.x));
-            x_max = std::max(x_max, std::max(s.start.x, s.end.x));
-            y_min = std::min(y_min, std::min(s.start.y, s.end.y));
-            y_max = std::max(y_max, std::max(s.start.y, s.end.y));
+            x_min = std::min(x_min, std::min(s.start.x - s.width, s.end.x - s.width));
+            x_max = std::max(x_max, std::max(s.start.x + s.width, s.end.x + s.width));
+            y_min = std::min(y_min, std::min(s.start.y - s.width, s.end.y - s.width));
+            y_max = std::max(y_max, std::max(s.start.y + s.width, s.end.y + s.width));
         }
         if (info.gen_mesh && info.use_uniform_grid
             && x_min < 100000 && x_max > -100000 && x_min < x_max
@@ -1003,10 +1087,67 @@ void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
                 (ex.dir == excitation::DIR_Y)? 1: 0,
                 (ex.dir == excitation::DIR_Z)? 1: 0);
         portnr++;
-        _mesh.x.insert(mesh::line(ex.start.x, mesh_prio));
-        _mesh.x.insert(mesh::line(ex.end.x, mesh_prio));
-        _mesh.y.insert(mesh::line(ex.start.y, mesh_prio));
-        _mesh.y.insert(mesh::line(ex.end.y, mesh_prio));
+        if (ex.gen_mesh)
+        {
+            _mesh.x.insert(mesh::line(ex.start.x, mesh_prio));
+            _mesh.x.insert(mesh::line(ex.end.x, mesh_prio));
+            _mesh.y.insert(mesh::line(ex.start.y, mesh_prio));
+            _mesh.y.insert(mesh::line(ex.end.y, mesh_prio));
+        }
+    }
+    fprintf(fp, "\n\n");
+    fprintf(fp, "\n\n");
+}
+
+
+void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
+{
+    std::uint32_t idx = 1;
+    for (const auto& element: _lumped_elements)
+    {
+        std::uint32_t dir = 0;
+        if (element.dir == lumped_element::DIR_Y)
+        {
+            dir = 1;
+        }
+        else if (element.dir == lumped_element::DIR_Z)
+        {
+            dir = 2;
+        }
+        
+        if (element.type == lumped_element::TYPE_R)
+        {
+            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'R%d', %d, 'Caps', 1, 'R', %f);\n", idx, dir, element.v);
+            fprintf(fp, "[CSX] = AddBox(CSX, 'R%d', 0, [%f %f %f], [%f %f %f]);\n",
+                    idx,
+                    element.start.x, element.start.y, element.start.z,
+                    element.end.x, element.end.y, element.end.z);
+        }
+        else if (element.type == lumped_element::TYPE_L)
+        {
+            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'L%d', %d, 'Caps', 1, 'L', %f);\n", idx, dir, element.v);
+            fprintf(fp, "[CSX] = AddBox(CSX, 'L%d', 0, [%f %f %f], [%f %f %f]);\n",
+                    idx,
+                    element.start.x, element.start.y, element.start.z,
+                    element.end.x, element.end.y, element.end.z);
+        }
+        else if (element.type == lumped_element::TYPE_C)
+        {
+            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'C%d', %d, 'Caps', 1, 'C', %f);\n", idx, dir, element.v);
+            fprintf(fp, "[CSX] = AddBox(CSX, 'C%d', 0, [%f %f %f], [%f %f %f]);\n",
+                    idx,
+                    element.start.x, element.start.y, element.start.z,
+                    element.end.x, element.end.y, element.end.z);
+        }
+
+        idx++;
+        if (element.gen_mesh)
+        {
+            _mesh.x.insert(mesh::line(element.start.x, mesh_prio));
+            _mesh.x.insert(mesh::line(element.end.x, mesh_prio));
+            _mesh.y.insert(mesh::line(element.start.y, mesh_prio));
+            _mesh.y.insert(mesh::line(element.end.y, mesh_prio));
+        }
     }
     fprintf(fp, "\n\n");
     fprintf(fp, "\n\n");
@@ -1021,6 +1162,7 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
     
     if (_nf2ff_fp.empty())
     {
+        return;
         if (!_excitations.empty())
         {
             auto ex = _excitations.front();
@@ -1152,4 +1294,10 @@ void openems_model_gen::_clean_mesh_line(std::set<mesh::line>& mesh_line, float 
             it2++;
         }
     } while (brk == false);
+}
+
+
+float openems_model_gen::_round_xy(float v)
+{
+    return roundf(v * 10.) / 10.;
 }

@@ -52,16 +52,49 @@ public:
         };
         
         excitation()
-            : dir(DIR_X)
+            : gen_mesh(true)
+            , dir(DIR_X)
             , R(50)
         {
         }
         
+        bool gen_mesh;
         point start;
         point end;
         
         std::uint32_t dir;
         float R;
+    };
+    
+    struct lumped_element
+    {
+        enum
+        {
+            DIR_X,
+            DIR_Y,
+            DIR_Z,
+        };
+        enum
+        {
+            TYPE_R,
+            TYPE_L,
+            TYPE_C,
+        };
+        
+        lumped_element()
+            : gen_mesh(true)
+            , dir(DIR_X)
+            , type(TYPE_R)
+            , v(50)
+        {
+        }
+        bool gen_mesh;
+        point start;
+        point end;
+        
+        std::uint32_t dir;
+        std::uint32_t type;
+        float v;
     };
     
     struct mesh
@@ -140,9 +173,16 @@ public:
     void add_net(std::uint32_t net_id, bool uniform_grid, float x_gap, float y_gap, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 0);
     void add_footprint(const std::string& fp_ref, bool gen_mesh = true, std::uint32_t mesh_prio = 2);
     void add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
-                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50);
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50, bool gen_mesh = true);
                         
-    void add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R = 50);
+    void add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R = 50, bool gen_mesh = true);
+    
+    void add_lumped_element(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
+                        std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
+                        
+    void add_lumped_element(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
+    
     
     void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
     
@@ -156,6 +196,7 @@ public:
     void gen_model(const std::string& func_name);
     void gen_mesh(const std::string& func_name);
     void gen_antenna_simulation_scripts();
+    
 private:
     void _gen_mesh_z(FILE *fp);
     void _gen_mesh_xy(FILE *fp);
@@ -168,12 +209,15 @@ private:
     void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
     void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
     
-    void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
+    void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio = 0);
     
     void _apply_mesh_line_range(mesh& mesh);
     void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
+    
+    float _round_xy(float v);
 private:
     std::shared_ptr<pcb> _pcb;
     std::map<std::uint32_t, mesh_info> _nets;
@@ -195,6 +239,7 @@ private:
     std::string _nf2ff_fp;
     
     std::vector<excitation> _excitations;
+    std::vector<lumped_element> _lumped_elements;
     static float C0;
 };
 
