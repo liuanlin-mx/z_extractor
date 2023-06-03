@@ -229,6 +229,13 @@ void openems_model_gen::add_lumped_element(pcb::point start, const std::string& 
     _lumped_elements.push_back(element);
 }
 
+
+
+void openems_model_gen::add_freq(float freq)
+{
+    _freq.push_back(freq);
+}
+
 void openems_model_gen::add_mesh_range(float start, float end, float gap, std::uint32_t dir, std::uint32_t prio)
 {
     mesh::line_range range(start, end, gap, prio);
@@ -322,8 +329,8 @@ void openems_model_gen::gen_antenna_simulation_scripts()
     const char *plot_s = R"(
 %% postprocessing & do the plots
 freq = linspace(max([1e6,f0 - fc]), f0 + fc, 501);
-U = ReadUI({'port_ut1', 'et'}, [Sim_Path '/'], freq); % time domain/freq domain voltage
-I = ReadUI('port_it1', [Sim_Path '/'], freq); % time domain/freq domain current (half time step is corrected)
+U = ReadUI({'port_ut0', 'et'}, [sim_path '/'], freq); % time domain/freq domain voltage
+I = ReadUI('port_it0', [sim_path '/'], freq); % time domain/freq domain current (half time step is corrected)
 
 % plot time domain voltage
 figure
@@ -450,20 +457,22 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
+        fprintf(fp, "sim_path = 'ant_sim'; sim_csx = 'ant.xml';\n");
+        fprintf(fp, "rmdir(sim_path, 's');\n");
+        fprintf(fp, "mkdir(sim_path);\n");
+        fprintf(fp, "WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
+        fprintf(fp, "CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
+        fprintf(fp, "RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         
-        fprintf(fp, "Sim_Path = 'ant_sim'; Sim_CSX = 'ant.xml';\n");
-        fprintf(fp, "rmdir(Sim_Path, 's');\n");
-        fprintf(fp, "mkdir(Sim_Path);\n");
-        fprintf(fp, "WriteOpenEMS( [Sim_Path '/' Sim_CSX], FDTD, CSX);\n");
-        fprintf(fp, "CSXGeomPlot( [Sim_Path '/' Sim_CSX], ['--export-STL=' Sim_Path]);\n");
-        fprintf(fp, "RunOpenEMS(Sim_Path, Sim_CSX, '--debug-PEC');\n");
-        
+        _add_read_ui(fp);
+        _add_plot_feed_point_impedance(fp);
+        _add_plot_s11(fp);
         
 
-        fprintf(fp, "%s\n", plot_s);
+        //fprintf(fp, "%s\n", plot_s);
         fprintf(fp, "\n");
         fprintf(fp, "\n");
-        fprintf(fp, "%s\n", plot_nf);
+        //fprintf(fp, "%s\n", plot_nf);
         
         fclose(fp);
     
@@ -544,7 +553,7 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     float lambda = C0 / (_f0 + _fc) * 1e3;
     
-    float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio;
+    float ratio = (_bc == BC_PML)? _lambda_mesh_ratio / 10: _lambda_mesh_ratio / 4;
     
     float left = x1 - lambda / ratio;
     float right = x2 + lambda / ratio;
@@ -1075,7 +1084,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
 
 void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
 {
-    std::uint32_t portnr = 1;
+    std::uint32_t portnr = 0;
     for (const auto& ex: _excitations)
     {
         fprintf(fp, "[CSX] = AddLumpedPort(CSX, 1, %u, %f, [%f %f %f], [%f %f %f], [%d %d %d], true);\n",
@@ -1102,7 +1111,7 @@ void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
 
 void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
 {
-    std::uint32_t idx = 1;
+    std::uint32_t idx = 0;
     for (const auto& element: _lumped_elements)
     {
         std::uint32_t dir = 0;
@@ -1211,6 +1220,89 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
 }
 
 
+void openems_model_gen::_add_read_ui(FILE *fp)
+{
+    fprintf(fp, "freq = linspace(max([1e6, f0 - fc]), f0 + fc, 501);\n");
+    for (std::uint32_t idx = 0; idx < _excitations.size(); idx++)
+    {
+        fprintf(fp, "U%u = ReadUI({'port_ut%u', 'et'}, [sim_path '/'], freq);\n", idx, idx);
+        fprintf(fp, "I%u = ReadUI('port_it%u', [sim_path '/'], freq);\n", idx, idx);
+        fprintf(fp, "\n\n");
+        idx++;
+    }
+}
+
+
+void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
+{
+    
+    std::uint32_t idx = 0;
+    for (auto& ex: _excitations)
+    {
+        (void)ex;
+        fprintf(fp, "# plot feed point impedance\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "Zin = U%u.FD{1}.val ./ I%u.FD{1}.val;\n", idx, idx);
+        fprintf(fp, "plot(freq / 1e6, real(Zin), 'k-', 'Linewidth', 2);\n");
+        fprintf(fp, "hold on\n");
+        fprintf(fp, "grid on\n");
+        fprintf(fp, "plot(freq/1e6, imag(Zin), 'r--', 'Linewidth', 2);\n");
+        fprintf(fp, "title('feed point impedance');\n");
+        fprintf(fp, "xlabel('frequency f / MHz');\n");
+        fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
+        fprintf(fp, "legend('real', 'imag');\n");
+        for (const auto& freq: _freq)
+        {
+            fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
+            fprintf(fp, "printf('freq:%%g Z(%%g + %%gi)\\n', freq(freq_idx), real(Zin(freq_idx)), imag(Zin(freq_idx)));\n");
+        }
+        
+        fprintf(fp, "\n\n");
+        idx++;
+    }
+    
+}
+
+
+void openems_model_gen::_add_plot_s11(FILE *fp)
+{
+    std::uint32_t idx = 0;
+    for (auto& ex: _excitations)
+    {
+        fprintf(fp, "# plot reflection coefficient S11\n");
+        fprintf(fp, "figure\n");
+
+        fprintf(fp, "uf_inc = 0.5*(U%u.FD{1}.val + I%u.FD{1}.val * %f);\n", idx, idx, ex.R);
+        fprintf(fp, "if_inc = 0.5*(I%u.FD{1}.val - U%u.FD{1}.val / %f);\n", idx, idx, ex.R);
+        fprintf(fp, "uf_ref = U%u.FD{1}.val - uf_inc;\n", idx);
+        fprintf(fp, "if_ref = I%u.FD{1}.val - if_inc;\n", idx);
+        fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
+        fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
+        fprintf(fp, "grid on\n");
+        fprintf(fp, "title('reflection coefficient S_{11} port%u');\n", idx);
+        fprintf(fp, "xlabel('frequency f / MHz');\n");
+        fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
+        
+        fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
+        
+        for (const auto& freq: _freq)
+        {
+            fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
+            
+            fprintf(fp, "s11_db_left = s11_db(1:freq_idx);\n");
+            fprintf(fp, "s11_db_right = s11_db(freq_idx:end);\n");
+            fprintf(fp, "left_idx = find(s11_db_left >= -10)(end);\n");
+            fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
+            
+            
+            
+            fprintf(fp, "printf('freq:%%g band width(%%g %%g)\\n', freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx));\n");
+        }
+        
+        fprintf(fp, "\n\n");
+        idx++;
+    }
+}
 
 void openems_model_gen::_apply_mesh_line_range(mesh& mesh)
 {

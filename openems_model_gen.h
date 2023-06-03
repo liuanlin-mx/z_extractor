@@ -183,10 +183,13 @@ public:
                         
     void add_lumped_element(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
     
+    void add_freq(float freq);
     
     void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
     
+    
     void set_boundary_cond(std::uint32_t bc);
+    
     void set_nf2ff_footprint(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
     void set_far_field_freq(float freq);
@@ -212,7 +215,9 @@ private:
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio = 0);
-    
+    void _add_read_ui(FILE *fp);
+    void _add_plot_feed_point_impedance(FILE *fp);
+    void _add_plot_s11(FILE *fp);
     void _apply_mesh_line_range(mesh& mesh);
     void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
@@ -222,7 +227,7 @@ private:
     std::shared_ptr<pcb> _pcb;
     std::map<std::uint32_t, mesh_info> _nets;
     std::map<std::string, mesh_info> _footprints;
-    
+    std::vector<float> _freq;
     
     mesh _mesh;
     float _mesh_x_min_gap;
