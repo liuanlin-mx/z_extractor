@@ -168,6 +168,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
         
     
         lumped_element element;
+        element.name = "LE_" + fp1 + fp1_pad_number + fp1_layer_name + "_" + fp2 + fp2_pad_number + fp2_layer_name;
         element.gen_mesh = gen_mesh;
         element.type = type;
         element.v = v;
@@ -255,6 +256,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
         }
         
         lumped_element element;
+        element.name = "LE_" + fp_name;
         element.gen_mesh = gen_mesh;
         element.type = type;
         element.v = _string_to_float(footprint.value);
@@ -289,6 +291,9 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
 void openems_model_gen::add_lumped_element(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh)
 {
     lumped_element element;
+    char buf[256];
+    sprintf(buf, "LE_%s_x%.2f_y%.2f_%s_x%.2f_y%.2f", start_layer.c_str(), start.x, start.y, end_layer.c_str(), end.x, end.y);
+    element.name = buf;
     element.gen_mesh = gen_mesh;
     element.type = type;
     element.v = v;
@@ -1184,7 +1189,6 @@ void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
 
 void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
 {
-    std::uint32_t idx = 0;
     for (const auto& element: _lumped_elements)
     {
         std::uint32_t dir = 0;
@@ -1196,33 +1200,27 @@ void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
         {
             dir = 2;
         }
-        
+        std::string type = "R";
         if (element.type == lumped_element::TYPE_R)
         {
-            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'R%d', %d, 'Caps', 1, 'R', %f);\n", idx, dir, element.v);
-            fprintf(fp, "[CSX] = AddBox(CSX, 'R%d', 0, [%f %f %f], [%f %f %f]);\n",
-                    idx,
-                    element.start.x, element.start.y, element.start.z,
-                    element.end.x, element.end.y, element.end.z);
+            type = "R";
         }
         else if (element.type == lumped_element::TYPE_L)
         {
-            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'L%d', %d, 'Caps', 1, 'L', %g);\n", idx, dir, element.v);
-            fprintf(fp, "[CSX] = AddBox(CSX, 'L%d', 0, [%f %f %f], [%f %f %f]);\n",
-                    idx,
-                    element.start.x, element.start.y, element.start.z,
-                    element.end.x, element.end.y, element.end.z);
+            type = "L";
         }
         else if (element.type == lumped_element::TYPE_C)
         {
-            fprintf(fp, "[CSX] = AddLumpedElement(CSX, 'C%d', %d, 'Caps', 1, 'C', %g);\n", idx, dir, element.v);
-            fprintf(fp, "[CSX] = AddBox(CSX, 'C%d', 0, [%f %f %f], [%f %f %f]);\n",
-                    idx,
+            type = "C";
+        }
+        
+        fprintf(fp, "[CSX] = AddLumpedElement(CSX, '%s', %d, 'Caps', 1, '%s', %g);\n", element.name.c_str(), dir, type.c_str(), element.v);
+        fprintf(fp, "[CSX] = AddBox(CSX, '%s', 0, [%f %f %f], [%f %f %f]);\n",
+                    element.name.c_str(),
                     element.start.x, element.start.y, element.start.z,
                     element.end.x, element.end.y, element.end.z);
-        }
+        
 
-        idx++;
         if (element.gen_mesh)
         {
             _mesh.x.insert(mesh::line(element.start.x, mesh_prio));
@@ -1503,6 +1501,7 @@ std::vector<pcb::point> openems_model_gen::_get_fp_poly_points(const pcb::footpr
             points.push_back(pcb::point(c.x, c.y + radius));
         }
     }
+    return points;
 }
 
 float openems_model_gen::_round_xy(float v)

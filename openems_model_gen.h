@@ -88,6 +88,7 @@ public:
             , v(50)
         {
         }
+        std::string name;
         bool gen_mesh;
         point start;
         point end;
