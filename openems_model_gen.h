@@ -181,12 +181,14 @@ public:
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
                         std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
                         
+    void add_lumped_element(const std::string& fp_name, bool gen_mesh = true);
+                        
     void add_lumped_element(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
     
     void add_freq(float freq);
     
     void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
-    
+    void set_mesh_lambda_ratio(float ratio) { _lambda_mesh_ratio  = ratio; }
     
     void set_boundary_cond(std::uint32_t bc);
     
@@ -222,7 +224,12 @@ private:
     void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
     
+    std::vector<pcb::point> _get_fp_poly_points(const pcb::footprint& fp, const std::string& pad_number);
+    
     float _round_xy(float v);
+
+    float _suffix_to_value(const std::string& suffix);
+    float _string_to_float(const std::string& str);
 private:
     std::shared_ptr<pcb> _pcb;
     std::map<std::uint32_t, mesh_info> _nets;

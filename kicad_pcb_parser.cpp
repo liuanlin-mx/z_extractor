@@ -435,6 +435,7 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
             footprint.tstamp = tstamp->params[0];
             footprint.at.x = atof(at->params[0].c_str());
             footprint.at.y = atof(at->params[1].c_str());
+            footprint.layer = _strip_string(layer->params[0]);
             if (at->params.size() >= 3)
             {
                 footprint.at_angle = atof(at->params[2].c_str());
@@ -449,6 +450,10 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 if (fp_text->params[0] == "reference")
                 {
                     footprint.reference = _strip_string(fp_text->params[1]);
+                }
+                if (fp_text->params[0] == "value")
+                {
+                    footprint.value = _strip_string(fp_text->params[1]);
                 }
             }
             

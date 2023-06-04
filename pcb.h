@@ -195,6 +195,7 @@ public:
         std::string layer;
         std::string tstamp;
         std::string reference;
+        std::string value;
         point at;
         float at_angle;
         std::vector<gr> grs;
