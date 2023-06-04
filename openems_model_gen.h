@@ -212,8 +212,8 @@ private:
     void _add_via(FILE *fp);
     void _add_zone(FILE *fp);
     void _add_footprint(FILE *fp);
-    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
-    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0);
+    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
+    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
     
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);

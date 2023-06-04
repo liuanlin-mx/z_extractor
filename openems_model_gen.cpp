@@ -63,7 +63,7 @@ void openems_model_gen::add_net(std::uint32_t net_id, bool uniform_grid, float x
 void openems_model_gen::add_footprint(const std::string & footprint, bool gen_mesh, std::uint32_t mesh_prio)
 {
     mesh_info info;
-    info.gen_mesh = true;
+    info.gen_mesh = gen_mesh;
     info.mesh_prio = mesh_prio;
     _footprints.insert(std::pair<std::string, mesh_info>(footprint, info));
 }
@@ -508,6 +508,8 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
+        fprintf(fp, "show_model = 1;\n");
+        fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
         fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-5;\n");
@@ -536,11 +538,15 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
         fprintf(fp, "sim_path = 'ant_sim'; sim_csx = 'ant.xml';\n");
-        fprintf(fp, "rmdir(sim_path, 's');\n");
-        fprintf(fp, "mkdir(sim_path);\n");
-        fprintf(fp, "WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
-        fprintf(fp, "CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
-        fprintf(fp, "RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
+        fprintf(fp, "if (plot_only == 0)");
+        fprintf(fp, "    rmdir(sim_path, 's');\n");
+        fprintf(fp, "    mkdir(sim_path);\n");
+        fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
+        fprintf(fp, "    if (show_model == 1)");
+        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
+        fprintf(fp, "    end\n");
+        fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
+        fprintf(fp, "end\n");
         
         _add_read_ui(fp);
         _add_plot_feed_point_impedance(fp);
@@ -939,13 +945,13 @@ void openems_model_gen::_add_footprint(FILE *fp)
             {
                 if (_pcb->is_cu_layer(gr.layer_name))
                 {
-                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, info.mesh_prio);
+                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, info.mesh_prio, info.gen_mesh);
                 }
             }
             
             for (const auto& pad: footprint.pads)
             {
-                _add_pad(footprint, pad, footprint.reference, fp, info.mesh_prio);
+                _add_pad(footprint, pad, footprint.reference, fp, info.mesh_prio, info.gen_mesh);
             }
         }
     }
@@ -954,7 +960,7 @@ void openems_model_gen::_add_footprint(FILE *fp)
 }
 
 
-void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio)
+void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio, bool gen_mesh)
 {
     const std::string& layer = gr.layer_name;
     float z1 = _pcb->get_layer_z_axis(layer);
@@ -969,8 +975,12 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             _pcb->get_rotation_pos(at, angle, xy);
             fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, xy.x, idx, xy.y);
             idx++;
-            _mesh.x.insert(mesh::line(xy.x, mesh_prio));
-            _mesh.y.insert(mesh::line(xy.y, mesh_prio));
+            
+            if (gen_mesh)
+            {
+                _mesh.x.insert(mesh::line(xy.x, mesh_prio));
+                _mesh.y.insert(mesh::line(xy.y, mesh_prio));
+            }
         }
         
         fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
@@ -1000,10 +1010,13 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
-            _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
+            if (gen_mesh)
+            {
+                _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
+            }
         }
     }
     else if (gr.gr_type == pcb::gr::GR_LINE)
@@ -1032,9 +1045,12 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
                         start.x, start.y, z1,
                         start.x, start.y, z2,
                         radius);
-                        
-            _mesh.x.insert(mesh::line(start.x, mesh_prio));
-            _mesh.y.insert(mesh::line(start.y, mesh_prio));
+            
+            if (gen_mesh)
+            {
+                _mesh.x.insert(mesh::line(start.x, mesh_prio));
+                _mesh.y.insert(mesh::line(start.y, mesh_prio));
+            }
         }
         else
         {
@@ -1045,7 +1061,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
 }
 
 
-void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio)
+void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio, bool gen_mesh)
 {
     std::vector<std::string> layers = _pcb->get_pad_layers(p);
     
@@ -1091,12 +1107,15 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, min_z,
                         c.x, c.y, max_z,
                         radius);
-            //_mesh_x.insert(c.x);
-            _mesh.x.insert(mesh::line(c.x + radius, mesh_prio));
-            _mesh.x.insert(mesh::line(c.x - radius, mesh_prio));
-            //_mesh_y.insert(c.y);
-            _mesh.y.insert(mesh::line(c.y + radius, mesh_prio));
-            _mesh.y.insert(mesh::line(c.y - radius, mesh_prio));
+            if (gen_mesh)
+            {
+                //_mesh_x.insert(c.x);
+                _mesh.x.insert(mesh::line(c.x + radius, mesh_prio));
+                _mesh.x.insert(mesh::line(c.x - radius, mesh_prio));
+                //_mesh_y.insert(c.y);
+                _mesh.y.insert(mesh::line(c.y + radius, mesh_prio));
+                _mesh.y.insert(mesh::line(c.y - radius, mesh_prio));
+            }
         }
     }
     
@@ -1128,10 +1147,13 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
-            _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
-            _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
+            if (gen_mesh)
+            {
+                _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p2.x, mesh_prio)); _mesh.y.insert(mesh::line(p2.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p3.x, mesh_prio)); _mesh.y.insert(mesh::line(p3.y, mesh_prio));
+                _mesh.x.insert(mesh::line(p4.x, mesh_prio)); _mesh.y.insert(mesh::line(p4.y, mesh_prio));
+            }
         }
         else if (p.shape == pcb::pad::SHAPE_CIRCLE)
         {
@@ -1145,9 +1167,12 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, z1,
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
-                        
-            _mesh.x.insert(mesh::line(c.x, mesh_prio));
-            _mesh.y.insert(mesh::line(c.y, mesh_prio));
+                
+            if (gen_mesh)
+            {        
+                _mesh.x.insert(mesh::line(c.x, mesh_prio));
+                _mesh.y.insert(mesh::line(c.y, mesh_prio));
+            }
         }
         else if (p.shape == pcb::pad::SHAPE_OVAL)
         {
