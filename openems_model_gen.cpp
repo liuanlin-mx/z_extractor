@@ -819,49 +819,91 @@ void openems_model_gen::_add_segment(FILE *fp)
             const std::string& layer = s.layer_name;
             float z1 = _pcb->get_layer_z_axis(layer);
             float thickness = _pcb->get_layer_thickness(layer);
-            
-            std::complex<float> start(s.start.x, s.start.y);
-            std::complex<float> end(s.end.x, s.end.y);
-            std::complex<float> unit_vector = 1;
-            if (std::abs(end - start) < s.width * 0.5)
+            if (s.is_arc())
             {
-                continue;
-            }
-            
-            unit_vector = (end - start) / std::abs(end - start);
-            
-            std::uint32_t idx = 1;
-            
-            float n = 4;
-            for (std::int32_t i = 0; i <= n; i++)
-            {
-                std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + M_PI_2 + i * M_PI / n));
-                std::complex<float> p = start + tmp * (s.width / 2);
-                fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
-                idx++;
-                if (info.gen_mesh && !info.use_uniform_grid)
+                double cx;
+                double cy;
+                double radius;
+                calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
+                
+                
+                float s_len = _pcb->get_segment_len(s);
+                if (s_len < s.width * 0.5)
                 {
-                    _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
-                    _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
+                    continue;
                 }
-            }
-            
-            for (std::int32_t i = 0; i <= n; i++)
-            {
-                std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + -M_PI_2 + i * M_PI / n));
-                std::complex<float> p = end + tmp * (s.width / 2);
-                fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
-                idx++;
-                if (info.gen_mesh && !info.use_uniform_grid)
+                
+                std::list<pcb::point> points;
+                for (float i = 0; i < s_len + 0.1; i += 0.1)
                 {
-                    _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
-                    _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
+                    float x = 0;
+                    float y = 0;
+                    _pcb->get_segment_pos(s, i, x, y);
+                    
+                    std::complex<float> c(cx, cy);
+                    std::complex<float> p(x, y);
+                    
+                    std::complex<float> unit_vector = (p - c) / std::abs(p - c);
+                    std::complex<float> p1 = p + unit_vector * (s.width / 2);
+                    std::complex<float> p2 = p - unit_vector * (s.width / 2);
+                    
+                    points.push_back(pcb::point(p1.real(), p1.imag()));
+                    points.push_front(pcb::point(p2.real(), p2.imag()));
                 }
+                std::uint32_t idx = 1;
+                for (const auto& p: points)
+                {
+                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.x, idx, p.y);
+                    idx++;
+                }
+                fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
+                fprintf(fp, "clear p;\n");
             }
-            
-            
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
-            fprintf(fp, "clear p;\n");
+            else
+            {
+                std::complex<float> start(s.start.x, s.start.y);
+                std::complex<float> end(s.end.x, s.end.y);
+                std::complex<float> unit_vector = 1;
+                if (std::abs(end - start) < s.width * 0.5)
+                {
+                    continue;
+                }
+                
+                unit_vector = (end - start) / std::abs(end - start);
+                
+                std::uint32_t idx = 1;
+                
+                float n = 4;
+                for (std::int32_t i = 0; i <= n; i++)
+                {
+                    std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + M_PI_2 + i * M_PI / n));
+                    std::complex<float> p = start + tmp * (s.width / 2);
+                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+                    idx++;
+                    if (info.gen_mesh && !info.use_uniform_grid)
+                    {
+                        _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
+                        _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
+                    }
+                }
+                
+                for (std::int32_t i = 0; i <= n; i++)
+                {
+                    std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + -M_PI_2 + i * M_PI / n));
+                    std::complex<float> p = end + tmp * (s.width / 2);
+                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+                    idx++;
+                    if (info.gen_mesh && !info.use_uniform_grid)
+                    {
+                        _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
+                        _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
+                    }
+                }
+                
+                
+                fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
+                fprintf(fp, "clear p;\n");
+            }
             
             x_min = std::min(x_min, std::min(s.start.x - s.width, s.end.x - s.width));
             x_max = std::max(x_max, std::max(s.start.x + s.width, s.end.x + s.width));
