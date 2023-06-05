@@ -96,34 +96,56 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
         if (dir == excitation::DIR_X)
         {
             ex.start.x = _round_xy(p1.x);
-            //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            ex.start.y = _round_xy(p1.y);
             ex.end.x = _round_xy(p2.x);
-            //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.y = _round_xy(p2.y);
+            
+            if (gen_mesh)
+            {
+                ex.start.y = _round_xy(p1.y);
+                ex.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                ex.start.y = p1.y - size;
+                ex.end.y = p1.y + size;
+            }
         }
         else if (dir == excitation::DIR_Y)
         {
-            //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
-            ex.start.x = _round_xy(p1.x);
-            ex.start.y = _round_xy(p1.y);
+            if (gen_mesh)
+            {
+                ex.start.x = _round_xy(p1.x);
+                ex.end.x = _round_xy(p2.x);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                ex.start.x = p1.x - size;
+                ex.end.x = p2.x + size;
+            }
             
-            //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
-            ex.end.x = _round_xy(p2.x);
+            ex.start.y = _round_xy(p1.y);
             ex.end.y = _round_xy(p2.y);
         }
         else if (dir == excitation::DIR_Z)
         {
-            ex.start.x = _round_xy(p1.x);
-            ex.start.y = _round_xy(p1.y);
-            ex.end.x = _round_xy(p2.x);
-            ex.end.y = _round_xy(p2.y);
-            
-            //ex.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
-            //ex.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            
-            //ex.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
-            //ex.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
+            if (gen_mesh)
+            {
+                ex.start.x = _round_xy(p1.x);
+                ex.start.y = _round_xy(p1.y);
+                ex.end.x = _round_xy(p2.x);
+                ex.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                
+                ex.start.x = p1.x - size;
+                ex.start.y = p1.y - size;
+                
+                ex.end.x = p1.x + size;
+                ex.end.y = p1.y + size;
+            }
         }
         _excitations.push_back(ex);
     }
@@ -180,31 +202,55 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
         if (dir == lumped_element::DIR_X)
         {
             element.start.x = _round_xy(p1.x);
-            element.start.y = _round_xy(p1.y);
             element.end.x = _round_xy(p2.x);
-            element.end.y = _round_xy(p2.y);
+            
+            if (gen_mesh)
+            {
+                element.start.y = _round_xy(p1.y);
+                element.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                element.start.y = p1.y - size;
+                element.end.y = p1.y + size;
+            }
         }
         else if (dir == lumped_element::DIR_Y)
         {
-            element.start.x = _round_xy(p1.x);
-            element.start.y = _round_xy(p1.y);
+            if (gen_mesh)
+            {
+                element.start.x = _round_xy(p1.x);
+                element.end.x = _round_xy(p2.x);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                element.start.x = p1.x - size;
+                element.end.x = p1.x + size;
+            }
             
-            element.end.x = _round_xy(p2.x);
+            element.start.y = _round_xy(p1.y);
             element.end.y = _round_xy(p2.y);
         }
         else if (dir == lumped_element::DIR_Z)
         {
-            element.start.x = _round_xy(p1.x);
-            element.start.y = _round_xy(p1.y);
-            
-            //element.start.x = p1.x - std::min(pad1.size_w, pad1.size_h) / 2;
-            //element.start.y = p1.y - std::min(pad1.size_w, pad1.size_h) / 2;
-            
-            element.end.x = _round_xy(p2.x);
-            element.end.y = _round_xy(p2.y);
-            //element.end.x = p2.x + std::min(pad2.size_w, pad2.size_h) / 2;
-            //element.end.y = p2.y + std::min(pad2.size_w, pad2.size_h) / 2;
-            
+            if (gen_mesh)
+            {
+                element.start.x = _round_xy(p1.x);
+                element.start.y = _round_xy(p1.y);
+                element.end.x = _round_xy(p2.x);
+                element.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                element.start.x = p1.x - size;
+                element.start.y = p1.y - size;
+                
+                element.end.x = p1.x + size;
+                element.end.y = p1.y + size;
+            }
         }
         _lumped_elements.push_back(element);
     }
@@ -240,6 +286,8 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
     {
         pcb::point p1 = footprint.pads[0].at;
         pcb::point p2 = footprint.pads[1].at;
+        const pcb::pad& pad1 = footprint.pads[0];
+        const pcb::pad& pad2 = footprint.pads[1];
         _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p1);
         _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p2);
         
@@ -268,16 +316,35 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
         if (dir == lumped_element::DIR_X)
         {
             element.start.x = _round_xy(p1.x);
-            element.start.y = _round_xy(p1.y);
             element.end.x = _round_xy(p2.x);
-            element.end.y = _round_xy(p2.y);
+            
+            if (gen_mesh)
+            {
+                element.start.y = _round_xy(p1.y);
+                element.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                element.start.y = p1.y - size;
+                element.end.y = p1.y + size;
+            }
         }
         else if (dir == lumped_element::DIR_Y)
         {
-            element.start.x = _round_xy(p1.x);
-            element.start.y = _round_xy(p1.y);
+            if (gen_mesh)
+            {
+                element.start.x = _round_xy(p1.x);
+                element.end.x = _round_xy(p2.x);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                element.start.x = p1.x - size;
+                element.end.x = p1.x + size;
+            }
             
-            element.end.x = _round_xy(p2.x);
+            element.start.y = _round_xy(p1.y);
             element.end.y = _round_xy(p2.y);
         }
         _lumped_elements.push_back(element);
