@@ -578,11 +578,15 @@ void kicad_pcb_parser::_add_gr_to_footprint(std::shared_ptr<pcb_object> fp_obj, 
             std::shared_ptr<pcb_object> pts = child->find_child("pts");
             
             if (layer && layer->params.size() == 1
-                && stroke && stroke->childs.size() == 2
                 && tstamp && tstamp->params.size())
             {
-                std::shared_ptr<pcb_object> stroke_width = stroke->find_child("width");
-                std::shared_ptr<pcb_object> stroke_type = stroke->find_child("type");
+                std::shared_ptr<pcb_object> stroke_width;
+                std::shared_ptr<pcb_object> stroke_type;
+                if (stroke)
+                {
+                    stroke_width = stroke->find_child("width");
+                    stroke_type = stroke->find_child("type");
+                }
                 
                 pcb::gr gr;
                 if (start && start->params.size() == 2)
@@ -701,11 +705,15 @@ void kicad_pcb_parser::_add_gr_to_pcb()
             std::shared_ptr<pcb_object> pts = child->find_child("pts");
             
             if (layer && layer->params.size() == 1
-                && stroke && stroke->childs.size() == 2
                 && tstamp && tstamp->params.size())
             {
-                std::shared_ptr<pcb_object> stroke_width = stroke->find_child("width");
-                std::shared_ptr<pcb_object> stroke_type = stroke->find_child("type");
+                std::shared_ptr<pcb_object> stroke_width;
+                std::shared_ptr<pcb_object> stroke_type;
+                if (stroke)
+                {
+                    stroke_width = stroke->find_child("width");
+                    stroke_type = stroke->find_child("type");
+                }
                 
                 pcb::gr gr;
                 if (start && start->params.size() == 2)
