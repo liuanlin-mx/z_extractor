@@ -165,6 +165,34 @@ private:
         std::uint32_t mesh_prio;
     };
     
+    struct range_det
+    {
+        range_det()
+            : x_min(10000)
+            , x_max(-10000)
+            , y_min(10000)
+            , y_max(-10000)
+        {   
+        }
+        
+        void det(float x, float y)
+        {
+            x_min = std::min(x_min, x);
+            x_max = std::max(x_max, x);
+            y_min = std::min(y_min, y);
+            y_max = std::max(y_max, y);
+        }
+        
+        bool is_valid()
+        {
+            return x_min != 10000 && x_max != -10000 && y_min != 10000 && y_max != -10000;
+        }
+        
+        float x_min;
+        float x_max;
+        float y_min;
+        float y_max;
+    };
 public:
     openems_model_gen(const std::shared_ptr<pcb>& pcb);
     ~openems_model_gen();
@@ -173,6 +201,8 @@ public:
     void add_net(std::uint32_t net_id, bool gen_mesh = true, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 1);
     void add_net(std::uint32_t net_id, float x_gap, float y_gap, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 0);
     void add_footprint(const std::string& fp_ref, bool gen_mesh = true, std::uint32_t mesh_prio = 2);
+    void add_footprint(const std::string& fp_ref, float x_gap, float y_gap, std::uint32_t mesh_prio = 2);
+    
     void add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50, bool gen_mesh = true);
                         
@@ -212,8 +242,8 @@ private:
     void _add_via(FILE *fp);
     void _add_zone(FILE *fp);
     void _add_footprint(FILE *fp);
-    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
-    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
+    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
+    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
     
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);

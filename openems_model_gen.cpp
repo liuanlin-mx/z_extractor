@@ -69,6 +69,17 @@ void openems_model_gen::add_footprint(const std::string & footprint, bool gen_me
     _footprints.insert(std::pair<std::string, mesh_info>(footprint, info));
 }
 
+void openems_model_gen::add_footprint(const std::string& footprint, float x_gap, float y_gap, std::uint32_t mesh_prio)
+{
+    mesh_info info;
+    info.gen_mesh = true;
+    info.use_uniform_grid = true;
+    info.x_gap = x_gap;
+    info.y_gap = y_gap;
+    info.mesh_prio = mesh_prio;
+    _footprints.insert(std::pair<std::string, mesh_info>(footprint, info));
+}
+
 void openems_model_gen::add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R, bool gen_mesh)
 {
@@ -786,10 +797,6 @@ void openems_model_gen::_add_dielectric(FILE *fp)
         fprintf(fp, "CSX = SetMaterialProperty(CSX, '%s', 'Epsilon', %f);\n", layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name));
         fprintf(fp, "CSX = AddBox(CSX, '%s', 1, start, stop);\n", layer.name.c_str());
     }
-    
-    fprintf(fp, "CSX = AddMaterial(CSX, 'Copper_Cut');\n");
-    fprintf(fp, "CSX = SetMaterialProperty(CSX, 'Copper_Cut', 'Epsilon', 1);\n");
-    
     fprintf(fp, "\n\n");
 }
 
@@ -919,6 +926,11 @@ void openems_model_gen::_add_segment(FILE *fp)
             && x_min < 100000 && x_max > -100000 && x_min < x_max
             && y_min < 100000 && y_max > -100000 && y_min < y_max)
         {
+            mesh::line_range x_range(x_min, x_max, info.x_gap, info.mesh_prio);
+            mesh::line_range y_range(y_min, y_max, info.y_gap, info.mesh_prio);
+            _mesh.x_range.insert(x_range);
+            _mesh.y_range.insert(y_range);
+        #if 0
             for (float x = x_min; x < x_max; x += info.x_gap)
             {
                 _mesh.x.insert(mesh::line(x, info.mesh_prio));
@@ -927,6 +939,7 @@ void openems_model_gen::_add_segment(FILE *fp)
             {
                 _mesh.y.insert(mesh::line(y, info.mesh_prio));
             }
+        #endif
         }
     }
     fprintf(fp, "\n\n");
@@ -1053,19 +1066,29 @@ void openems_model_gen::_add_footprint(FILE *fp)
     {
         if (_footprints.count(footprint.reference))
         {
+            range_det range;
             const mesh_info& info = _footprints[footprint.reference];
             fprintf(fp, "CSX = AddMetal(CSX, '%s');\n", footprint.reference.c_str());
             for (const auto& gr: footprint.grs)
             {
                 if (_pcb->is_cu_layer(gr.layer_name))
                 {
-                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, info.mesh_prio, info.gen_mesh);
+                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid);
                 }
             }
             
             for (const auto& pad: footprint.pads)
             {
-                _add_pad(footprint, pad, footprint.reference, fp, info.mesh_prio, info.gen_mesh);
+                _add_pad(footprint, pad, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid);
+            }
+            
+            if (info.gen_mesh && info.use_uniform_grid && range.is_valid())
+            {
+                float x_margin = (range.x_max - range.x_min) / 20;
+                mesh::line_range x_range(range.x_min - x_margin, range.x_max + x_margin, info.x_gap, info.mesh_prio);
+                mesh::line_range y_range(range.y_min - x_margin, range.y_max + x_margin, info.y_gap, info.mesh_prio);
+                _mesh.x_range.insert(x_range);
+                _mesh.y_range.insert(y_range);
             }
         }
     }
@@ -1074,7 +1097,7 @@ void openems_model_gen::_add_footprint(FILE *fp)
 }
 
 
-void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, std::uint32_t mesh_prio, bool gen_mesh)
+void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio, bool gen_mesh)
 {
     const std::string& layer = gr.layer_name;
     float z1 = _pcb->get_layer_z_axis(layer);
@@ -1089,7 +1112,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             _pcb->get_rotation_pos(at, angle, xy);
             fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, xy.x, idx, xy.y);
             idx++;
-            
+            range.det(xy.x, xy.y);
             if (gen_mesh)
             {
                 _mesh.x.insert(mesh::line(xy.x, mesh_prio));
@@ -1124,6 +1147,10 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
+            range.det(p1.x, p1.y);
+            range.det(p2.x, p2.y);
+            range.det(p3.x, p3.y);
+            range.det(p4.x, p4.y);
             if (gen_mesh)
             {
                 _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
@@ -1160,6 +1187,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
                         start.x, start.y, z2,
                         radius);
             
+            range.det(start.x, start.y);
             if (gen_mesh)
             {
                 _mesh.x.insert(mesh::line(start.x, mesh_prio));
@@ -1175,7 +1203,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
 }
 
 
-void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, std::uint32_t mesh_prio, bool gen_mesh)
+void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio, bool gen_mesh)
 {
     std::vector<std::string> layers = _pcb->get_pad_layers(p);
     
@@ -1221,6 +1249,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, min_z,
                         c.x, c.y, max_z,
                         radius);
+            range.det(c.x, c.y);
             if (gen_mesh)
             {
                 //_mesh_x.insert(c.x);
@@ -1261,6 +1290,10 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
+            range.det(p1.x, p1.y);
+            range.det(p2.x, p2.y);
+            range.det(p3.x, p3.y);
+            range.det(p4.x, p4.y);
             if (gen_mesh)
             {
                 _mesh.x.insert(mesh::line(p1.x, mesh_prio)); _mesh.y.insert(mesh::line(p1.y, mesh_prio));
@@ -1282,6 +1315,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
                 
+            range.det(c.x, c.y);
             if (gen_mesh)
             {        
                 _mesh.x.insert(mesh::line(c.x, mesh_prio));
