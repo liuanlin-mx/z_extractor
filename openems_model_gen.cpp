@@ -26,6 +26,7 @@ openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     , _mesh_y_min_gap(0.1)
     , _mesh_z_min_gap(0.01)
     , _lambda_mesh_ratio(20)
+    , _pix_unit(0.05)
     , _ignore_cu_thickness(true)
     , _bc(BC_PML)
     , _f0(0)
@@ -48,11 +49,11 @@ void openems_model_gen::add_net(std::uint32_t net_id, bool gen_mesh, bool zone_g
     _nets.insert(std::pair<std::uint32_t, mesh_info>(net_id, info));
 }
 
-void openems_model_gen::add_net(std::uint32_t net_id, bool uniform_grid, float x_gap, float y_gap, bool zone_gen_mesh, std::uint32_t mesh_prio)
+void openems_model_gen::add_net(std::uint32_t net_id, float x_gap, float y_gap, bool zone_gen_mesh, std::uint32_t mesh_prio)
 {
     mesh_info info;
     info.gen_mesh = true;
-    info.use_uniform_grid = uniform_grid;
+    info.use_uniform_grid = true;
     info.x_gap = x_gap;
     info.y_gap = y_gap;
     info.zone_gen_mesh = zone_gen_mesh;
@@ -609,7 +610,7 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "    rmdir(sim_path, 's');\n");
         fprintf(fp, "    mkdir(sim_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
-        fprintf(fp, "    if (show_model == 1)");
+        fprintf(fp, "    if (show_model == 1)\n");
         fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
         fprintf(fp, "    end\n");
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
@@ -673,11 +674,12 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     fprintf(fp, "];\n");
     
     fprintf(fp, "max_res = %f;\n", min_z);
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.5);\n");
+    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
     
     
     
-    float margin = _pcb->get_board_thickness() * 20;
+    float lambda = C0 / (_f0 + _fc) * 1e3;
+    float margin = std::max(lambda, _pcb->get_board_thickness() * 20);
     if (mesh_z.size() > 1)
     {
         fprintf(fp, "mesh.z = unique([mesh.z, %f, %f]);\n", std::min(-margin, mesh_z.begin()->v), std::max(margin, mesh_z.rbegin()->v));
@@ -689,7 +691,7 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
     }
     
     fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.5);\n");
+    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
     
     fprintf(fp, "\n\n");
 }
@@ -753,8 +755,8 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     
     fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
-    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.5);\n");
-    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.5);\n");
+    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.3);\n");
+    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.3);\n");
 }
 
 
@@ -781,10 +783,13 @@ void openems_model_gen::_add_dielectric(FILE *fp)
         fprintf(fp, "start = [%f %f %f];\n", x1, y1, z1);
         fprintf(fp, "stop = [%f %f %f];\n", x2, y2, z2);
         fprintf(fp, "CSX = AddMaterial(CSX, '%s');\n", layer.name.c_str());
-        fprintf(fp, "CSX = SetMaterialProperty( CSX, '%s', 'Epsilon', %f);\n", layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name));
+        fprintf(fp, "CSX = SetMaterialProperty(CSX, '%s', 'Epsilon', %f);\n", layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name));
         fprintf(fp, "CSX = AddBox(CSX, '%s', 1, start, stop);\n", layer.name.c_str());
     }
-
+    
+    fprintf(fp, "CSX = AddMaterial(CSX, 'Copper_Cut');\n");
+    fprintf(fp, "CSX = SetMaterialProperty(CSX, 'Copper_Cut', 'Epsilon', 1);\n");
+    
     fprintf(fp, "\n\n");
 }
 
@@ -991,7 +996,7 @@ void openems_model_gen::_add_via(FILE *fp)
                             c.x, c.y, min_z,
                             c.x, c.y, max_z,
                             radius);
-                if (info.gen_mesh)
+                if (info.gen_mesh && !info.use_uniform_grid)
                 {
                     _mesh.x.insert(mesh::line(c.x, info.mesh_prio));
                     //_mesh_x.insert(c.x + radius);

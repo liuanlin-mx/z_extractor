@@ -231,6 +231,20 @@ cv::Mat pcb::draw(const std::string& layer_name, float pix_unit)
     return img;
 }
 
+cv::Mat pcb::draw_zone(const std::string& layer_name, std::uint32_t net_id, float pix_unit)
+{
+    cv::Mat img(_get_pcb_img_rows(pix_unit), _get_pcb_img_cols(pix_unit), CV_8UC3, cv::Scalar(0, 0, 0));
+    for (const auto& it: _zones)
+    {
+        const zone& z = it.second;
+        if (z.layer_name == layer_name && z.net == net_id)
+        {
+            _draw_zone(img, z, 0, 0, 255, pix_unit);
+        }
+    }
+    return img;
+}
+    
 /* 如果线段在焊盘内但没有连接到中心点 就添加一个等宽线段连接到中心 */
 /* 如果两个线段的起点或终点没有连接在一点但距离小于线宽和的1/2 就添加一个等宽线段连接它们 */
 void pcb::clean_segment()
@@ -1456,7 +1470,6 @@ void pcb::_draw_via(cv::Mat& img, const pcb::via& v, const std::string& layer_na
             cv::circle(img, center, radius, cv::Scalar(b, g, r), -1);
         }
     }
-    
 }
 
 void pcb::_draw_zone(cv::Mat& img, const pcb::zone& z, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit)

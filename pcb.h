@@ -241,6 +241,7 @@ public:
     void ignore_cu_thickness(bool b) { _ignore_cu_thickness = b; }
     void dump();
     cv::Mat draw(const std::string& layer_name, float pix_unit = 0.1);
+    cv::Mat draw_zone(const std::string& layer_name, std::uint32_t net_id, float pix_unit = 0.1);
     
     void clean_segment();
     
@@ -319,6 +320,18 @@ public:
     std::uint32_t segment_is_inside_pad(const pcb::segment& s, const pcb::pad& pad);
     
     
+    
+    float cvt_img_x(float x, float pix_unit) { return _cvt_img_x(x, pix_unit); }
+    float cvt_img_y(float y, float pix_unit) { return _cvt_img_y(y, pix_unit); }
+    float cvt_img_len(float len, float pix_unit) { return _cvt_img_len(len, pix_unit); }
+    
+    float cvt_pcb_x(float x, float pix_unit) { return _cvt_pcb_x(x, pix_unit); }
+    float cvt_pcb_y(float y, float pix_unit) { return _cvt_pcb_y(y, pix_unit); }
+    float cvt_pcb_len(float len, float pix_unit) { return _cvt_pcb_len(len, pix_unit); }
+    
+    float get_pcb_img_cols(float pix_unit) { return _get_pcb_img_cols(pix_unit); }
+    float get_pcb_img_rows(float pix_unit) { return _get_pcb_img_rows(pix_unit); }
+    
 private:
     bool _float_equal(float a, float b);
     bool _point_equal(float x1, float y1, float x2, float y2);
@@ -326,6 +339,10 @@ private:
     float _cvt_img_x(float x, float pix_unit) { return round((x - _pcb_left) / pix_unit); }
     float _cvt_img_y(float y, float pix_unit) { return round((y - _pcb_top) / pix_unit); }
     float _cvt_img_len(float len, float pix_unit) { return round(len / pix_unit); }
+    
+    float _cvt_pcb_x(float x, float pix_unit) { return x * pix_unit + _pcb_left; }
+    float _cvt_pcb_y(float y, float pix_unit) { return y * pix_unit + _pcb_top; }
+    float _cvt_pcb_len(float len, float pix_unit) { return len * pix_unit; }
     
     float _get_pcb_img_cols(float pix_unit) { return round((_pcb_right - _pcb_left) / pix_unit); }
     float _get_pcb_img_rows(float pix_unit) { return round((_pcb_bottom - _pcb_top) / pix_unit); }

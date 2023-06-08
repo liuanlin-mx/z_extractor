@@ -171,7 +171,7 @@ public:
     
 public:
     void add_net(std::uint32_t net_id, bool gen_mesh = true, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 1);
-    void add_net(std::uint32_t net_id, bool uniform_grid, float x_gap, float y_gap, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 0);
+    void add_net(std::uint32_t net_id, float x_gap, float y_gap, bool zone_gen_mesh = false, std::uint32_t mesh_prio = 0);
     void add_footprint(const std::string& fp_ref, bool gen_mesh = true, std::uint32_t mesh_prio = 2);
     void add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R = 50, bool gen_mesh = true);
@@ -242,6 +242,8 @@ private:
     float _mesh_y_min_gap;
     float _mesh_z_min_gap;
     float _lambda_mesh_ratio;
+    
+    float _pix_unit;
     
     bool _ignore_cu_thickness;
     
