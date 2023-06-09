@@ -628,8 +628,9 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "end\n");
         
         _add_read_ui(fp);
-        _add_plot_feed_point_impedance(fp);
         _add_plot_s11(fp);
+        _add_plot_vswr(fp);
+        _add_plot_feed_point_impedance(fp);
         
 
         //fprintf(fp, "%s\n", plot_s);
@@ -1084,9 +1085,10 @@ void openems_model_gen::_add_footprint(FILE *fp)
             
             if (info.gen_mesh && info.use_uniform_grid && range.is_valid())
             {
-                float x_margin = (range.x_max - range.x_min) / 20;
+                float x_margin = std::min(5.f, std::max(1.f, (range.x_max - range.x_min) / 20));
+                float y_margin = std::min(5.f, std::max(1.f, (range.y_max - range.y_min) / 20));
                 mesh::line_range x_range(range.x_min - x_margin, range.x_max + x_margin, info.x_gap, info.mesh_prio);
-                mesh::line_range y_range(range.y_min - x_margin, range.y_max + x_margin, info.y_gap, info.mesh_prio);
+                mesh::line_range y_range(range.y_min - y_margin, range.y_max + y_margin, info.y_gap, info.mesh_prio);
                 _mesh.x_range.insert(x_range);
                 _mesh.y_range.insert(y_range);
             }
@@ -1495,6 +1497,11 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
         fprintf(fp, "legend('real', 'imag');\n");
+        
+        fprintf(fp, "if exist('s11_min_freq_idx')\n");
+        fprintf(fp, "    printf('Minimum Zin freq:%%g Z(%%g + %%gi)\\n', freq(s11_min_freq_idx), real(Zin(s11_min_freq_idx)), imag(Zin(s11_min_freq_idx)));\n");
+        fprintf(fp, "end\n");
+        
         for (const auto& freq: _freq)
         {
             fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
@@ -1529,6 +1536,20 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
         
+        {
+            fprintf(fp, "freq_idx = find(s11==min(s11));\n");
+            fprintf(fp, "s11_min_freq_idx = freq_idx;\n");
+            
+            fprintf(fp, "s11_db_left = s11_db(1:freq_idx);\n");
+            fprintf(fp, "s11_db_right = s11_db(freq_idx:end);\n");
+            fprintf(fp, "left_idx = find(s11_db_left >= -10)(end);\n");
+            fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
+            
+            fprintf(fp, "printf('Minimum S11 freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
+                            ", freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
+                            ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
+        }
+        
         for (const auto& freq: _freq)
         {
             fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
@@ -1540,9 +1561,44 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             
             
             
-            fprintf(fp, "printf('freq:%%g band width(%%g %%g)%%gMhz\\n'\n"
+            fprintf(fp, "printf('freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
                             ", freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
                             ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
+        }
+        
+        fprintf(fp, "\n\n");
+        idx++;
+    }
+}
+
+void openems_model_gen::_add_plot_vswr(FILE *fp)
+{
+    std::uint32_t idx = 0;
+    for (auto& ex: _excitations)
+    {
+        (void)ex;
+        fprintf(fp, "# plot vswr\n");
+        fprintf(fp, "figure\n");
+
+        fprintf(fp, "vswr = (1 + abs(s11)) ./ (1 - abs(s11));\n");
+        fprintf(fp, "plot(freq / 1e6, abs(vswr), 'k-', 'Linewidth', 2);\n");
+        fprintf(fp, "set(gca, 'YScale', 'log');\n");
+        fprintf(fp, "grid on\n");
+        fprintf(fp, "title('vswr port%u');\n", idx);
+        fprintf(fp, "xlabel('frequency f / MHz');\n");
+        fprintf(fp, "ylabel('vswr');\n");
+        
+        
+        {
+            fprintf(fp, "[vswr_min freq_idx] =  min(vswr);\n");
+            fprintf(fp, "printf('Minimum SWR: %%g@%%gMHz\\n', abs(vswr_min), freq(freq_idx) / 1e6);\n");
+            
+        }
+        
+        for (const auto& freq: _freq)
+        {
+            fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
+            fprintf(fp, "printf('SWR: %%g@%%gMHz\\n', abs(vswr(freq_idx)), freq(freq_idx) / 1e6);\n");
         }
         
         fprintf(fp, "\n\n");
