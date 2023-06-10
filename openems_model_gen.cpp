@@ -483,112 +483,12 @@ void openems_model_gen::gen_mesh(const std::string& func_name)
 
 void openems_model_gen::gen_antenna_simulation_scripts()
 {
-    const char *plot_s = R"(
-%% postprocessing & do the plots
-freq = linspace(max([1e6,f0 - fc]), f0 + fc, 501);
-U = ReadUI({'port_ut0', 'et'}, [sim_path '/'], freq); % time domain/freq domain voltage
-I = ReadUI('port_it0', [sim_path '/'], freq); % time domain/freq domain current (half time step is corrected)
-
-% plot time domain voltage
-figure
-[ax,h1,h2] = plotyy( U.TD{1}.t/1e-9, U.TD{1}.val, U.TD{2}.t/1e-9, U.TD{2}.val );
-set( h1, 'Linewidth', 2 );
-set( h1, 'Color', [1 0 0] );
-set( h2, 'Linewidth', 2 );
-set( h2, 'Color', [0 0 0] );
-grid on
-title( 'time domain voltage' );
-xlabel( 'time t / ns' );
-ylabel( ax(1), 'voltage ut1 / V' );
-ylabel( ax(2), 'voltage et / V' );
-% now make the y-axis symmetric to y=0 (align zeros of y1 and y2)
-y1 = ylim(ax(1));
-y2 = ylim(ax(2));
-ylim( ax(1), [-max(abs(y1)) max(abs(y1))] );
-ylim( ax(2), [-max(abs(y2)) max(abs(y2))] );
-
-% plot feed point impedance
-figure
-Zin = U.FD{1}.val ./ I.FD{1}.val;
-plot( freq/1e6, real(Zin), 'k-', 'Linewidth', 2 );
-hold on
-grid on
-plot( freq/1e6, imag(Zin), 'r--', 'Linewidth', 2 );
-title( 'feed point impedance' );
-xlabel( 'frequency f / MHz' );
-ylabel( 'impedance Z_{in} / Ohm' );
-legend( 'real', 'imag' );
-
-% plot reflection coefficient S11
-figure
-uf_inc = 0.5*(U.FD{1}.val + I.FD{1}.val * 50);
-if_inc = 0.5*(I.FD{1}.val - U.FD{1}.val / 50);
-uf_ref = U.FD{1}.val - uf_inc;
-if_ref = I.FD{1}.val - if_inc;
-s11 = uf_ref ./ uf_inc;
-plot( freq/1e6, 20*log10(abs(s11)), 'k-', 'Linewidth', 2 );
-grid on
-title( 'reflection coefficient S_{11}' );
-xlabel( 'frequency f / MHz' );
-ylabel( 'reflection coefficient |S_{11}|' );
-
-P_in = 0.5*U.FD{1}.val .* conj( I.FD{1}.val );
-)";
-    const char *plot_nf = R"(
-%% NFFF contour plots %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#f_res_ind = find(s11==min(s11));
-#f_res = freq(f_res_ind);
-f_res = far_field_freq;
-[~, f_res_ind] = min(abs(freq - f_res));
-% calculate the far field at phi=0 degrees and at phi=90 degrees
-thetaRange = (0:2:359) - 180;
-phiRange = [0 90];
-disp( 'calculating far field at phi=[0 90] deg...' );
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);
-
-Dlog=10*log10(nf2ff.Dmax);
-
-#G_a = 4*pi*A/(c0/f0)^2;
-#e_a = nf2ff.Dmax/G_a;
-
-% display power and directivity
-disp( ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);
-disp( ['directivity: Dmax = ' num2str(Dlog) ' dBi'] );
-disp( ['efficiency: nu_rad = ' num2str(100*nf2ff.Prad./real(P_in(f_res_ind))) ' %']);
-#disp( ['aperture efficiency: e_a = ' num2str(e_a*100) '%'] );
-
-% display phi
-figure
-plotFFdB(nf2ff,'xaxis','theta','param',[1 2]);
-drawnow
-
-% polar plot
-figure
-polarFF(nf2ff,'xaxis','theta','param',[1 2],'logscale',[-40 20], 'xtics', 12);
-drawnow
-
-%   polar( nf2ff.theta, nf2ff.E_norm{1}(:,1) )
-
-
-%% calculate 3D pattern
-phiRange = 0:2:360;
-thetaRange = 0:2:180;
-disp( 'calculating 3D far field...' );
-nf2ff = CalcNF2FF(nf2ff, Sim_Path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose',2,'Outfile','nf2ff_3D.h5', 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);
-figure
-#plotFF3D(nf2ff);
-plotFF3D(nf2ff, 'logscale', -20)
-
-E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpFF2VTK([Sim_Path '/3D_Pattern.vtk'], E_far_normalized, thetaRange, phiRange, 'scale', 1e-3);
-
-
-)";
     FILE *fp = fopen("antenna_simulation_scripts.m", "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
-        fprintf(fp, "plot_only = 0;\n");
+        fprintf(fp, "plot_only = 1;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
         fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-5;\n");
@@ -616,10 +516,11 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
-        fprintf(fp, "sim_path = 'ant_sim'; sim_csx = 'ant.xml';\n");
+        fprintf(fp, "sim_path = 'ant_sim'; plot_path = 'plot'; sim_csx = 'ant.xml';\n");
         fprintf(fp, "if (plot_only == 0)");
         fprintf(fp, "    rmdir(sim_path, 's');\n");
         fprintf(fp, "    mkdir(sim_path);\n");
+        fprintf(fp, "    mkdir(plot_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
         fprintf(fp, "    if (show_model == 1)\n");
         fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
@@ -627,11 +528,13 @@ E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:)) * nf2ff.Dmax; DumpF
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         fprintf(fp, "end\n");
         
+        fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
         _add_plot_s11(fp);
         _add_plot_vswr(fp);
         _add_plot_feed_point_impedance(fp);
         
+        _add_plot_far_field(fp);
 
         //fprintf(fp, "%s\n", plot_s);
         fprintf(fp, "\n");
@@ -1481,7 +1384,6 @@ void openems_model_gen::_add_read_ui(FILE *fp)
 
 void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
 {
-    
     std::uint32_t idx = 0;
     for (auto& ex: _excitations)
     {
@@ -1497,9 +1399,10 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
         fprintf(fp, "legend('real', 'imag');\n");
+        fprintf(fp, "print('-dpng', [plot_path '/Zin_' num2str(%d) '.png']);\n", idx);
         
         fprintf(fp, "if exist('s11_min_freq_idx')\n");
-        fprintf(fp, "    printf('Minimum Zin freq:%%g Z(%%g + %%gi)\\n', freq(s11_min_freq_idx), real(Zin(s11_min_freq_idx)), imag(Zin(s11_min_freq_idx)));\n");
+        fprintf(fp, "    printf('freq:%%g Z(%%g + %%gi)\\n', freq(s11_min_freq_idx), real(Zin(s11_min_freq_idx)), imag(Zin(s11_min_freq_idx)));\n");
         fprintf(fp, "end\n");
         
         for (const auto& freq: _freq)
@@ -1508,6 +1411,7 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
             fprintf(fp, "printf('freq:%%g Z(%%g + %%gi)\\n', freq(freq_idx), real(Zin(freq_idx)), imag(Zin(freq_idx)));\n");
         }
         
+        fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "\n\n");
         idx++;
     }
@@ -1527,12 +1431,14 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "if_inc = 0.5*(I%u.FD{1}.val - U%u.FD{1}.val / %f);\n", idx, idx, ex.R);
         fprintf(fp, "uf_ref = U%u.FD{1}.val - uf_inc;\n", idx);
         fprintf(fp, "if_ref = I%u.FD{1}.val - if_inc;\n", idx);
+        
         fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
         fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
         fprintf(fp, "grid on\n");
         fprintf(fp, "title('reflection coefficient S_{11} port%u');\n", idx);
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
+        fprintf(fp, "print('-dpng', [plot_path '/S11_' num2str(%d) '.png']);\n", idx);
         
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
         
@@ -1546,7 +1452,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
             
             fprintf(fp, "printf('Minimum S11 freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
-                            ", freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
+                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
                             ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
         }
         
@@ -1562,10 +1468,11 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             
             
             fprintf(fp, "printf('freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
-                            ", freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
+                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
                             ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
         }
         
+        fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "\n\n");
         idx++;
     }
@@ -1580,6 +1487,12 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
         fprintf(fp, "# plot vswr\n");
         fprintf(fp, "figure\n");
 
+        fprintf(fp, "uf_inc = 0.5*(U%u.FD{1}.val + I%u.FD{1}.val * %f);\n", idx, idx, ex.R);
+        fprintf(fp, "if_inc = 0.5*(I%u.FD{1}.val - U%u.FD{1}.val / %f);\n", idx, idx, ex.R);
+        fprintf(fp, "uf_ref = U%u.FD{1}.val - uf_inc;\n", idx);
+        fprintf(fp, "if_ref = I%u.FD{1}.val - if_inc;\n", idx);
+        
+        fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
         fprintf(fp, "vswr = (1 + abs(s11)) ./ (1 - abs(s11));\n");
         fprintf(fp, "plot(freq / 1e6, abs(vswr), 'k-', 'Linewidth', 2);\n");
         fprintf(fp, "set(gca, 'YScale', 'log');\n");
@@ -1587,10 +1500,11 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
         fprintf(fp, "title('vswr port%u');\n", idx);
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('vswr');\n");
+        fprintf(fp, "print('-dpng', [plot_path '/VSWR_' num2str(%d) '.png']);\n", idx);
         
         
         {
-            fprintf(fp, "[vswr_min freq_idx] =  min(vswr);\n");
+            fprintf(fp, "[vswr_min freq_idx] =  min(abs(vswr));\n");
             fprintf(fp, "printf('Minimum SWR: %%g@%%gMHz\\n', abs(vswr_min), freq(freq_idx) / 1e6);\n");
             
         }
@@ -1600,9 +1514,112 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
             fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
             fprintf(fp, "printf('SWR: %%g@%%gMHz\\n', abs(vswr(freq_idx)), freq(freq_idx) / 1e6);\n");
         }
+        fprintf(fp, "printf('\\n\\n');\n");
         
         fprintf(fp, "\n\n");
         idx++;
+    }
+}
+
+void openems_model_gen::_add_plot_far_field(FILE *fp)
+{
+    if (_freq.empty())
+    {
+        fprintf(fp, "# NFFF contour plots\n");
+        fprintf(fp, "f_res_ind = find(s11==min(s11));\n");
+        fprintf(fp, "f_res = freq(f_res_ind);\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, [-180: 2: 180] * pi / 180, [0 90] * pi / 180, 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
+        
+        fprintf(fp, "print('-dpng', [plot_path '/FF.png']);\n");
+        
+        fprintf(fp, "figure\n");
+        fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
+        fprintf(fp, "print('-dpng', [plot_path '/FFdB.png']);\n");
+        
+        fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
+        fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
+        fprintf(fp, "disp(['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
+        
+        
+        std::uint32_t idx = 0;
+        for (auto& ex: _excitations)
+        {
+            (void)ex;
+            fprintf(fp, "uf_inc = 0.5*(U%u.FD{1}.val + I%u.FD{1}.val * %f);\n", idx, idx, ex.R);
+            fprintf(fp, "if_inc = 0.5*(I%u.FD{1}.val - U%u.FD{1}.val / %f);\n", idx, idx, ex.R);
+            fprintf(fp, "uf_ref = U%u.FD{1}.val - uf_inc;\n", idx);
+            fprintf(fp, "if_ref = I%u.FD{1}.val - if_inc;\n", idx);
+            fprintf(fp, "P_in = 0.5 * U%u.FD{1}.val .* conj(I%u.FD{1}.val);\n", idx, idx);
+            
+            fprintf(fp, "disp(['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
+        }
+        
+        
+        fprintf(fp, "# calculate 3D pattern\n");
+        fprintf(fp, "phiRange = 0: 2: 360;\n");
+        fprintf(fp, "thetaRange = 0: 2: 180;\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
+        fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
+        
+        fprintf(fp, "E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));\n");
+        fprintf(fp, "DumpFF2VTK([sim_path '/FF_pattern.vtk'], E_far_normalized, thetaRange, phiRange);\n");
+
+        fprintf(fp, "printf('\\n\\n');\n");
+        fprintf(fp, "\n\n");
+        return;
+    }
+    
+    for (const auto& freq: _freq)
+    {
+        fprintf(fp, "# NFFF contour plots\n");
+        fprintf(fp, "f_res_ind = find(freq > %g)(1) - 1;\n", freq);
+        //fprintf(fp, "f_res_ind = find(s11==min(s11));\n");
+        fprintf(fp, "f_res = freq(f_res_ind);\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, [-180: 2: 180] * pi / 180, [0 90] * pi / 180, 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
+        fprintf(fp, "print('-dpng', [plot_path '/FF.png']);\n");
+        
+        fprintf(fp, "figure\n");
+        fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
+        fprintf(fp, "print('-dpng', [plot_path '/FFdB.png']);\n");
+        
+        fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
+        fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
+        fprintf(fp, "disp(['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
+        
+        
+        std::uint32_t idx = 0;
+        for (auto& ex: _excitations)
+        {
+            (void)ex;
+            fprintf(fp, "uf_inc = 0.5*(U%u.FD{1}.val + I%u.FD{1}.val * %f);\n", idx, idx, ex.R);
+            fprintf(fp, "if_inc = 0.5*(I%u.FD{1}.val - U%u.FD{1}.val / %f);\n", idx, idx, ex.R);
+            fprintf(fp, "uf_ref = U%u.FD{1}.val - uf_inc;\n", idx);
+            fprintf(fp, "if_ref = I%u.FD{1}.val - if_inc;\n", idx);
+            fprintf(fp, "P_in = 0.5 * U%u.FD{1}.val .* conj(I%u.FD{1}.val);\n", idx, idx);
+            
+            fprintf(fp, "disp(['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
+        }
+        
+        
+        fprintf(fp, "# calculate 3D pattern\n");
+        fprintf(fp, "phiRange = 0: 2: 360;\n");
+        fprintf(fp, "thetaRange = 0: 2: 180;\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
+        fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
+        
+        fprintf(fp, "E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));\n");
+        fprintf(fp, "DumpFF2VTK([sim_path '/FF_pattern.vtk'], E_far_normalized, thetaRange, phiRange);\n");
+
+        fprintf(fp, "printf('\\n\\n');\n");
+        fprintf(fp, "\n\n");
     }
 }
 
