@@ -648,10 +648,10 @@ void openems_model_gen::gen_two_port_sparamer_scripts()
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
-        fprintf(fp, "plot_only = 1;\n");
+        fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-3;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-2;\n");
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
@@ -1648,7 +1648,6 @@ void openems_model_gen::_add_plot_two_sparamer(FILE *fp)
     }
     
     fprintf(fp, "# plot reflection coefficient S11/S21\n");
-    fprintf(fp, "figure\n");
 
     fprintf(fp, "uf_inc0 = 0.5*(U0.FD{1}.val + I0.FD{1}.val * %f);\n", _excitations[0].R);
     fprintf(fp, "if_inc0 = 0.5*(I0.FD{1}.val - U0.FD{1}.val / %f);\n", _excitations[0].R);
@@ -1658,29 +1657,23 @@ void openems_model_gen::_add_plot_two_sparamer(FILE *fp)
     
     fprintf(fp, "uf_inc1 = 0.5*(U1.FD{1}.val + I1.FD{1}.val * %f);\n", _excitations[0].R);
     fprintf(fp, "if_inc1 = 0.5*(I1.FD{1}.val - U1.FD{1}.val / %f);\n", _excitations[0].R);
-    fprintf(fp, "uf_ref1 = U0.FD{1}.val - uf_inc1;\n");
-    fprintf(fp, "if_ref1 = I0.FD{1}.val - if_inc1;\n");
+    fprintf(fp, "uf_ref1 = U1.FD{1}.val - uf_inc1;\n");
+    fprintf(fp, "if_ref1 = I1.FD{1}.val - if_inc1;\n");
     fprintf(fp, "s21 = uf_ref1 ./ uf_inc0;\n");
     
     fprintf(fp, "printf('\\n\\n');\n");
     
-    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
-    fprintf(fp, "grid on\n");
-    fprintf(fp, "title('reflection coefficient S_{11}');\n");
-    fprintf(fp, "xlabel('frequency f / MHz');\n");
-    fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
-    fprintf(fp, "print('-dpng', [plot_path '/S11_.png']);\n");
-        
-    fprintf(fp, "printf('\\n\\n');\n");
-        
     fprintf(fp, "figure\n");
-    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s21)), 'k-', 'Linewidth', 2);\n");
-    fprintf(fp, "grid on\n");
-    fprintf(fp, "title('reflection coefficient S_{21}');\n");
-    fprintf(fp, "xlabel('frequency f / MHz');\n");
-    fprintf(fp, "ylabel('reflection coefficient |S_{21}|');\n");
-    fprintf(fp, "print('-dpng', [plot_path '/S21_.png']);\n");
+    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
+    fprintf(fp, "hold on;\n");
+    fprintf(fp, "grid on;\n");
+    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s21)), 'r--', 'Linewidth', 2);\n");
+    fprintf(fp, "legend('S_{11}','S_{21}');\n");
     
+    fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
+    fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
+    fprintf(fp, "print('-dpng', [plot_path '/S11_S21.png']);\n");
+        
     fprintf(fp, "printf('\\n\\n');\n");
     fprintf(fp, "\n\n");
 }
