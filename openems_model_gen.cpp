@@ -83,6 +83,30 @@ void openems_model_gen::add_footprint(const std::string& footprint, float x_gap,
 void openems_model_gen::add_excitation(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name, std::uint32_t dir, float R, bool gen_mesh)
 {
+    return add_lumped_port(fp1, fp1_pad_number, fp1_layer_name,
+                        fp2, fp2_pad_number, fp2_layer_name,
+                        dir, R, true, gen_mesh);
+}
+
+void openems_model_gen::add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R, bool gen_mesh)
+{
+    excitation ex;
+    ex.gen_mesh = gen_mesh;
+    ex.R = R;
+    ex.dir = dir;
+    ex.start.x = start.x;
+    ex.start.y = start.y;
+    ex.start.z = _pcb->get_layer_z_axis(start_layer);
+    ex.end.x = end.x;
+    ex.end.y = end.y;
+    ex.end.z = _pcb->get_layer_z_axis(end_layer);
+    _excitations.push_back(ex);
+}
+
+void openems_model_gen::add_lumped_port(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
+                        std::uint32_t dir, float R, bool excite, bool gen_mesh)
+{
     pcb::pad pad1;
     pcb::pad pad2;
     pcb::footprint footprint1;
@@ -101,6 +125,7 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
         ex.gen_mesh = gen_mesh;
         ex.R = R;
         ex.dir = dir;
+        ex.excite = excite;
         
         ex.start.z = _pcb->get_layer_z_axis(fp1_layer_name);
         ex.end.z = _pcb->get_layer_z_axis(fp2_layer_name);
@@ -163,23 +188,91 @@ void openems_model_gen::add_excitation(const std::string& fp1, const std::string
     }
     else
     {
-        printf("add_excitation err\n");
+        printf("add_lumped_port err\n");
     }
 }
-
-void openems_model_gen::add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R, bool gen_mesh)
+                        
+void openems_model_gen::add_lumped_port(const std::string& fp_name, bool excite, bool gen_mesh)
 {
-    excitation ex;
-    ex.gen_mesh = gen_mesh;
-    ex.R = R;
-    ex.dir = dir;
-    ex.start.x = start.x;
-    ex.start.y = start.y;
-    ex.start.z = _pcb->get_layer_z_axis(start_layer);
-    ex.end.x = end.x;
-    ex.end.y = end.y;
-    ex.end.z = _pcb->get_layer_z_axis(end_layer);
-    _excitations.push_back(ex);
+    std::string ref = fp_name;
+    pcb::footprint footprint;
+    
+    if (ref.front() != 'R' && ref.front() != 'r')
+    {
+        printf("add_lumped_port: err %s\n", ref.c_str());
+        return;
+    }
+    
+    if (_pcb->get_footprint(fp_name, footprint) && footprint.pads.size() == 2)
+    {
+        pcb::point p1 = footprint.pads[0].at;
+        pcb::point p2 = footprint.pads[1].at;
+        const pcb::pad& pad1 = footprint.pads[0];
+        const pcb::pad& pad2 = footprint.pads[1];
+        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p1);
+        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p2);
+        
+    
+        std::uint32_t dir = lumped_element::DIR_X;
+        
+        if (fabs(p1.x - p2.x) > fabs(p1.y - p2.y))
+        {
+            dir = lumped_element::DIR_X;
+        }
+        else
+        {
+            dir = lumped_element::DIR_Y;
+        }
+        
+        excitation ex;
+        ex.gen_mesh = gen_mesh;
+        ex.R = _string_to_float(footprint.value);
+        ex.dir = dir;
+        ex.excite = excite;
+        
+        ex.start.z = _pcb->get_layer_z_axis(footprint.layer);
+        ex.end.z = ex.start.z;
+        
+        if (dir == lumped_element::DIR_X)
+        {
+            ex.start.x = _round_xy(p1.x);
+            ex.end.x = _round_xy(p2.x);
+            
+            if (gen_mesh)
+            {
+                ex.start.y = _round_xy(p1.y);
+                ex.end.y = _round_xy(p2.y);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                ex.start.y = p1.y - size;
+                ex.end.y = p1.y + size;
+            }
+        }
+        else if (dir == lumped_element::DIR_Y)
+        {
+            if (gen_mesh)
+            {
+                ex.start.x = _round_xy(p1.x);
+                ex.end.x = _round_xy(p2.x);
+            }
+            else
+            {
+                float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                ex.start.x = p1.x - size;
+                ex.end.x = p1.x + size;
+            }
+            
+            ex.start.y = _round_xy(p1.y);
+            ex.end.y = _round_xy(p2.y);
+        }
+        _excitations.push_back(ex);
+    }
+    else
+    {
+        printf("add_lumped_port: err %s\n", ref.c_str());
+    }
 }
 
 void openems_model_gen::add_lumped_element(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
@@ -488,7 +581,7 @@ void openems_model_gen::gen_antenna_simulation_scripts()
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
-        fprintf(fp, "plot_only = 1;\n");
+        fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
         fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-5;\n");
@@ -507,17 +600,17 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         fprintf(fp, "FDTD = SetBoundaryCond(FDTD, BC);\n");
         fprintf(fp, "\n");
         fprintf(fp, "CSX = InitCSX();\n");
-        fprintf(fp, "CSX = load_pcb_model(CSX, f0 + fc);\n");
-        fprintf(fp, "[CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
-        fprintf(fp, "CSX = DefineRectGrid(CSX, unit, mesh);\n");
-        fprintf(fp, "\n");
         
         
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
         fprintf(fp, "sim_path = 'ant_sim'; plot_path = 'plot'; sim_csx = 'ant.xml';\n");
-        fprintf(fp, "if (plot_only == 0)");
+        fprintf(fp, "if (plot_only == 0)\n");
+        fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
+        fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
+        fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
+        fprintf(fp, "\n");
         fprintf(fp, "    rmdir(sim_path, 's');\n");
         fprintf(fp, "    mkdir(sim_path);\n");
         fprintf(fp, "    mkdir(plot_path);\n");
@@ -542,11 +635,75 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         //fprintf(fp, "%s\n", plot_nf);
         
         fclose(fp);
-    
     }
     gen_model("load_pcb_model");
     gen_mesh("load_pcb_mesh");
 }
+
+void openems_model_gen::gen_two_port_sparamer_scripts()
+{
+    
+    FILE *fp = fopen("two_port_sparamer.m", "wb");
+    if (fp)
+    {
+        fprintf(fp, "close all; clear; clc;\n");
+        fprintf(fp, "show_model = 1;\n");
+        fprintf(fp, "plot_only = 1;\n");
+        fprintf(fp, "physical_constants;\n");
+        fprintf(fp, "unit = 1e-3;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-3;\n");
+        fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
+        fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
+        fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
+        if (_bc == BC_PML)
+        {
+            fprintf(fp, "BC = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};\n");
+        }
+        else
+        {
+            fprintf(fp, "BC = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'MUR'};\n");
+        }
+        fprintf(fp, "FDTD = SetBoundaryCond(FDTD, BC);\n");
+        fprintf(fp, "\n");
+        
+        fprintf(fp, "CSX = InitCSX();\n");
+        
+        
+        
+        _add_lumped_element(fp, 99);
+        _add_excitation(fp, 99);
+        
+        fprintf(fp, "sim_path = 'two_sparamer'; plot_path = 'plot'; sim_csx = 'two_sparamer.xml';\n");
+        fprintf(fp, "if (plot_only == 0)\n");
+        fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
+        fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
+        fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
+        fprintf(fp, "\n");
+        fprintf(fp, "    rmdir(sim_path, 's');\n");
+        fprintf(fp, "    mkdir(sim_path);\n");
+        fprintf(fp, "    mkdir(plot_path);\n");
+        fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
+        fprintf(fp, "    if (show_model == 1)\n");
+        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
+        fprintf(fp, "    end\n");
+        fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
+        fprintf(fp, "end\n");
+        
+        fprintf(fp, "printf('\\n\\n');\n");
+        _add_read_ui(fp);
+        
+        _add_plot_two_sparamer(fp);
+        _add_plot_feed_point_impedance(fp);
+        
+        fprintf(fp, "\n");
+        fprintf(fp, "\n");
+        
+        fclose(fp);
+    }
+    gen_model("load_pcb_model");
+    gen_mesh("load_pcb_mesh");
+}
+
 
 void openems_model_gen::_gen_mesh_z(FILE *fp)
 {
@@ -1243,14 +1400,15 @@ void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
     std::uint32_t portnr = 0;
     for (const auto& ex: _excitations)
     {
-        fprintf(fp, "[CSX] = AddLumpedPort(CSX, 1, %u, %f, [%f %f %f], [%f %f %f], [%d %d %d], true);\n",
+        fprintf(fp, "[CSX] = AddLumpedPort(CSX, 1, %u, %f, [%f %f %f], [%f %f %f], [%d %d %d], %s);\n",
                 portnr,
                 ex.R,
                 ex.start.x, ex.start.y, ex.start.z,
                 ex.end.x, ex.end.y, ex.end.z,
                 (ex.dir == excitation::DIR_X)? 1: 0,
                 (ex.dir == excitation::DIR_Y)? 1: 0,
-                (ex.dir == excitation::DIR_Z)? 1: 0);
+                (ex.dir == excitation::DIR_Z)? 1: 0,
+                (ex.excite)? "true": "false");
         portnr++;
         if (ex.gen_mesh)
         {
@@ -1377,7 +1535,6 @@ void openems_model_gen::_add_read_ui(FILE *fp)
         fprintf(fp, "U%u = ReadUI({'port_ut%u', 'et'}, [sim_path '/'], freq);\n", idx, idx);
         fprintf(fp, "I%u = ReadUI('port_it%u', [sim_path '/'], freq);\n", idx, idx);
         fprintf(fp, "\n\n");
-        idx++;
     }
 }
 
@@ -1387,7 +1544,10 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
     std::uint32_t idx = 0;
     for (auto& ex: _excitations)
     {
-        (void)ex;
+        if (ex.excite == false)
+        {
+            continue;
+        }
         fprintf(fp, "# plot feed point impedance\n");
         fprintf(fp, "figure\n");
         fprintf(fp, "Zin = U%u.FD{1}.val ./ I%u.FD{1}.val;\n", idx, idx);
@@ -1440,6 +1600,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
         fprintf(fp, "print('-dpng', [plot_path '/S11_' num2str(%d) '.png']);\n", idx);
         
+        fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
         
         {
@@ -1478,6 +1639,52 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
     }
 }
 
+void openems_model_gen::_add_plot_two_sparamer(FILE *fp)
+{
+    if (_excitations.size() != 2)
+    {
+        printf("_add_plot_two_sparamer err.\n");
+        return;
+    }
+    
+    fprintf(fp, "# plot reflection coefficient S11/S21\n");
+    fprintf(fp, "figure\n");
+
+    fprintf(fp, "uf_inc0 = 0.5*(U0.FD{1}.val + I0.FD{1}.val * %f);\n", _excitations[0].R);
+    fprintf(fp, "if_inc0 = 0.5*(I0.FD{1}.val - U0.FD{1}.val / %f);\n", _excitations[0].R);
+    fprintf(fp, "uf_ref0 = U0.FD{1}.val - uf_inc0;\n");
+    fprintf(fp, "if_ref0 = I0.FD{1}.val - if_inc0;\n");
+    fprintf(fp, "s11 = uf_ref0 ./ uf_inc0;\n");
+    
+    fprintf(fp, "uf_inc1 = 0.5*(U1.FD{1}.val + I1.FD{1}.val * %f);\n", _excitations[0].R);
+    fprintf(fp, "if_inc1 = 0.5*(I1.FD{1}.val - U1.FD{1}.val / %f);\n", _excitations[0].R);
+    fprintf(fp, "uf_ref1 = U0.FD{1}.val - uf_inc1;\n");
+    fprintf(fp, "if_ref1 = I0.FD{1}.val - if_inc1;\n");
+    fprintf(fp, "s21 = uf_ref1 ./ uf_inc0;\n");
+    
+    fprintf(fp, "printf('\\n\\n');\n");
+    
+    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
+    fprintf(fp, "grid on\n");
+    fprintf(fp, "title('reflection coefficient S_{11}');\n");
+    fprintf(fp, "xlabel('frequency f / MHz');\n");
+    fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
+    fprintf(fp, "print('-dpng', [plot_path '/S11_.png']);\n");
+        
+    fprintf(fp, "printf('\\n\\n');\n");
+        
+    fprintf(fp, "figure\n");
+    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s21)), 'k-', 'Linewidth', 2);\n");
+    fprintf(fp, "grid on\n");
+    fprintf(fp, "title('reflection coefficient S_{21}');\n");
+    fprintf(fp, "xlabel('frequency f / MHz');\n");
+    fprintf(fp, "ylabel('reflection coefficient |S_{21}|');\n");
+    fprintf(fp, "print('-dpng', [plot_path '/S21_.png']);\n");
+    
+    fprintf(fp, "printf('\\n\\n');\n");
+    fprintf(fp, "\n\n");
+}
+    
 void openems_model_gen::_add_plot_vswr(FILE *fp)
 {
     std::uint32_t idx = 0;

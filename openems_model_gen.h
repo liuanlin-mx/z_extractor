@@ -55,6 +55,7 @@ public:
             : gen_mesh(true)
             , dir(DIR_X)
             , R(50)
+            , excite(true)
         {
         }
         
@@ -64,6 +65,7 @@ public:
         
         std::uint32_t dir;
         float R;
+        bool excite;
     };
     
     struct lumped_element
@@ -208,6 +210,12 @@ public:
                         
     void add_excitation(pcb::point start, const std::string& start_layer, pcb::point end, const std::string& end_layer, std::uint32_t dir, float R = 50, bool gen_mesh = true);
     
+    void add_lumped_port(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
+                        const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
+                        std::uint32_t dir, float R, bool excite = false, bool gen_mesh = true);
+                        
+    void add_lumped_port(const std::string& fp_name, bool excite = false, bool gen_mesh = true);
+    
     void add_lumped_element(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
                         std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh = true);
@@ -232,6 +240,7 @@ public:
     void gen_model(const std::string& func_name);
     void gen_mesh(const std::string& func_name);
     void gen_antenna_simulation_scripts();
+    void gen_two_port_sparamer_scripts();
     
 private:
     void _gen_mesh_z(FILE *fp);
@@ -251,6 +260,7 @@ private:
     void _add_read_ui(FILE *fp);
     void _add_plot_feed_point_impedance(FILE *fp);
     void _add_plot_s11(FILE *fp);
+    void _add_plot_two_sparamer(FILE *fp);
     void _add_plot_vswr(FILE *fp);
     void _add_plot_far_field(FILE *fp);
     void _apply_mesh_line_range(mesh& mesh);
