@@ -185,6 +185,10 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
             }
         }
         _excitations.push_back(ex);
+        if (!_excitations.front().excite && ex.excite)
+        {
+            std::swap(_excitations.front(), _excitations.back());
+        }
     }
     else
     {
@@ -268,6 +272,10 @@ void openems_model_gen::add_lumped_port(const std::string& fp_name, bool excite,
             ex.end.y = _round_xy(p2.y);
         }
         _excitations.push_back(ex);
+        if (!_excitations.front().excite && ex.excite)
+        {
+            std::swap(_excitations.front(), _excitations.back());
+        }
     }
     else
     {
@@ -279,7 +287,6 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
                         std::uint32_t dir, std::uint32_t type, float v, bool gen_mesh)
 {
-    
     pcb::pad pad1;
     pcb::pad pad2;
     pcb::footprint footprint1;
@@ -642,7 +649,6 @@ void openems_model_gen::gen_antenna_simulation_scripts()
 
 void openems_model_gen::gen_two_port_sparamer_scripts()
 {
-    
     FILE *fp = fopen("two_port_sparamer.m", "wb");
     if (fp)
     {
@@ -692,7 +698,7 @@ void openems_model_gen::gen_two_port_sparamer_scripts()
         fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
         
-        _add_plot_two_sparamer(fp);
+        _add_plot_mult_port_sparamer(fp);
         _add_plot_feed_point_impedance(fp);
         
         fprintf(fp, "\n");
@@ -1529,7 +1535,7 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
 
 void openems_model_gen::_add_read_ui(FILE *fp)
 {
-    fprintf(fp, "freq = linspace(max([1e6, f0 - fc]), f0 + fc, 501);\n");
+    fprintf(fp, "freq = linspace(max([1e6, f0 - fc]), f0 + fc, 1001);\n");
     for (std::uint32_t idx = 0; idx < _excitations.size(); idx++)
     {
         fprintf(fp, "U%u = ReadUI({'port_ut%u', 'et'}, [sim_path '/'], freq);\n", idx, idx);
@@ -1584,7 +1590,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
     std::uint32_t idx = 0;
     for (auto& ex: _excitations)
     {
-        fprintf(fp, "# plot reflection coefficient S11\n");
+        fprintf(fp, "# plot S-Parameter S11\n");
         fprintf(fp, "figure\n");
 
         fprintf(fp, "uf_inc = 0.5*(U%u.FD{1}.val + I%u.FD{1}.val * %f);\n", idx, idx, ex.R);
@@ -1595,9 +1601,9 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
         fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
         fprintf(fp, "grid on\n");
-        fprintf(fp, "title('reflection coefficient S_{11} port%u');\n", idx);
-        fprintf(fp, "xlabel('frequency f / MHz');\n");
-        fprintf(fp, "ylabel('reflection coefficient |S_{11}|');\n");
+        fprintf(fp, "title('S-Parameter S_{11} port%u');\n", idx);
+        fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
+        fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
         fprintf(fp, "print('-dpng', [plot_path '/S11_' num2str(%d) '.png']);\n", idx);
         
         fprintf(fp, "printf('\\n\\n');\n");
@@ -1639,15 +1645,15 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
     }
 }
 
-void openems_model_gen::_add_plot_two_sparamer(FILE *fp)
+void openems_model_gen::_add_plot_mult_port_sparamer(FILE *fp)
 {
-    if (_excitations.size() != 2)
+    if (_excitations.size() < 2)
     {
-        printf("_add_plot_two_sparamer err.\n");
+        printf("_add_plot_mult_port_sparamer err.\n");
         return;
     }
     
-    fprintf(fp, "# plot reflection coefficient S11/S21\n");
+    fprintf(fp, "# plot S-Parameter\n");
 
     fprintf(fp, "uf_inc0 = 0.5*(U0.FD{1}.val + I0.FD{1}.val * %f);\n", _excitations[0].R);
     fprintf(fp, "if_inc0 = 0.5*(I0.FD{1}.val - U0.FD{1}.val / %f);\n", _excitations[0].R);
@@ -1655,26 +1661,56 @@ void openems_model_gen::_add_plot_two_sparamer(FILE *fp)
     fprintf(fp, "if_ref0 = I0.FD{1}.val - if_inc0;\n");
     fprintf(fp, "s11 = uf_ref0 ./ uf_inc0;\n");
     
-    fprintf(fp, "uf_inc1 = 0.5*(U1.FD{1}.val + I1.FD{1}.val * %f);\n", _excitations[0].R);
-    fprintf(fp, "if_inc1 = 0.5*(I1.FD{1}.val - U1.FD{1}.val / %f);\n", _excitations[0].R);
-    fprintf(fp, "uf_ref1 = U1.FD{1}.val - uf_inc1;\n");
-    fprintf(fp, "if_ref1 = I1.FD{1}.val - if_inc1;\n");
-    fprintf(fp, "s21 = uf_ref1 ./ uf_inc0;\n");
-    
-    fprintf(fp, "printf('\\n\\n');\n");
-    
     fprintf(fp, "figure\n");
     fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
     fprintf(fp, "hold on;\n");
     fprintf(fp, "grid on;\n");
-    fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s21)), 'r--', 'Linewidth', 2);\n");
-    fprintf(fp, "legend('S_{11}','S_{21}');\n");
+    fprintf(fp, "\n\n");
     
+    std::vector<std::string> legend;
+    legend.push_back("S_{11}");
+    
+    for (std::uint32_t i = 1; i < _excitations.size(); i++)
+    {
+        fprintf(fp, "uf_inc%d = 0.5*(U%d.FD{1}.val + I%d.FD{1}.val * %f);\n", i, i, i, _excitations[0].R);
+        fprintf(fp, "if_inc%d = 0.5*(I%d.FD{1}.val - U%d.FD{1}.val / %f);\n", i, i, i, _excitations[0].R);
+        fprintf(fp, "uf_ref%d = U%d.FD{1}.val - uf_inc%d;\n", i, i, i);
+        fprintf(fp, "if_ref%d = I%d.FD{1}.val - if_inc%d;\n", i, i, i);
+        fprintf(fp, "s%d1 = uf_ref%d ./ uf_inc0;\n", i + 1, i);
+        
+        fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s%d1)), ':', 'Linewidth', 2);\n", i + 1);
+        fprintf(fp, "\n\n");
+        char str[32];
+        sprintf(str, "S_{%d1}", i + 1);
+        legend.push_back(str);
+    }
+    fprintf(fp, "legend(");
+    for (auto& str: legend)
+    {
+        fprintf(fp, "'%s', ", str.c_str());
+    }
+    fprintf(fp, "'location', 'southeast');\n");
+    
+    fprintf(fp, "title('S-Parameter');\n");
     fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
     fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
-    fprintf(fp, "print('-dpng', [plot_path '/S11_S21.png']);\n");
+    fprintf(fp, "print('-dpng', [plot_path '/S-Parameter.png']);\n");
+    
+    
+    fprintf(fp, "\n\n");
+    
+    fprintf(fp, "freq_idx = find(freq > (f0 + fc) / 2)(1) - 1;\n");
+    fprintf(fp, "arg = abs(atan(imag(s21(freq_idx)) / real(s21(freq_idx))));\n");
+    fprintf(fp, "td = arg / (2 * pi * (f0 + fc) / 2 / 1e9);\n");
+    fprintf(fp, "printf('td:%%fNS\\n', td);\n");
+    
+    for (const auto& freq: _freq)
+    {
+        fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);
+        fprintf(fp, "arg = atan(imag(s21(freq_idx)) / real(s21(freq_idx)));\n");
+        fprintf(fp, "printf('Phase:%%f@%%gMHz\\n', arg * 180 / pi, freq(freq_idx));\n");
+    }
         
-    fprintf(fp, "printf('\\n\\n');\n");
     fprintf(fp, "\n\n");
 }
     

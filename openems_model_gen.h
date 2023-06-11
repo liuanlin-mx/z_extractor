@@ -260,7 +260,7 @@ private:
     void _add_read_ui(FILE *fp);
     void _add_plot_feed_point_impedance(FILE *fp);
     void _add_plot_s11(FILE *fp);
-    void _add_plot_two_sparamer(FILE *fp);
+    void _add_plot_mult_port_sparamer(FILE *fp);
     void _add_plot_vswr(FILE *fp);
     void _add_plot_far_field(FILE *fp);
     void _apply_mesh_line_range(mesh& mesh);
