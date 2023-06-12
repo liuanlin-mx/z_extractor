@@ -590,6 +590,15 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
+        fprintf(fp, "sim_path = 'ant_sim'; plot_path = 'plot'; sim_csx = 'ant.xml';\n");
+        fprintf(fp, "arg_list = argv();\n");
+        fprintf(fp, "for i = 1: nargin\n");
+        fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
+        fprintf(fp, "        plot_only = 1\n");
+        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-show-model'))\n");
+        fprintf(fp, "        plot_only = 0\n");
+        fprintf(fp, "    end\n");
+        fprintf(fp, "end\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
         fprintf(fp, "max_timesteps = 1e9; min_decrement = %g;\n", pow(10, _end_criteria_db / 10));
@@ -613,7 +622,6 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
-        fprintf(fp, "sim_path = 'ant_sim'; plot_path = 'plot'; sim_csx = 'ant.xml';\n");
         fprintf(fp, "if (plot_only == 0)\n");
         fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
         fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
@@ -650,12 +658,21 @@ void openems_model_gen::gen_antenna_simulation_scripts()
 
 void openems_model_gen::gen_sparameter_scripts()
 {
-    FILE *fp = fopen("S-Parameter.m", "wb");
+    FILE *fp = fopen("s_parameter.m", "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
+        fprintf(fp, "sim_path = 'S-Parameter'; plot_path = 'plot'; sim_csx = 'S-Parameter.xml';\n");
+        fprintf(fp, "arg_list = argv();\n");
+        fprintf(fp, "for i = 1: nargin\n");
+        fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
+        fprintf(fp, "        plot_only = 1\n");
+        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-show-model'))\n");
+        fprintf(fp, "        plot_only = 0\n");
+        fprintf(fp, "    end\n");
+        fprintf(fp, "end\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
         fprintf(fp, "max_timesteps = 1e9; min_decrement = %g;\n", pow(10, _end_criteria_db / 10));
@@ -680,7 +697,6 @@ void openems_model_gen::gen_sparameter_scripts()
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         
-        fprintf(fp, "sim_path = 'S-Parameter'; plot_path = 'plot'; sim_csx = 'S-Parameter.xml';\n");
         fprintf(fp, "if (plot_only == 0)\n");
         fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
         fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
