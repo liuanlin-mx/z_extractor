@@ -230,6 +230,7 @@ public:
     void set_mesh_lambda_ratio(float ratio) { _lambda_mesh_ratio  = ratio; }
     
     void set_boundary_cond(std::uint32_t bc);
+    void set_end_criteria(float end_criteria_db) { _end_criteria_db = end_criteria_db; }
     
     void set_nf2ff_footprint(const std::string& fp);
     void set_excitation_freq(float f0, float fc);
@@ -290,6 +291,7 @@ private:
     bool _ignore_cu_thickness;
     
     std::uint32_t _bc;
+    float _end_criteria_db;
     float _f0;
     float _fc;
     float _far_field_freq;

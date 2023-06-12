@@ -29,6 +29,7 @@ openems_model_gen::openems_model_gen(const std::shared_ptr<pcb>& pcb)
     , _pix_unit(0.05)
     , _ignore_cu_thickness(true)
     , _bc(BC_PML)
+    , _end_criteria_db(-50)
     , _f0(0)
     , _fc(3e9)
     , _far_field_freq(2.4e9)
@@ -591,7 +592,7 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-5;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = %g;\n", pow(10, _end_criteria_db / 10));
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         //fprintf(fp, "lambda = c0 / (f0 + fc) / unit;\n");
@@ -657,7 +658,7 @@ void openems_model_gen::gen_sparameter_scripts()
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-3;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = %g;\n", pow(10, _end_criteria_db / 10));
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
