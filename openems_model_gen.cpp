@@ -647,9 +647,9 @@ void openems_model_gen::gen_antenna_simulation_scripts()
     gen_mesh("load_pcb_mesh");
 }
 
-void openems_model_gen::gen_two_port_sparamer_scripts()
+void openems_model_gen::gen_sparameter_scripts()
 {
-    FILE *fp = fopen("two_port_sparamer.m", "wb");
+    FILE *fp = fopen("S-Parameter.m", "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
@@ -679,7 +679,7 @@ void openems_model_gen::gen_two_port_sparamer_scripts()
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
         
-        fprintf(fp, "sim_path = 'two_sparamer'; plot_path = 'plot'; sim_csx = 'two_sparamer.xml';\n");
+        fprintf(fp, "sim_path = 'S-Parameter'; plot_path = 'plot'; sim_csx = 'S-Parameter.xml';\n");
         fprintf(fp, "if (plot_only == 0)\n");
         fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
         fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
@@ -698,7 +698,7 @@ void openems_model_gen::gen_two_port_sparamer_scripts()
         fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
         
-        _add_plot_mult_port_sparamer(fp);
+        _add_plot_mult_port_sparameter(fp);
         _add_plot_feed_point_impedance(fp);
         
         fprintf(fp, "\n");
@@ -1654,11 +1654,11 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
     }
 }
 
-void openems_model_gen::_add_plot_mult_port_sparamer(FILE *fp)
+void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
 {
     if (_excitations.size() < 2)
     {
-        printf("_add_plot_mult_port_sparamer err.\n");
+        printf("_add_plot_mult_port_sparameter err.\n");
         return;
     }
     

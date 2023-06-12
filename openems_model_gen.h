@@ -240,7 +240,7 @@ public:
     void gen_model(const std::string& func_name);
     void gen_mesh(const std::string& func_name);
     void gen_antenna_simulation_scripts();
-    void gen_two_port_sparamer_scripts();
+    void gen_sparameter_scripts();
     
 private:
     void _gen_mesh_z(FILE *fp);
@@ -260,7 +260,7 @@ private:
     void _add_read_ui(FILE *fp);
     void _add_plot_feed_point_impedance(FILE *fp);
     void _add_plot_s11(FILE *fp);
-    void _add_plot_mult_port_sparamer(FILE *fp);
+    void _add_plot_mult_port_sparameter(FILE *fp);
     void _add_plot_vswr(FILE *fp);
     void _add_plot_far_field(FILE *fp);
     void _apply_mesh_line_range(mesh& mesh);
