@@ -1587,6 +1587,7 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "hold on\n");
         fprintf(fp, "grid on\n");
         fprintf(fp, "plot(freq/1e6, imag(Zin), 'r--', 'Linewidth', 2);\n");
+        fprintf(fp, "ylim([-150 150]);\n");
         fprintf(fp, "title('feed point impedance');\n");
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
@@ -1627,6 +1628,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
         fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
         fprintf(fp, "grid on\n");
+        fprintf(fp, "ylim([-60 10]);\n");
         fprintf(fp, "title('S-Parameter S_{11} port%u');\n", idx);
         fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
         fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
@@ -1717,6 +1719,8 @@ void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
     }
     fprintf(fp, "'location', 'southeast');\n");
     
+    
+    fprintf(fp, "ylim([-60 10]);\n");
     fprintf(fp, "title('S-Parameter');\n");
     fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
     fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
