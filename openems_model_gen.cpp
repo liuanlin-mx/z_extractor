@@ -657,7 +657,7 @@ void openems_model_gen::gen_two_port_sparamer_scripts()
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "physical_constants;\n");
         fprintf(fp, "unit = 1e-3;\n");
-        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-2;\n");
+        fprintf(fp, "max_timesteps = 1e9; min_decrement = 1e-3;\n");
         fprintf(fp, "FDTD = InitFDTD('NrTS', max_timesteps, 'EndCriteria', min_decrement);\n");
         fprintf(fp, "f0 = %e; fc = %e;\n", _f0, _fc);
         fprintf(fp, "FDTD = SetGaussExcite(FDTD, f0, fc);\n");
@@ -1055,7 +1055,6 @@ void openems_model_gen::_add_via(FILE *fp)
                     max_z = z2;
                 }
                 
-        #if 0
                 float radius = v.size / 2;
                 
                 fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
@@ -1063,7 +1062,6 @@ void openems_model_gen::_add_via(FILE *fp)
                         c.x, c.y, z1,
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
-        #endif
                         
             }
             if (min_z < 10000 && max_z > -10000)
@@ -1304,6 +1302,17 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             {
                 max_z = z2;
             }
+                
+            pcb::point c(p.at);
+            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, c);
+            
+            float radius = p.size_w / 2;
+                
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
+                        name.c_str(),
+                        c.x, c.y, z1,
+                        c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
+                        radius);
         }
         
         if (min_z < 10000 && max_z > -10000)
