@@ -152,7 +152,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -ref &quot;VCC_DRAM-1V5,GND&quot; -net &quot;/ddr3/DQ0,/ddr3/DQ1,/ddr3/DQ2,/ddr3/DQ3,/ddr3/DQ4,/ddr3/DQ5,/ddr3/DQ6,/ddr3/DQ7,/ddr3/DQM0&quot; -coupled &quot;/ddr3/DQS0_N:/ddr3/DQS0_P&quot; -coupled_max_gap 0.508 -coupled_min_len 0.2 -ltra 0 -mmtl 0 -lossless_tl 1 -via_tl_mode 0 -step 0.5 -o dq0dq7" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -sp -max_freq 5e9 -port R1:50:1 -port R2:50:0 -net &quot;/S,GND&quot; -fp &quot;R1&quot; -fp &quot;R2&quot; -mesh_range 137:169:0.2:x  -mesh_range 115:119:0.1:y" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

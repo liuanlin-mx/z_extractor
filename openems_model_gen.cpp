@@ -197,7 +197,7 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
     }
 }
                         
-void openems_model_gen::add_lumped_port(const std::string& fp_name, bool excite, bool gen_mesh)
+void openems_model_gen::add_lumped_port(const std::string& fp_name, float R, bool excite, bool gen_mesh)
 {
     std::string ref = fp_name;
     pcb::footprint footprint;
@@ -231,7 +231,10 @@ void openems_model_gen::add_lumped_port(const std::string& fp_name, bool excite,
         
         excitation ex;
         ex.gen_mesh = gen_mesh;
-        ex.R = _string_to_float(footprint.value);
+        if (R < 0)
+        {
+            ex.R = _string_to_float(footprint.value);
+        }
         ex.dir = dir;
         ex.excite = excite;
         

@@ -473,7 +473,7 @@ class z_extractor_gui(z_extractor_base):
             cfg_list = [self.cur_cfg]
             
         for cfg in cfg_list:
-            cmd = cmd + "z_extractor -pcb " + self.board.GetFileName() + " "
+            cmd = cmd + "z_extractor -pcb " + self.board.GetFileName() + " -t "
             
             if len(cfg.ref_net) > 0:
                 cmd = cmd + '-ref "'

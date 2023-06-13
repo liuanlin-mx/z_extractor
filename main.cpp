@@ -18,12 +18,13 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <iostream>
 #include "z_extractor.h"
 #include "kicad_pcb_parser.h"
 #include <opencv2/opencv.hpp>
 #include "make_cir.h"
 
-
+#include "openems_model_gen.h"
 
 
 
@@ -77,23 +78,26 @@ static std::vector<std::string> _string_split(std::string str, const std::string
 }
 
 
-
-int main(int argc, char **argv)
+enum
 {
-    std::shared_ptr<pcb> pcb_(new pcb());
-    std::shared_ptr<z_extractor> z_extr(new z_extractor(pcb_));
+    MODE_NONE,
+    MODE_TL,
+    MODE_RL,
+    MODE_ANT,
+    MODE_SP
+};
+
+static std::shared_ptr<pcb> pcb_(new pcb());
+static std::shared_ptr<z_extractor> z_extr(new z_extractor(pcb_));
     
-    kicad_pcb_parser parser;
-    static char buf[16 * 1024 * 1024];
-    std::list<std::string> nets;
-    std::list<std::pair<std::string, std::string> > coupled_nets;
-    std::list<std::pair<std::string, std::string> > pads;
-    std::list<std::string> refs;
-    std::vector<std::string> current;
-    const char *pcb_file = NULL;
-    bool tl = true;
+static std::uint32_t mode = MODE_NONE;
+
+static const char *pcb_file = NULL;
+
+
+static int main_tl_rl(int argc, char **argv)
+{
     const char *oname = NULL;
-    
     float coupled_max_gap = 2;
     float coupled_min_len = 0.5;
     bool lossless_tl = true;
@@ -104,6 +108,14 @@ int main(int argc, char **argv)
     bool via_tl_mode = false;
     bool use_mmtl = true;
     bool enable_openmp = false;
+    
+    std::list<std::string> nets;
+    std::list<std::pair<std::string, std::string> > coupled_nets;
+    std::list<std::pair<std::string, std::string> > pads;
+    std::list<std::string> refs;
+    std::vector<std::string> current;
+    
+    static char buf[4 * 1024 * 1024];
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -126,21 +138,9 @@ int main(int argc, char **argv)
         {
             _parse_coupled_net(arg_next, pads);
         }
-        else if (std::string(arg) == "-pcb" && i < argc)
-        {
-            pcb_file = arg_next;
-        }
         else if (std::string(arg) == "-o" && i < argc)
         {
             oname = arg_next;
-        }
-        else if (std::string(arg) == "-t")
-        {
-            tl = true;
-        }
-        else if (std::string(arg) == "-rl")
-        {
-            tl = false;
         }
         else if (std::string(arg) == "-coupled_max_gap" && i < argc)
         {
@@ -188,20 +188,14 @@ int main(int argc, char **argv)
         }
         
     }
-    
-    if (pcb_file == NULL)
-    {
-        return 0;
-    }
-    
-    if (tl)
+    if (mode == MODE_TL)
     {
         if (refs.empty() || (nets.empty() && coupled_nets.empty()))
         {
             return 0;
         }
     }
-    else
+    else if (mode == MODE_RL)
     {
         if (pads.empty() && nets.empty())
         {
@@ -209,19 +203,7 @@ int main(int argc, char **argv)
         }
     }
     
-    if (!parser.parse(pcb_file, pcb_))
-    {
-        return 0;
-    }
-    pcb_->clean_segment();
-#if 0
-    parser.print_pcb();
     
-    cv::Mat img = pcb_->draw("F.Cu", 0.05);
-    cv::imshow("img", img);
-    cv::waitKey();
-    return 0;
-#endif
     z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);
     z_extr->enable_lossless_tl(lossless_tl);
@@ -235,7 +217,7 @@ int main(int argc, char **argv)
     
     std::string spice;
     std::string info;
-    if (tl)
+    if (mode == MODE_TL)
     {
         std::vector<std::uint32_t> v_refs;
         
@@ -318,7 +300,7 @@ int main(int argc, char **argv)
             //fwrite(str, 1, strlen(str), info_fp);
         }
     }
-    else
+    else if (mode == MODE_RL)
     {
         char str[4096] = {0};
         for (const auto& pad: pads)
@@ -386,5 +368,211 @@ int main(int argc, char **argv)
         fwrite(info.c_str(), 1, info.length(), info_fp);
         fclose(info_fp);
     }
+    return 0;
+}
+
+
+
+
+static int main_sparameter(int argc, char **argv)
+{
+    float max_freq = 3e9;
+    
+    std::list<std::string> nets;
+    std::vector<std::string> footprints;
+    std::vector<std::string> ports;
+    std::vector<std::string> mesh_range;
+    std::string bc = "MUR";
+    static char buf[4 * 1024 * 1024];
+    
+    openems_model_gen ems(pcb_);
+    
+    for (std::int32_t i = 1; i < argc; i++)
+    {
+        const char *arg = argv[i];
+        const char *arg_next = argv[i + 1];
+        
+        if (std::string(arg) == "-net" && i < argc)
+        {
+            _parse_net(arg_next, nets);
+        }
+        else if (std::string(arg) == "-max_freq" && i < argc)
+        {
+            max_freq = atof(arg_next);
+        }
+        else if (std::string(arg) == "-fp" && i < argc)
+        {
+            footprints.push_back(arg_next);
+        }
+        else if (std::string(arg) == "-port" && i < argc)
+        {
+            ports.push_back(arg_next);
+            
+        }
+        else if (std::string(arg) == "-mesh_range" && i < argc)
+        {
+            mesh_range.push_back(arg_next);
+        }
+        else if (std::string(arg) == "-bc" && i < argc)
+        {
+            bc = arg_next;
+        }
+    }
+    
+    ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
+    ems.set_excitation_freq(0, max_freq);
+    
+    for (const auto& fp: footprints)
+    {
+        ems.add_footprint(fp, false);
+    }
+    
+    for (const auto& net: nets)
+    {
+        ems.add_net(pcb_->get_net_id(net), false);
+    }
+    
+    for (const auto& port: ports)
+    {
+        std::vector<std::string> arg_v = _string_split(port, ":");
+        //eg R1:1:F.Cu:R1:2:F.Cu:y:50:1
+        if (9 == arg_v.size())
+        {
+            std::uint32_t ex_dir = openems_model_gen::excitation::DIR_X;
+            if (arg_v[6] == "y")
+            {
+                ex_dir = openems_model_gen::excitation::DIR_Y;
+            }
+            else if (arg_v[6] == "z")
+            {
+                ex_dir = openems_model_gen::excitation::DIR_Z;
+            }
+            
+            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+        }
+        else if (7  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
+        {
+            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
+                                    openems_model_gen::excitation::DIR_Z, atof(arg_v[5].c_str()), arg_v[6] == "1", false);
+        }
+        else if (3 == arg_v.size())//eg R1:50:1
+        {
+            ems.add_lumped_port(arg_v[0], atof(arg_v[1].c_str()), arg_v[2] == "1", false);
+        }
+    }
+    
+    
+    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
+    if (mesh_range.empty())
+    {
+        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
+        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
+    }
+    
+    for (const auto& range: mesh_range)
+    {
+        std::vector<std::string> arg_v = _string_split(range, ":");
+        if (4 == arg_v.size())
+        {
+            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
+        }
+    }
+    ems.gen_sparameter_scripts();
+    return 0;
+}
+
+
+static int main_antenna(int argc, char **argv)
+{
+    float max_freq = 3e9;
+    std::list<std::string> nets;
+    std::vector<std::string> footprints;
+    std::vector<openems_model_gen::mesh::line_range> mesh_range;
+    
+    static char buf[4 * 1024 * 1024];
+    
+    for (std::int32_t i = 1; i < argc; i++)
+    {
+        const char *arg = argv[i];
+        const char *arg_next = argv[i + 1];
+        
+        if (std::string(arg) == "-net" && i < argc)
+        {
+            _parse_net(arg_next, nets);
+        }
+        else if (std::string(arg) == "-max_freq" && i < argc)
+        {
+            max_freq = atof(arg_next);
+        }
+        else if (std::string(arg) == "-fp" && i < argc)
+        {
+        }
+        else if (std::string(arg) == "-port" && i < argc)
+        {
+        }
+        else if (std::string(arg) == "-mesh_range" && i < argc)
+        {
+        }
+    }
+    return 0;
+}
+int main(int argc, char **argv)
+{
+    //std::shared_ptr<pcb> pcb_(new pcb());
+    //std::shared_ptr<z_extractor> z_extr(new z_extractor(pcb_));
+    
+    kicad_pcb_parser parser;
+    
+    for (std::int32_t i = 1; i < argc; i++)
+    {
+        const char *arg = argv[i];
+        const char *arg_next = argv[i + 1];
+        if (std::string(arg) == "-pcb" && i < argc)
+        {
+            pcb_file = arg_next;
+        }
+        else if (std::string(arg) == "-t")
+        {
+            mode = MODE_TL;
+        }
+        else if (std::string(arg) == "-rl")
+        {
+            mode = MODE_RL;
+        }
+        else if (std::string(arg) == "-sp")
+        {
+            mode = MODE_SP;
+        }
+        else if (std::string(arg) == "-ant")
+        {
+            mode = MODE_ANT;
+        }
+    }
+    
+    if (pcb_file == NULL)
+    {
+        return 0;
+    }
+    
+    if (!parser.parse(pcb_file, pcb_))
+    {
+        return 0;
+    }
+    pcb_->clean_segment();
+    
+    if (mode == MODE_TL || mode == MODE_RL)
+    {
+        return main_tl_rl(argc, argv);
+    }
+    else if (mode == MODE_SP)
+    {
+        return main_sparameter(argc, argv);
+    }
+    else if (mode == MODE_ANT)
+    {
+        return main_antenna(argc, argv);
+    }
+    
+    
     return 0;
 }

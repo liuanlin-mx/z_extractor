@@ -214,7 +214,7 @@ public:
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
                         std::uint32_t dir, float R, bool excite = false, bool gen_mesh = true);
                         
-    void add_lumped_port(const std::string& fp_name, bool excite = false, bool gen_mesh = true);
+    void add_lumped_port(const std::string& fp_name, float R = -1, bool excite = false, bool gen_mesh = true);
     
     void add_lumped_element(const std::string& fp1, const std::string& fp1_pad_number, const std::string& fp1_layer_name,
                         const std::string& fp2, const std::string& fp2_pad_number, const std::string& fp2_layer_name,
