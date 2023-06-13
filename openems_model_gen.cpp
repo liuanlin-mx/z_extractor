@@ -635,7 +635,7 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         fprintf(fp, "    mkdir(plot_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
         fprintf(fp, "    if (show_model == 1)\n");
-        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
+        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-polydata-vtk=' sim_path]);\n");
         fprintf(fp, "    end\n");
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         fprintf(fp, "end\n");
@@ -710,7 +710,7 @@ void openems_model_gen::gen_sparameter_scripts()
         fprintf(fp, "    mkdir(plot_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
         fprintf(fp, "    if (show_model == 1)\n");
-        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-STL=' sim_path]);\n");
+        fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-polydata-vtk=' sim_path]);\n");
         fprintf(fp, "    end\n");
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         fprintf(fp, "end\n");
@@ -1322,17 +1322,6 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             {
                 max_z = z2;
             }
-                
-            pcb::point c(p.at);
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, c);
-            
-            float radius = p.size_w / 2;
-                
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
-                        name.c_str(),
-                        c.x, c.y, z1,
-                        c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
-                        radius);
         }
         
         if (min_z < 10000 && max_z > -10000)
@@ -1631,7 +1620,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "s11 = uf_ref ./ uf_inc;\n");
         fprintf(fp, "plot(freq / 1e6, 20 * log10(abs(s11)), 'k-', 'Linewidth', 2);\n");
         fprintf(fp, "grid on\n");
-        fprintf(fp, "ylim([-60 10]);\n");
+        fprintf(fp, "ylim([-30 3]);\n");
         fprintf(fp, "title('S-Parameter S_{11} port%u');\n", idx);
         fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
         fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
@@ -1832,6 +1821,11 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
+        fprintf(fp, "grid on;\n");
+        fprintf(fp, "axis on;\n");
+        fprintf(fp, "xlabel('x');\n");
+        fprintf(fp, "ylabel('y');\n");
+        fprintf(fp, "zlabel('z');\n");
         fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
         
         fprintf(fp, "E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));\n");

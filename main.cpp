@@ -383,7 +383,6 @@ static int main_sparameter(int argc, char **argv)
     std::vector<std::string> ports;
     std::vector<std::string> mesh_range;
     std::string bc = "MUR";
-    static char buf[4 * 1024 * 1024];
     
     openems_model_gen ems(pcb_);
     
@@ -407,7 +406,6 @@ static int main_sparameter(int argc, char **argv)
         else if (std::string(arg) == "-port" && i < argc)
         {
             ports.push_back(arg_next);
-            
         }
         else if (std::string(arg) == "-mesh_range" && i < argc)
         {
@@ -422,14 +420,14 @@ static int main_sparameter(int argc, char **argv)
     ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
     ems.set_excitation_freq(0, max_freq);
     
-    for (const auto& fp: footprints)
-    {
-        ems.add_footprint(fp, false);
-    }
-    
     for (const auto& net: nets)
     {
         ems.add_net(pcb_->get_net_id(net), false);
+    }
+    
+    for (const auto& fp: footprints)
+    {
+        ems.add_footprint(fp, false);
     }
     
     for (const auto& port: ports)
@@ -450,10 +448,10 @@ static int main_sparameter(int argc, char **argv)
             
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
         }
-        else if (7  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
+        else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
         {
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
-                                    openems_model_gen::excitation::DIR_Z, atof(arg_v[5].c_str()), arg_v[6] == "1", false);
+                                    openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
         }
         else if (3 == arg_v.size())//eg R1:50:1
         {
@@ -485,11 +483,15 @@ static int main_sparameter(int argc, char **argv)
 static int main_antenna(int argc, char **argv)
 {
     float max_freq = 3e9;
+    
     std::list<std::string> nets;
     std::vector<std::string> footprints;
-    std::vector<openems_model_gen::mesh::line_range> mesh_range;
+    std::vector<std::string> ports;
+    std::vector<std::string> mesh_range;
+    std::string nf2ff_fp;
+    std::string bc = "MUR";
     
-    static char buf[4 * 1024 * 1024];
+    openems_model_gen ems(pcb_);
     
     for (std::int32_t i = 1; i < argc; i++)
     {
@@ -506,16 +508,93 @@ static int main_antenna(int argc, char **argv)
         }
         else if (std::string(arg) == "-fp" && i < argc)
         {
+            footprints.push_back(arg_next);
         }
         else if (std::string(arg) == "-port" && i < argc)
         {
+            ports.push_back(arg_next);
         }
         else if (std::string(arg) == "-mesh_range" && i < argc)
         {
+            mesh_range.push_back(arg_next);
+        }
+        else if (std::string(arg) == "-bc" && i < argc)
+        {
+            bc = arg_next;
+        }
+        else if (std::string(arg) == "-nf2ff" && i < argc)
+        {
+            nf2ff_fp = arg_next;
         }
     }
+    
+    ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
+    ems.set_excitation_freq(0, max_freq);
+    
+    for (const auto& net: nets)
+    {
+        ems.add_net(pcb_->get_net_id(net), false);
+    }
+    
+    for (const auto& fp: footprints)
+    {
+        ems.add_footprint(fp, false);
+    }
+    
+    if (!nf2ff_fp.empty())
+    {
+        ems.set_nf2ff_footprint(nf2ff_fp);
+    }
+    
+    for (const auto& port: ports)
+    {
+        std::vector<std::string> arg_v = _string_split(port, ":");
+        //eg R1:1:F.Cu:R1:2:F.Cu:y:50:1
+        if (9 == arg_v.size())
+        {
+            std::uint32_t ex_dir = openems_model_gen::excitation::DIR_X;
+            if (arg_v[6] == "y")
+            {
+                ex_dir = openems_model_gen::excitation::DIR_Y;
+            }
+            else if (arg_v[6] == "z")
+            {
+                ex_dir = openems_model_gen::excitation::DIR_Z;
+            }
+            
+            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+        }
+        else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
+        {
+            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
+                                    openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
+        }
+        else if (3 == arg_v.size())//eg R1:50:1
+        {
+            ems.add_lumped_port(arg_v[0], atof(arg_v[1].c_str()), arg_v[2] == "1", false);
+        }
+    }
+    
+    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
+    if (mesh_range.empty())
+    {
+        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
+        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
+    }
+    
+    for (const auto& range: mesh_range)
+    {
+        std::vector<std::string> arg_v = _string_split(range, ":");
+        if (4 == arg_v.size())
+        {
+            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
+        }
+    }
+    ems.gen_antenna_simulation_scripts();
     return 0;
 }
+
+
 int main(int argc, char **argv)
 {
     //std::shared_ptr<pcb> pcb_(new pcb());

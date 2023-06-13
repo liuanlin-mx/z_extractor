@@ -152,7 +152,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -sp -max_freq 5e9 -port R1:50:1 -port R2:50:0 -net &quot;/S,GND&quot; -fp &quot;R1&quot; -fp &quot;R2&quot; -mesh_range 137:169:0.2:x  -mesh_range 115:119:0.1:y" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -max_freq 5e9 -port AE1:1:F.Cu:In1.Cu:50:1 -net &quot;GND&quot; -fp &quot;AE1&quot; -nf2ff &quot;AE1&quot;" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
