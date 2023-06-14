@@ -6,6 +6,7 @@
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="plugin">
+    <File Name="plugin/antenna.py"/>
     <File Name="plugin/rl_extractor.py"/>
     <File Name="plugin/metadata.json"/>
     <File Name="plugin/__init__.py"/>
@@ -152,7 +153,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -max_freq 5e9 -port AE1:1:F.Cu:In1.Cu:50:1 -net &quot;GND&quot; -fp &quot;AE1&quot; -nf2ff &quot;AE1&quot;" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -max_freq 5e9 -port RX:1:F.Cu:RX:2:F.Cu:y:50:1 -port RX:3:B.Cu:RX:4:B.Cu:x:50:1 -fp &quot;RX&quot; -mesh_range 131:183:0.2:x  -mesh_range 97:148:0.2:y -nf2ff &quot;RX&quot;" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
@@ -167,6 +168,7 @@
         <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/antenna.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">

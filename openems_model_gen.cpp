@@ -1580,7 +1580,7 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "grid on\n");
         fprintf(fp, "plot(freq/1e6, imag(Zin), 'r--', 'Linewidth', 2);\n");
         fprintf(fp, "ylim([-150 150]);\n");
-        fprintf(fp, "title('feed point impedance');\n");
+        fprintf(fp, "title('feed point impedance port%u');\n", idx);
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
         fprintf(fp, "legend('real', 'imag');\n");
@@ -1781,6 +1781,10 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
 
 void openems_model_gen::_add_plot_far_field(FILE *fp)
 {
+    if (_nf2ff_fp.empty())
+    {
+        return;
+    }
     if (_freq.empty())
     {
         fprintf(fp, "# NFFF contour plots\n");
