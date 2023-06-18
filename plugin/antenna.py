@@ -20,6 +20,7 @@ import pcbnew
 import os
 import stat
 import wx
+import wx.grid
 import subprocess
 import json
 import time
@@ -38,7 +39,6 @@ class antenna_base ( wx.Dialog ):
 		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"ANT", pos = wx.DefaultPosition, size = wx.Size( 913,640 ), style = wx.DEFAULT_DIALOG_STYLE|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER )
 
 		self.SetSizeHints( wx.Size( 800,640 ), wx.DefaultSize )
-
 		bSizer4 = wx.BoxSizer( wx.VERTICAL )
 
 		bSizer1 = wx.BoxSizer( wx.HORIZONTAL )
@@ -47,7 +47,7 @@ class antenna_base ( wx.Dialog ):
 
 		m_listBoxNetClassesChoices = []
 		self.m_listBoxNetClasses = wx.ListBox( sbSizer1.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetClassesChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_SORT )
-		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND, 5 )
+		sbSizer1.Add( self.m_listBoxNetClasses, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer11 = wx.BoxSizer( wx.VERTICAL )
 
@@ -61,13 +61,13 @@ class antenna_base ( wx.Dialog ):
 		sbSizer1.Add( bSizer11, 0, wx.EXPAND, 5 )
 
 
-		bSizer1.Add( sbSizer1, 1, wx.EXPAND, 5 )
+		bSizer1.Add( sbSizer1, 2, wx.EXPAND, 5 )
 
 		sbSizer2 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Net" ), wx.VERTICAL )
 
 		m_listBoxNetChoices = []
 		self.m_listBoxNet = wx.ListBox( sbSizer2.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxNetChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
-		sbSizer2.Add( self.m_listBoxNet, 1, wx.EXPAND, 5 )
+		sbSizer2.Add( self.m_listBoxNet, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer10 = wx.BoxSizer( wx.VERTICAL )
 
@@ -81,13 +81,13 @@ class antenna_base ( wx.Dialog ):
 		sbSizer2.Add( bSizer10, 0, wx.EXPAND, 5 )
 
 
-		bSizer1.Add( sbSizer2, 1, wx.EXPAND, 5 )
+		bSizer1.Add( sbSizer2, 2, wx.EXPAND, 5 )
 
 		sbSizer11 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Fp List" ), wx.VERTICAL )
 
 		m_listBoxFpChoices = []
 		self.m_listBoxFp = wx.ListBox( sbSizer11.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxFpChoices, wx.LB_EXTENDED|wx.LB_HSCROLL|wx.LB_SORT )
-		sbSizer11.Add( self.m_listBoxFp, 1, wx.EXPAND, 5 )
+		sbSizer11.Add( self.m_listBoxFp, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer111 = wx.BoxSizer( wx.VERTICAL )
 
@@ -101,15 +101,25 @@ class antenna_base ( wx.Dialog ):
 		sbSizer11.Add( bSizer111, 0, wx.EXPAND, 5 )
 
 
-		bSizer1.Add( sbSizer11, 2, wx.EXPAND, 5 )
+		bSizer1.Add( sbSizer11, 1, wx.EXPAND, 5 )
 
 		sbSizer3 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Fp" ), wx.VERTICAL )
 
 		m_listBoxFpAddedChoices = []
 		self.m_listBoxFpAdded = wx.ListBox( sbSizer3.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxFpAddedChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
-		sbSizer3.Add( self.m_listBoxFpAdded, 1, wx.EXPAND, 5 )
+		sbSizer3.Add( self.m_listBoxFpAdded, 0, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		bSizer61 = wx.BoxSizer( wx.VERTICAL )
+
+		sbSizer8 = wx.StaticBoxSizer( wx.StaticBox( sbSizer3.GetStaticBox(), wx.ID_ANY, u"NF2FF Box" ), wx.VERTICAL )
+
+		m_choiceNF2FFBoxChoices = []
+		self.m_choiceNF2FFBox = wx.Choice( sbSizer8.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceNF2FFBoxChoices, 0 )
+		self.m_choiceNF2FFBox.SetSelection( 0 )
+		sbSizer8.Add( self.m_choiceNF2FFBox, 0, wx.EXPAND, 5 )
+
+
+		bSizer61.Add( sbSizer8, 0, wx.EXPAND, 5 )
 
 		self.m_buttonFpAdd = wx.Button( sbSizer3.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer61.Add( self.m_buttonFpAdd, 1, wx.EXPAND, 5 )
@@ -121,94 +131,13 @@ class antenna_base ( wx.Dialog ):
 		sbSizer3.Add( bSizer61, 0, wx.EXPAND, 5 )
 
 
-		bSizer1.Add( sbSizer3, 2, wx.EXPAND, 5 )
-
-		sbSizer21 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Excitation" ), wx.VERTICAL )
-
-		m_listBoxExChoices = []
-		self.m_listBoxEx = wx.ListBox( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxExChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
-		sbSizer21.Add( self.m_listBoxEx, 1, wx.EXPAND, 5 )
-
-		gSizer2 = wx.GridSizer( 2, 3, 0, 0 )
-
-		self.m_buttonExAdd = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer2.Add( self.m_buttonExAdd, 0, 0, 5 )
-
-		self.m_buttonExDel = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer2.Add( self.m_buttonExDel, 0, 0, 5 )
-
-		self.m_buttonExMdf = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"Modify", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer2.Add( self.m_buttonExMdf, 0, 0, 5 )
-
-		self.m_staticText3 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"---", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText3.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText3, 0, wx.ALIGN_CENTER, 5 )
-
-		self.m_staticText4 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"Fp.Pad", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText4.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText4, 0, wx.ALIGN_CENTER, 5 )
-
-		self.m_staticText5 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"Layer", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText5.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText5, 0, wx.ALIGN_CENTER, 5 )
-
-		self.m_staticText21 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"Start:", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText21.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText21, 0, wx.ALIGN_CENTER, 5 )
-
-		m_choiceExStartPadChoices = [ u"111", u"222" ]
-		self.m_choiceExStartPad = wx.Choice( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceExStartPadChoices, 0 )
-		self.m_choiceExStartPad.SetSelection( 0 )
-		gSizer2.Add( self.m_choiceExStartPad, 0, 0, 5 )
-
-		m_choiceExStartLayerChoices = []
-		self.m_choiceExStartLayer = wx.Choice( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceExStartLayerChoices, 0 )
-		self.m_choiceExStartLayer.SetSelection( 0 )
-		gSizer2.Add( self.m_choiceExStartLayer, 0, 0, 5 )
-
-		self.m_staticText6 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"End:", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText6.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText6, 0, wx.ALIGN_CENTER, 5 )
-
-		m_choiceExEndPadChoices = []
-		self.m_choiceExEndPad = wx.Choice( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceExEndPadChoices, 0 )
-		self.m_choiceExEndPad.SetSelection( 0 )
-		gSizer2.Add( self.m_choiceExEndPad, 0, 0, 5 )
-
-		m_choiceExEndLayerChoices = []
-		self.m_choiceExEndLayer = wx.Choice( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceExEndLayerChoices, 0 )
-		self.m_choiceExEndLayer.SetSelection( 0 )
-		gSizer2.Add( self.m_choiceExEndLayer, 0, 0, 5 )
-
-		self.m_staticText7 = wx.StaticText( sbSizer21.GetStaticBox(), wx.ID_ANY, u"Dir,R:", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.m_staticText7.Wrap( -1 )
-
-		gSizer2.Add( self.m_staticText7, 0, wx.ALIGN_CENTER, 5 )
-
-		m_choiceExDirChoices = [ u"x", u"y", u"z" ]
-		self.m_choiceExDir = wx.Choice( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceExDirChoices, 0 )
-		self.m_choiceExDir.SetSelection( 0 )
-		gSizer2.Add( self.m_choiceExDir, 0, 0, 5 )
-
-		self.m_textCtrlExR = wx.TextCtrl( sbSizer21.GetStaticBox(), wx.ID_ANY, u"50", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer2.Add( self.m_textCtrlExR, 0, 0, 5 )
-
-
-		sbSizer21.Add( gSizer2, 0, 0, 5 )
-
-
-		bSizer1.Add( sbSizer21, 0, wx.EXPAND, 5 )
+		bSizer1.Add( sbSizer3, 1, wx.EXPAND, 5 )
 
 		sbSizer4 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"cfg" ), wx.VERTICAL )
 
 		m_listBoxCfgChoices = []
 		self.m_listBoxCfg = wx.ListBox( sbSizer4.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_listBoxCfgChoices, wx.LB_EXTENDED|wx.LB_HSCROLL )
-		sbSizer4.Add( self.m_listBoxCfg, 1, wx.EXPAND, 5 )
+		sbSizer4.Add( self.m_listBoxCfg, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
 
 		gSizer1 = wx.GridSizer( 2, 2, 0, 0 )
 
@@ -233,9 +162,106 @@ class antenna_base ( wx.Dialog ):
 
 		bSizer4.Add( bSizer1, 1, wx.EXPAND, 5 )
 
+		bSizer81 = wx.BoxSizer( wx.HORIZONTAL )
+
+		sbSizer21 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Excitation" ), wx.VERTICAL )
+
+		self.m_gridEx = wx.grid.Grid( sbSizer21.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
+
+		# Grid
+		self.m_gridEx.CreateGrid( 0, 6 )
+		self.m_gridEx.EnableEditing( True )
+		self.m_gridEx.EnableGridLines( True )
+		self.m_gridEx.EnableDragGridSize( False )
+		self.m_gridEx.SetMargins( 0, 0 )
+
+		# Columns
+		self.m_gridEx.EnableDragColMove( False )
+		self.m_gridEx.EnableDragColSize( True )
+		self.m_gridEx.SetColLabelValue( 0, u"Pad1" )
+		self.m_gridEx.SetColLabelValue( 1, u"Layer1" )
+		self.m_gridEx.SetColLabelValue( 2, u"Pad2" )
+		self.m_gridEx.SetColLabelValue( 3, u"Layer2" )
+		self.m_gridEx.SetColLabelValue( 4, u"R" )
+		self.m_gridEx.SetColLabelValue( 5, u"Dir" )
+		self.m_gridEx.SetColLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridEx.SetColLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Rows
+		self.m_gridEx.EnableDragRowSize( True )
+		self.m_gridEx.SetRowLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridEx.SetRowLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Label Appearance
+
+		# Cell Defaults
+		self.m_gridEx.SetDefaultCellAlignment( wx.ALIGN_LEFT, wx.ALIGN_TOP )
+		sbSizer21.Add( self.m_gridEx, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+
+		bSizer101 = wx.BoxSizer( wx.HORIZONTAL )
+
+		self.m_buttonExAddLine = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer101.Add( self.m_buttonExAddLine, 1, wx.EXPAND, 5 )
+
+		self.m_buttonExDelLine = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer101.Add( self.m_buttonExDelLine, 1, 0, 5 )
+
+
+		sbSizer21.Add( bSizer101, 0, wx.EXPAND, 5 )
+
+
+		bSizer81.Add( sbSizer21, 2, wx.EXPAND, 5 )
+
+		sbSizerMesh = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Mesh" ), wx.VERTICAL )
+
+		self.m_gridMesh = wx.grid.Grid( sbSizerMesh.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
+
+		# Grid
+		self.m_gridMesh.CreateGrid( 0, 4 )
+		self.m_gridMesh.EnableEditing( True )
+		self.m_gridMesh.EnableGridLines( True )
+		self.m_gridMesh.EnableDragGridSize( False )
+		self.m_gridMesh.SetMargins( 0, 0 )
+
+		# Columns
+		self.m_gridMesh.EnableDragColMove( False )
+		self.m_gridMesh.EnableDragColSize( True )
+		self.m_gridMesh.SetColLabelValue( 0, u"Start(mm)" )
+		self.m_gridMesh.SetColLabelValue( 1, u"End(mm)" )
+		self.m_gridMesh.SetColLabelValue( 2, u"Gap(mm)" )
+		self.m_gridMesh.SetColLabelValue( 3, u"Dir" )
+		self.m_gridMesh.SetColLabelValue( 4, wx.EmptyString )
+		self.m_gridMesh.SetColLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridMesh.SetColLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Rows
+		self.m_gridMesh.EnableDragRowSize( True )
+		self.m_gridMesh.SetRowLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridMesh.SetRowLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Label Appearance
+
+		# Cell Defaults
+		self.m_gridMesh.SetDefaultCellAlignment( wx.ALIGN_LEFT, wx.ALIGN_TOP )
+		sbSizerMesh.Add( self.m_gridMesh, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+
+		bSizer9 = wx.BoxSizer( wx.HORIZONTAL )
+
+		self.m_buttonMeshAddLine = wx.Button( sbSizerMesh.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer9.Add( self.m_buttonMeshAddLine, 1, wx.EXPAND, 5 )
+
+		self.m_buttonMeshDelLine = wx.Button( sbSizerMesh.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer9.Add( self.m_buttonMeshDelLine, 1, wx.EXPAND, 5 )
+
+
+		sbSizerMesh.Add( bSizer9, 0, wx.EXPAND, 5 )
+
+
+		bSizer81.Add( sbSizerMesh, 2, wx.EXPAND, 5 )
+
 		sbSizer6 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"options" ), wx.HORIZONTAL )
 
-		bSizer8 = wx.BoxSizer( wx.HORIZONTAL )
+		bSizer8 = wx.BoxSizer( wx.VERTICAL )
 
 
 		bSizer8.Add( ( 0, 0), 1, wx.EXPAND, 5 )
@@ -258,7 +284,10 @@ class antenna_base ( wx.Dialog ):
 		sbSizer6.Add( bSizer8, 1, wx.ALL|wx.EXPAND, 5 )
 
 
-		bSizer4.Add( sbSizer6, 0, wx.ALIGN_CENTER|wx.EXPAND, 5 )
+		bSizer81.Add( sbSizer6, 1, wx.ALIGN_CENTER|wx.EXPAND, 5 )
+
+
+		bSizer4.Add( bSizer81, 1, wx.EXPAND, 5 )
 
 		self.m_textCtrlOutput = wx.TextCtrl( self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE|wx.TE_READONLY )
 		bSizer4.Add( self.m_textCtrlOutput, 1, wx.ALL|wx.EXPAND, 5 )
@@ -280,15 +309,20 @@ class antenna_base ( wx.Dialog ):
 		self.m_listBoxFp.Bind( wx.EVT_LISTBOX, self.m_listBoxNetClassesOnListBox )
 		self.m_buttonRefreshFp.Bind( wx.EVT_BUTTON, self.m_buttonRefreshFpOnButtonClick )
 		self.m_textCtrlFpFilter.Bind( wx.EVT_TEXT, self.m_textCtrlFpFilterOnText )
+		self.m_choiceNF2FFBox.Bind( wx.EVT_CHOICE, self.m_choiceNF2FFBoxOnChoice )
 		self.m_buttonFpAdd.Bind( wx.EVT_BUTTON, self.m_buttonFpAddOnButtonClick )
 		self.m_buttonFpDel.Bind( wx.EVT_BUTTON, self.m_buttonFpDelOnButtonClick )
-		self.m_buttonExAdd.Bind( wx.EVT_BUTTON, self.m_buttonNetAddOnButtonClick )
-		self.m_buttonExDel.Bind( wx.EVT_BUTTON, self.m_buttonNetDelOnButtonClick )
 		self.m_listBoxCfg.Bind( wx.EVT_LISTBOX, self.m_listBoxCfgOnListBox )
 		self.m_buttonCfgAdd.Bind( wx.EVT_BUTTON, self.m_buttonCfgAddOnButtonClick )
 		self.m_buttonCfgDel.Bind( wx.EVT_BUTTON, self.m_buttonCfgDelOnButtonClick )
 		self.m_buttonCfgRename.Bind( wx.EVT_BUTTON, self.m_buttonCfgRenameOnButtonClick )
 		self.m_buttonSave.Bind( wx.EVT_BUTTON, self.m_buttonSaveOnButtonClick )
+		self.m_gridEx.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridExOnGridCellChange )
+		self.m_buttonExAddLine.Bind( wx.EVT_BUTTON, self.m_buttonExAddLineOnButtonClick )
+		self.m_buttonExDelLine.Bind( wx.EVT_BUTTON, self.m_buttonExDelLineOnButtonClick )
+		self.m_gridMesh.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridMeshOnGridCellChange )
+		self.m_buttonMeshAddLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshAddLineOnButtonClick )
+		self.m_buttonMeshDelLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshDelLineOnButtonClick )
 		self.m_textCtrlFreq.Bind( wx.EVT_TEXT, self.m_textCtrlFreqOnText )
 		self.m_buttonGenerate.Bind( wx.EVT_BUTTON, self.m_buttonGenerateOnButtonClick )
 		self.Bind( wx.EVT_TIMER, self.m_timerOnTimer, id=wx.ID_ANY )
@@ -320,13 +354,14 @@ class antenna_base ( wx.Dialog ):
 	def m_textCtrlFpFilterOnText( self, event ):
 		event.Skip()
 
+	def m_choiceNF2FFBoxOnChoice( self, event ):
+		event.Skip()
+
 	def m_buttonFpAddOnButtonClick( self, event ):
 		event.Skip()
 
 	def m_buttonFpDelOnButtonClick( self, event ):
 		event.Skip()
-
-
 
 	def m_listBoxCfgOnListBox( self, event ):
 		event.Skip()
@@ -343,6 +378,24 @@ class antenna_base ( wx.Dialog ):
 	def m_buttonSaveOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_gridExOnGridCellChange( self, event ):
+		event.Skip()
+
+	def m_buttonExAddLineOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_buttonExDelLineOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_gridMeshOnGridCellChange( self, event ):
+		event.Skip()
+
+	def m_buttonMeshAddLineOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_buttonMeshDelLineOnButtonClick( self, event ):
+		event.Skip()
+
 	def m_textCtrlFreqOnText( self, event ):
 		event.Skip()
 
@@ -355,15 +408,20 @@ class antenna_base ( wx.Dialog ):
 
 
 
-
 class ant_config_item():
     def __init__(self):
-        self.net = []
+        self.net = ['GND']
         self.fp = []
+        self.nf2ff_box = ""
         self.ex = []
         self.name = "newcfg"
         self.freq = "5e9"
-        
+        self.mesh = []
+        #for i in range(6):
+        #    self.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'Not used'})
+            
+        #for i in range(6):
+        #    self.ex.append({'pad1': '', 'layer1': '', 'pad2': '', 'layer2': '', 'R': 50, 'dir': 'Not used'})
 
 class antenna_gui(antenna_base):
     def __init__(self):
@@ -379,7 +437,14 @@ class antenna_gui(antenna_base):
         self.lock = threading.Lock()
         self.cmd_line = ""
         self.cmd_output = ""
-        
+        self.std_layer_dict = {self.board.GetStandardLayerName(n): n for n in range(pcbnew.PCB_LAYER_ID_COUNT)}
+        self.layer_name = []
+        for k, v in self.std_layer_dict.items():
+            if self.board.IsLayerEnabled(v) and pcbnew.IsCopperLayer(v):
+                    self.layer_name.append(self.board.GetLayerName(v))
+                    #self.m_textCtrlOutput.AppendText(self.board.GetLayerName(v) + "\n")
+                
+                
         file_name = self.board.GetFileName()
         self.board_path = os.path.split(file_name)[0]
         self.plugin_path = os.path.split(os.path.realpath(__file__))[0]
@@ -400,12 +465,16 @@ class antenna_gui(antenna_base):
             
         self.load_cfg()
         
+        
         self.update_net_classes_ui()
         self.update_cfg_ui()
         self.update_fp_list_ui()
         self.update_net_ui()
         self.update_fp_ui()
-    
+        self.update_nf2ff_box_ui()
+        self.update_excitation_ui()
+        self.update_mesh_ui()
+        
     def load_cfg(self):
         try:
             cfg_file = open(self.cfg_path, "r")
@@ -429,8 +498,11 @@ class antenna_gui(antenna_base):
                 item.ex = cfg["ex"]
             if "freq" in cfg:
                 item.freq = cfg["freq"]
+            if "nf2ff_box" in cfg:
+                item.nf2ff_box = cfg["nf2ff_box"]
+            if "mesh" in cfg:
+                item.mesh = cfg["mesh"]
                 
-            
             self.cfg_list.append(item)
         
         if len(self.cfg_list) == 0:
@@ -458,10 +530,19 @@ class antenna_gui(antenna_base):
                 for fp in cfg.fp:
                     cmd = cmd + '-fp ' + fp + ' '
                     
-            if len(cfg.ex) > 0:
-                for ex in cfg.ex:
-                    cmd = cmd + '-port "' + ex + '" '
-            
+            for ex in cfg.ex:
+                if len(ex['dir']) > 1:
+                    continue
+                cmd = cmd + '-port ' + ex['pad1'] + ':' + ex['layer1'] + ':' + ex['pad2'] + ':' + ex['layer2'] + ':' + ex['dir'] + ':' + str(ex['R']) + ':1 '
+                    
+            if len(cfg.nf2ff_box) > 0:
+                    cmd = cmd + '-nf2ff "' + cfg.nf2ff_box + '" '
+                    
+            for mesh in cfg.mesh:
+                if len(mesh['dir']) > 1:
+                    continue
+                cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
+                
             cmd = cmd + ' -freq ' + cfg.freq
         
         return  cmd.strip(';')
@@ -522,6 +603,73 @@ class antenna_gui(antenna_base):
         for fp in self.cur_cfg.fp:
             self.m_listBoxFpAdded.Append(fp)
         
+    def update_nf2ff_box_ui(self):
+        self.m_choiceNF2FFBox.Clear()
+        for fp in self.cur_cfg.fp:
+            self.m_choiceNF2FFBox.Append(fp)
+        self.m_choiceNF2FFBox.Select(0)
+        self.m_choiceNF2FFBox.SetStringSelection(self.cur_cfg.nf2ff_box)
+        self.cur_cfg.nf2ff_box = self.m_choiceNF2FFBox.GetStringSelection()
+        
+    def update_excitation_ui(self):
+        choices = []
+        for m in self.board.GetFootprints():
+            footprint = m.GetReference()
+            if footprint in self.cur_cfg.fp:
+                for pad in m.Pads():
+                    choices.append(footprint + ':' + pad.GetName())
+        
+        
+        self.m_gridEx.DeleteRows(0, self.m_gridEx.GetNumberRows())
+        self.m_gridEx.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER)
+        
+        self.m_gridEx.SetColFormatFloat(4, precision = 0)
+        
+        for row in range(len(self.cur_cfg.ex)):
+            item = self.cur_cfg.ex[row]
+            self.m_gridEx.AppendRows()
+            self.m_gridEx.SetCellEditor(row, 0, wx.grid.GridCellChoiceEditor(choices))
+            self.m_gridEx.SetCellValue(row, 0, str(item['pad1']))
+            
+            self.m_gridEx.SetCellEditor(row, 1, wx.grid.GridCellChoiceEditor(self.layer_name))
+            self.m_gridEx.SetCellValue(row, 1, str(item['layer1']))
+            
+            self.m_gridEx.SetCellEditor(row, 2, wx.grid.GridCellChoiceEditor(choices))
+            self.m_gridEx.SetCellValue(row, 2, str(item['pad2']))
+            
+            self.m_gridEx.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(self.layer_name))
+            self.m_gridEx.SetCellValue(row, 3, str(item['layer2']))
+            
+            self.m_gridEx.SetCellEditor(row, 5, wx.grid.GridCellChoiceEditor(["x", "y", "z"]))
+            self.m_gridEx.SetCellValue(row, 5, str(item['dir']))
+            
+            self.m_gridEx.SetCellValue(row, 4, str(item['R']))
+            
+        self.m_gridEx.AutoSizeColumns()
+        self.m_gridEx.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
+        
+    def update_mesh_ui( self ):
+        self.m_gridMesh.DeleteRows(0, self.m_gridMesh.GetNumberRows())
+        self.m_gridMesh.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER)
+        
+        self.m_gridMesh.SetColFormatFloat(0, precision = 2)
+        self.m_gridMesh.SetColFormatFloat(1, precision = 2)
+        self.m_gridMesh.SetColFormatFloat(2, precision = 2)
+        
+        
+        for row in range(len(self.cur_cfg.mesh)):
+            self.m_gridMesh.AppendRows()
+            self.m_gridMesh.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(["x", "y"]))
+            item = self.cur_cfg.mesh[row]
+            self.m_gridMesh.SetCellValue(row, 0, str(item['start']))
+            self.m_gridMesh.SetCellValue(row, 1, str(item['end']))
+            self.m_gridMesh.SetCellValue(row, 2, str(item['gap']))
+            self.m_gridMesh.SetCellValue(row, 3, str(item['dir']))
+            
+        self.m_gridMesh.AutoSizeColumns()
+        self.m_gridMesh.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
+        
+        
     # Virtual event handlers, override them in your derived class
     def m_listBoxNetClassesOnListBox( self, event ):
         event.Skip()
@@ -580,6 +728,9 @@ class antenna_gui(antenna_base):
     def m_textCtrlFpFilterOnText( self, event ):
         self.update_fp_list_ui()
 
+    def m_choiceNF2FFBoxOnChoice( self, event ):
+        self.cur_cfg.nf2ff_box = self.m_choiceNF2FFBox.GetStringSelection()
+        
     def m_buttonFpAddOnButtonClick( self, event ):
         selected = self.m_listBoxFp.GetSelections()
         for n in selected:
@@ -587,7 +738,8 @@ class antenna_gui(antenna_base):
             if (fp not in self.cur_cfg.fp):
                 self.cur_cfg.fp.append(fp)
                 self.m_listBoxFpAdded.Append(fp)
-        
+        self.update_nf2ff_box_ui()
+        self.update_excitation_ui()
 
     def m_buttonFpDelOnButtonClick( self, event ):
         selected = self.m_listBoxFpAdded.GetSelections()
@@ -597,7 +749,10 @@ class antenna_gui(antenna_base):
             fp = self.m_listBoxFpAdded.GetString(selected[size])
             self.m_listBoxFpAdded.Delete(selected[size])
             self.cur_cfg.fp.remove(fp)
-        
+        self.update_nf2ff_box_ui()
+        self.update_excitation_ui()
+    
+
     def m_listBoxCfgOnListBox( self, event ):
         selected = self.m_listBoxCfg.GetSelections()
         size = len(selected)
@@ -615,6 +770,9 @@ class antenna_gui(antenna_base):
         self.update_fp_list_ui()
         self.update_net_ui()
         self.update_fp_ui()
+        self.update_nf2ff_box_ui()
+        self.update_excitation_ui()
+        self.update_mesh_ui()
         
     def m_buttonCfgAddOnButtonClick( self, event ):
         dlg = wx.TextEntryDialog(None, u"cfg name", u"name:")
@@ -648,6 +806,9 @@ class antenna_gui(antenna_base):
         self.update_fp_list_ui()
         self.update_net_ui()
         self.update_fp_ui()
+        self.update_nf2ff_box_ui()
+        self.update_excitation_ui()
+        self.update_mesh_ui()
         
     def m_buttonCfgRenameOnButtonClick( self, event ):
         selected = self.m_listBoxCfg.GetSelections()
@@ -709,6 +870,52 @@ class antenna_gui(antenna_base):
         cfg_file = open(self.cfg_path, "w")
         json.dump(list, cfg_file)
         cfg_file.close()
+        
+    def m_gridExOnGridCellChange( self, event ):
+        row = event.GetRow()
+        item = {}
+        item['pad1'] = self.m_gridEx.GetCellValue(row, 0);
+        item['layer1'] = self.m_gridEx.GetCellValue(row, 1);
+        item['pad2'] = self.m_gridEx.GetCellValue(row, 2);
+        item['layer2'] = self.m_gridEx.GetCellValue(row, 3);
+        item['R'] = float(self.m_gridEx.GetCellValue(row, 4));
+        item['dir'] = self.m_gridEx.GetCellValue(row, 5);
+        self.cur_cfg.ex[row] = item
+        self.m_gridEx.AutoSizeColumns()
+
+    def m_buttonExAddLineOnButtonClick( self, event ):
+        self.cur_cfg.ex.append({'pad1': '', 'layer1': '', 'pad2': '', 'layer2': '', 'R': 50, 'dir': 'x'})
+        self.update_excitation_ui()
+
+    def m_buttonExDelLineOnButtonClick( self, event ):
+        selected = self.m_gridEx.GetSelectedRows()
+        size = len(selected)
+        while size > 0:
+            size = size - 1
+            self.m_gridEx.DeleteRows(selected[size])
+            self.cur_cfg.ex.pop(selected[size])
+        
+    def m_gridMeshOnGridCellChange( self, event ):
+        row = event.GetRow()
+        item = {}
+        item['start'] = float(self.m_gridMesh.GetCellValue(row, 0));
+        item['end'] = float(self.m_gridMesh.GetCellValue(row, 1));
+        item['gap'] = float(self.m_gridMesh.GetCellValue(row, 2));
+        item['dir'] = self.m_gridMesh.GetCellValue(row, 3);
+        self.cur_cfg.mesh[row] = item
+        self.m_gridMesh.AutoSizeColumns()
+        
+    def m_buttonMeshAddLineOnButtonClick( self, event ):
+        self.cur_cfg.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'x'})
+        self.update_mesh_ui()
+        
+    def m_buttonMeshDelLineOnButtonClick( self, event ):
+        selected = self.m_gridMesh.GetSelectedRows()
+        size = len(selected)
+        while size > 0:
+            size = size - 1
+            self.m_gridMesh.DeleteRows(selected[size])
+            self.cur_cfg.mesh.pop(selected[size])
         
     def m_timerOnTimer( self, event ):
         cmd_output = ""

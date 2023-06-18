@@ -430,6 +430,13 @@ static int main_sparameter(int argc, char **argv)
         ems.add_footprint(fp, false);
     }
     
+    if (nets.empty() && footprints.empty())
+    {
+        printf("err: net class empty, footprint empty\n");
+        return 0;
+    }
+    
+    bool no_port = true;
     for (const auto& port: ports)
     {
         std::vector<std::string> arg_v = _string_split(port, ":");
@@ -447,16 +454,24 @@ static int main_sparameter(int argc, char **argv)
             }
             
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+            no_port = false;
         }
         else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
         {
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
                                     openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
+            no_port = false;
         }
         else if (3 == arg_v.size())//eg R1:50:1
         {
             ems.add_lumped_port(arg_v[0], atof(arg_v[1].c_str()), arg_v[2] == "1", false);
+            no_port = false;
         }
+    }
+    if (no_port)
+    {
+        printf("err: no valid port exists\n");
+        return 0;
     }
     
     
@@ -536,6 +551,12 @@ static int main_antenna(int argc, char **argv)
         ems.add_net(pcb_->get_net_id(net), false);
     }
     
+    if (footprints.empty())
+    {
+        printf("err: footprint empty\n");
+        return 0;
+    }
+    
     for (const auto& fp: footprints)
     {
         ems.add_footprint(fp, false);
@@ -546,6 +567,7 @@ static int main_antenna(int argc, char **argv)
         ems.set_nf2ff_footprint(nf2ff_fp);
     }
     
+    bool no_excitation = true;
     for (const auto& port: ports)
     {
         std::vector<std::string> arg_v = _string_split(port, ":");
@@ -563,16 +585,24 @@ static int main_antenna(int argc, char **argv)
             }
             
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+            no_excitation = false;
         }
         else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
         {
             ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
                                     openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
+            no_excitation = false;
         }
         else if (3 == arg_v.size())//eg R1:50:1
         {
             ems.add_lumped_port(arg_v[0], atof(arg_v[1].c_str()), arg_v[2] == "1", false);
+            no_excitation = false;
         }
+    }
+    if (no_excitation)
+    {
+        printf("err: no valid excitation exists\n");
+        return 0;
     }
     
     ems.set_mesh_min_gap(0.01, 0.01, 0.01);
