@@ -378,6 +378,7 @@ static int main_sparameter(int argc, char **argv)
 {
     float max_freq = 3e9;
     
+    const char *prefix = "";
     std::list<std::string> nets;
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
@@ -414,6 +415,10 @@ static int main_sparameter(int argc, char **argv)
         else if (std::string(arg) == "-bc" && i < argc)
         {
             bc = arg_next;
+        }
+        else if (std::string(arg) == "-o" && i < argc)
+        {
+            prefix = arg_next;
         }
     }
     
@@ -490,7 +495,7 @@ static int main_sparameter(int argc, char **argv)
             ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
         }
     }
-    ems.gen_sparameter_scripts();
+    ems.gen_sparameter_scripts(prefix);
     return 0;
 }
 
@@ -498,7 +503,7 @@ static int main_sparameter(int argc, char **argv)
 static int main_antenna(int argc, char **argv)
 {
     float max_freq = 3e9;
-    
+    const char *prefix = "";
     std::list<std::string> nets;
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
@@ -540,6 +545,10 @@ static int main_antenna(int argc, char **argv)
         else if (std::string(arg) == "-nf2ff" && i < argc)
         {
             nf2ff_fp = arg_next;
+        }
+        else if (std::string(arg) == "-o" && i < argc)
+        {
+            prefix = arg_next;
         }
     }
     
@@ -620,7 +629,7 @@ static int main_antenna(int argc, char **argv)
             ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
         }
     }
-    ems.gen_antenna_simulation_scripts();
+    ems.gen_antenna_simulation_scripts(prefix);
     return 0;
 }
 

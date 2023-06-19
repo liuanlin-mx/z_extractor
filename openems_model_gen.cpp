@@ -585,15 +585,21 @@ void openems_model_gen::gen_mesh(const std::string& func_name)
 }
 
 
-void openems_model_gen::gen_antenna_simulation_scripts()
+void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix)
 {
-    FILE *fp = fopen("antenna_simulation_scripts.m", "wb");
+    std::string prefix_ = "";
+    if (!prefix.empty())
+    {
+        prefix_ = prefix + "_";
+    }
+    
+    FILE *fp = fopen((prefix_ + "ant.m").c_str(), "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
-        fprintf(fp, "sim_path = 'ant_sim'; plot_path = 'plot'; sim_csx = 'ant.xml';\n");
+        fprintf(fp, "sim_path = '%sant'; plot_path = [sim_path '/plot']; sim_csx = 'ant.xml';\n", prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
@@ -626,8 +632,8 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         _add_excitation(fp, 99);
         _add_nf2ff_box(fp);
         fprintf(fp, "if (plot_only == 0)\n");
-        fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
-        fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
+        fprintf(fp, "    CSX = %sload_pcb_model(CSX, f0 + fc);\n", prefix_.c_str());
+        fprintf(fp, "    [CSX, mesh] = %sload_pcb_mesh(CSX, f0 + fc);\n", prefix_.c_str());
         fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
         fprintf(fp, "    rmdir(sim_path, 's');\n");
@@ -655,19 +661,25 @@ void openems_model_gen::gen_antenna_simulation_scripts()
         
         fclose(fp);
     }
-    gen_model("load_pcb_model");
-    gen_mesh("load_pcb_mesh");
+    gen_model(prefix_ + "load_pcb_model");
+    gen_mesh(prefix_ + "load_pcb_mesh");
 }
 
-void openems_model_gen::gen_sparameter_scripts()
+void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
 {
-    FILE *fp = fopen("s_parameter.m", "wb");
+    std::string prefix_ = "";
+    if (!prefix.empty())
+    {
+        prefix_  = prefix + "_";
+    }
+    
+    FILE *fp = fopen((prefix_ + "s_parameter.m").c_str(), "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
-        fprintf(fp, "sim_path = 'S-Parameter'; plot_path = 'plot'; sim_csx = 'S-Parameter.xml';\n");
+        fprintf(fp, "sim_path = '%sS-Parameter'; plot_path = [sim_path '/plot']; sim_csx = 'S-Parameter.xml';\n", prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
@@ -701,8 +713,8 @@ void openems_model_gen::gen_sparameter_scripts()
         _add_excitation(fp, 99);
         
         fprintf(fp, "if (plot_only == 0)\n");
-        fprintf(fp, "    CSX = load_pcb_model(CSX, f0 + fc);\n");
-        fprintf(fp, "    [CSX, mesh] = load_pcb_mesh(CSX, f0 + fc);\n");
+        fprintf(fp, "    CSX = %sload_pcb_model(CSX, f0 + fc);\n", prefix_.c_str());
+        fprintf(fp, "    [CSX, mesh] = %sload_pcb_mesh(CSX, f0 + fc);\n", prefix_.c_str());
         fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
         fprintf(fp, "    rmdir(sim_path, 's');\n");
@@ -726,8 +738,8 @@ void openems_model_gen::gen_sparameter_scripts()
         
         fclose(fp);
     }
-    gen_model("load_pcb_model");
-    gen_mesh("load_pcb_mesh");
+    gen_model(prefix_ + "load_pcb_model");
+    gen_mesh(prefix_ + "load_pcb_mesh");
 }
 
 
@@ -1584,7 +1596,7 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
         fprintf(fp, "legend('real', 'imag');\n");
-        fprintf(fp, "print('-dpng', [plot_path '/Zin_' num2str(%d) '.png']);\n", idx);
+        fprintf(fp, "print('-dsvg', [plot_path '/Zin_' num2str(%d) '.svg']);\n", idx);
         
         fprintf(fp, "if exist('s11_min_freq_idx')\n");
         fprintf(fp, "    printf('freq:%%g Z(%%g + %%gi)\\n', freq(s11_min_freq_idx), real(Zin(s11_min_freq_idx)), imag(Zin(s11_min_freq_idx)));\n");
@@ -1624,7 +1636,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "title('S-Parameter S_{11} port%u');\n", idx);
         fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
         fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
-        fprintf(fp, "print('-dpng', [plot_path '/S11_' num2str(%d) '.png']);\n", idx);
+        fprintf(fp, "print('-dsvg', [plot_path '/S11_' num2str(%d) '.svg']);\n", idx);
         
         fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
@@ -1716,7 +1728,7 @@ void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
     fprintf(fp, "title('S-Parameter');\n");
     fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
     fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
-    fprintf(fp, "print('-dpng', [plot_path '/S-Parameter.png']);\n");
+    fprintf(fp, "print('-dsvg', [plot_path '/S-Parameter.svg']);\n");
     
     
     fprintf(fp, "\n\n");
@@ -1758,7 +1770,7 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
         fprintf(fp, "title('vswr port%u');\n", idx);
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('vswr');\n");
-        fprintf(fp, "print('-dpng', [plot_path '/VSWR_' num2str(%d) '.png']);\n", idx);
+        fprintf(fp, "print('-dsvg', [plot_path '/VSWR_' num2str(%d) '.svg']);\n", idx);
         
         
         {
@@ -1794,11 +1806,11 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "figure\n");
         fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
         
-        fprintf(fp, "print('-dpng', [plot_path '/FF.png']);\n");
+        fprintf(fp, "print('-dsvg', [plot_path '/FF.svg']);\n");
         
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
-        fprintf(fp, "print('-dpng', [plot_path '/FFdB.png']);\n");
+        fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
         
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
@@ -1849,11 +1861,11 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, [-180: 2: 180] * pi / 180, [0 90] * pi / 180, 'Mode', 1, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
         fprintf(fp, "figure\n");
         fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
-        fprintf(fp, "print('-dpng', [plot_path '/FF.png']);\n");
+        fprintf(fp, "print('-dsvg', [plot_path '/FF.svg']);\n");
         
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
-        fprintf(fp, "print('-dpng', [plot_path '/FFdB.png']);\n");
+        fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
         
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");

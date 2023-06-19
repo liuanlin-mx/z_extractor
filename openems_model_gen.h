@@ -240,8 +240,8 @@ public:
     
     void gen_model(const std::string& func_name);
     void gen_mesh(const std::string& func_name);
-    void gen_antenna_simulation_scripts();
-    void gen_sparameter_scripts();
+    void gen_antenna_simulation_scripts(const std::string& prefix);
+    void gen_sparameter_scripts(const std::string& prefix);
     
 private:
     void _gen_mesh_z(FILE *fp);
