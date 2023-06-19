@@ -377,12 +377,13 @@ static int main_tl_rl(int argc, char **argv)
 static int main_sparameter(int argc, char **argv)
 {
     float max_freq = 3e9;
-    
+    float criteria = -50;
     const char *prefix = "";
     std::list<std::string> nets;
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
     std::vector<std::string> mesh_range;
+    std::vector<std::string> freq;
     std::string bc = "MUR";
     
     openems_model_gen ems(pcb_);
@@ -400,6 +401,10 @@ static int main_sparameter(int argc, char **argv)
         {
             max_freq = atof(arg_next);
         }
+        else if (std::string(arg) == "-freq" && i < argc)
+        {
+            freq = _string_split(arg_next, ",");
+        }
         else if (std::string(arg) == "-fp" && i < argc)
         {
             footprints.push_back(arg_next);
@@ -416,6 +421,10 @@ static int main_sparameter(int argc, char **argv)
         {
             bc = arg_next;
         }
+        else if (std::string(arg) == "-criteria" && i < argc)
+        {
+            criteria = atof(arg_next);
+        }
         else if (std::string(arg) == "-o" && i < argc)
         {
             prefix = arg_next;
@@ -423,7 +432,23 @@ static int main_sparameter(int argc, char **argv)
     }
     
     ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
-    ems.set_excitation_freq(0, max_freq);
+    for (const auto& f1: freq)
+    {
+        float f2 = atof(f1.c_str());
+        if (f2 > 1)
+        {
+            ems.add_freq(f2);
+        }
+    }
+    
+    if (max_freq > 1)
+    {
+        ems.set_excitation_freq(0, max_freq);
+    }
+    if (criteria < 0)
+    {
+        ems.set_end_criteria(criteria);
+    }
     
     for (const auto& net: nets)
     {
@@ -503,11 +528,13 @@ static int main_sparameter(int argc, char **argv)
 static int main_antenna(int argc, char **argv)
 {
     float max_freq = 3e9;
+    float criteria = -50;
     const char *prefix = "";
     std::list<std::string> nets;
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
     std::vector<std::string> mesh_range;
+    std::vector<std::string> freq;
     std::string nf2ff_fp;
     std::string bc = "MUR";
     
@@ -526,6 +553,10 @@ static int main_antenna(int argc, char **argv)
         {
             max_freq = atof(arg_next);
         }
+        else if (std::string(arg) == "-freq" && i < argc)
+        {
+            freq = _string_split(arg_next, ",");
+        }
         else if (std::string(arg) == "-fp" && i < argc)
         {
             footprints.push_back(arg_next);
@@ -542,6 +573,10 @@ static int main_antenna(int argc, char **argv)
         {
             bc = arg_next;
         }
+        else if (std::string(arg) == "-criteria" && i < argc)
+        {
+            criteria = atof(arg_next);
+        }
         else if (std::string(arg) == "-nf2ff" && i < argc)
         {
             nf2ff_fp = arg_next;
@@ -553,7 +588,23 @@ static int main_antenna(int argc, char **argv)
     }
     
     ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
-    ems.set_excitation_freq(0, max_freq);
+    for (const auto& f1: freq)
+    {
+        float f2 = atof(f1.c_str());
+        if (f2 > 1)
+        {
+            ems.add_freq(f2);
+        }
+    }
+    
+    if (max_freq > 1)
+    {
+        ems.set_excitation_freq(0, max_freq);
+    }
+    if (criteria < 0)
+    {
+        ems.set_end_criteria(criteria);
+    }
     
     for (const auto& net: nets)
     {

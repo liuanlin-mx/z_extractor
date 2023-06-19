@@ -28,7 +28,6 @@ import platform
 import signal
 import threading
 
-
 ###########################################################################
 ## Class antenna_base
 ###########################################################################
@@ -39,6 +38,7 @@ class antenna_base ( wx.Dialog ):
 		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"ANT", pos = wx.DefaultPosition, size = wx.Size( 913,640 ), style = wx.DEFAULT_DIALOG_STYLE|wx.MAXIMIZE_BOX|wx.RESIZE_BORDER )
 
 		self.SetSizeHints( wx.Size( 800,640 ), wx.DefaultSize )
+
 		bSizer4 = wx.BoxSizer( wx.VERTICAL )
 
 		bSizer1 = wx.BoxSizer( wx.HORIZONTAL )
@@ -212,7 +212,7 @@ class antenna_base ( wx.Dialog ):
 
 		bSizer81.Add( sbSizer21, 2, wx.EXPAND, 5 )
 
-		sbSizerMesh = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Mesh" ), wx.VERTICAL )
+		sbSizerMesh = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"MeshLines" ), wx.VERTICAL )
 
 		self.m_gridMesh = wx.grid.Grid( sbSizerMesh.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
 
@@ -261,27 +261,46 @@ class antenna_base ( wx.Dialog ):
 
 		sbSizer6 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"options" ), wx.HORIZONTAL )
 
-		bSizer8 = wx.BoxSizer( wx.VERTICAL )
+		gSizer2 = wx.GridSizer( 0, 2, 0, 0 )
 
+		self.m_staticText5 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"End Criteria(db):", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText5.Wrap( -1 )
 
-		bSizer8.Add( ( 0, 0), 1, wx.EXPAND, 5 )
+		gSizer2.Add( self.m_staticText5, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+
+		self.m_textCtrlEndCriteria = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer2.Add( self.m_textCtrlEndCriteria, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
 
 		self.m_staticText2 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Max Freq:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText2.Wrap( -1 )
 
-		bSizer8.Add( self.m_staticText2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
+		gSizer2.Add( self.m_staticText2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+
+		self.m_textCtrlMaxFreq = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer2.Add( self.m_textCtrlMaxFreq, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
+
+		self.m_staticText4 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Freq:", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText4.Wrap( -1 )
+
+		gSizer2.Add( self.m_staticText4, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
 
 		self.m_textCtrlFreq = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_textCtrlFreq, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
+		gSizer2.Add( self.m_textCtrlFreq, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
 
 		self.m_buttonGenerate = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Generate", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_buttonGenerate, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+		gSizer2.Add( self.m_buttonGenerate, 0, wx.ALIGN_CENTER, 5 )
 
 		self.m_checkBoxExtractAll = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Generate All", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer8.Add( self.m_checkBoxExtractAll, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
+		gSizer2.Add( self.m_checkBoxExtractAll, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
+
+		self.m_buttonRun = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Run", wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer2.Add( self.m_buttonRun, 0, wx.ALIGN_CENTER, 5 )
+
+		self.m_checkBoxOnlyPlot = wx.CheckBox( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Plot Only", wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer2.Add( self.m_checkBoxOnlyPlot, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
 
 
-		sbSizer6.Add( bSizer8, 1, wx.ALL|wx.EXPAND, 5 )
+		sbSizer6.Add( gSizer2, 1, wx.EXPAND, 5 )
 
 
 		bSizer81.Add( sbSizer6, 1, wx.ALIGN_CENTER|wx.EXPAND, 5 )
@@ -323,8 +342,11 @@ class antenna_base ( wx.Dialog ):
 		self.m_gridMesh.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridMeshOnGridCellChange )
 		self.m_buttonMeshAddLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshAddLineOnButtonClick )
 		self.m_buttonMeshDelLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshDelLineOnButtonClick )
+		self.m_textCtrlEndCriteria.Bind( wx.EVT_TEXT, self.m_textCtrlEndCriteriaOnText )
+		self.m_textCtrlMaxFreq.Bind( wx.EVT_TEXT, self.m_textCtrlMaxFreqOnText )
 		self.m_textCtrlFreq.Bind( wx.EVT_TEXT, self.m_textCtrlFreqOnText )
 		self.m_buttonGenerate.Bind( wx.EVT_BUTTON, self.m_buttonGenerateOnButtonClick )
+		self.m_buttonRun.Bind( wx.EVT_BUTTON, self.m_buttonRunOnButtonClick )
 		self.Bind( wx.EVT_TIMER, self.m_timerOnTimer, id=wx.ID_ANY )
 
 	def __del__( self ):
@@ -396,14 +418,25 @@ class antenna_base ( wx.Dialog ):
 	def m_buttonMeshDelLineOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_textCtrlEndCriteriaOnText( self, event ):
+		event.Skip()
+
+	def m_textCtrlMaxFreqOnText( self, event ):
+		event.Skip()
+
 	def m_textCtrlFreqOnText( self, event ):
 		event.Skip()
 
 	def m_buttonGenerateOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_buttonRunOnButtonClick( self, event ):
+		event.Skip()
+
 	def m_timerOnTimer( self, event ):
 		event.Skip()
+
+
 
 
 
@@ -415,7 +448,9 @@ class ant_config_item():
         self.nf2ff_box = ""
         self.ex = []
         self.name = "newcfg"
-        self.freq = "5e9"
+        self.freq = "2.4e9"
+        self.max_freq = "5e9"
+        self.end_criteria= "-50"
         self.mesh = []
         #for i in range(6):
         #    self.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'Not used'})
@@ -498,6 +533,10 @@ class antenna_gui(antenna_base):
                 item.ex = cfg["ex"]
             if "freq" in cfg:
                 item.freq = cfg["freq"]
+            if "max_freq" in cfg:
+                item.max_freq = cfg["max_freq"]
+            if "end_criteria" in cfg:
+                item.end_criteria = cfg["end_criteria"]
             if "nf2ff_box" in cfg:
                 item.nf2ff_box = cfg["nf2ff_box"]
             if "mesh" in cfg:
@@ -543,7 +582,9 @@ class antenna_gui(antenna_base):
                     continue
                 cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
                 
+            cmd = cmd + ' -freq ' + cfg.freq
             cmd = cmd + ' -max_freq ' + cfg.max_freq
+            cmd = cmd + ' -criteria ' + cfg.end_criteria
             cmd = cmd + " -o " + cfg.name + ";"
         
         return  cmd.strip(';')
@@ -593,6 +634,8 @@ class antenna_gui(antenna_base):
         
         self.m_listBoxCfg.SetStringSelection(self.cur_cfg.name)
         self.m_textCtrlFreq.SetValue(self.cur_cfg.freq)
+        self.m_textCtrlMaxFreq.SetValue(self.cur_cfg.max_freq)
+        self.m_textCtrlEndCriteria.SetValue(self.cur_cfg.end_criteria)
     
     def update_net_ui(self):
         self.m_listBoxNet.Clear()
@@ -827,6 +870,12 @@ class antenna_gui(antenna_base):
                 self.m_listBoxCfg.SetString(n, name)
         dlg.Destroy()
 
+    def m_textCtrlEndCriteriaOnText( self, event ):
+        self.cur_cfg.end_criteria = self.m_textCtrlEndCriteria.GetValue()
+
+    def m_textCtrlMaxFreqOnText( self, event ):
+        self.cur_cfg.max_freq = self.m_textCtrlMaxFreq.GetValue()
+
     def m_textCtrlFreqOnText( self, event ):
         self.cur_cfg.freq = self.m_textCtrlFreq.GetValue()
         
@@ -858,6 +907,20 @@ class antenna_gui(antenna_base):
         self.thread = threading.Thread(target=antenna_gui.thread_func, args=(self,))
         self.thread.start()
         
+        
+    def m_buttonRunOnButtonClick( self, event ):
+        sys = platform.system()
+        if sys == "Windows":
+            cmd_line = ''
+        elif sys == "Linux":
+            self.plugin_bin_path = self.plugin_path + os.sep + "linux"
+            cmd_line = 'xterm -e "cd ' + self.output_path + ' && octave --silent --persist ' + self.cur_cfg.name + '_ant.m '
+            if self.m_checkBoxOnlyPlot.GetValue():
+                cmd_line = cmd_line + '--only-plot '
+            
+            cmd_line = cmd_line + '" &'
+        self.m_textCtrlOutput.AppendText(cmd_line + "\n")
+        os.system(cmd_line)
         
     def m_buttonSaveOnButtonClick( self, event ):
         json_str = json.dumps(self.cur_cfg.__dict__)
