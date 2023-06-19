@@ -543,7 +543,7 @@ class antenna_gui(antenna_base):
                     continue
                 cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
                 
-            cmd = cmd + ' -freq ' + cfg.freq
+            cmd = cmd + ' -max_freq ' + cfg.max_freq
             cmd = cmd + " -o " + cfg.name + ";"
         
         return  cmd.strip(';')

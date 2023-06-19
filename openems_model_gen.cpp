@@ -1597,6 +1597,7 @@ void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
         fprintf(fp, "ylabel('impedance Z_{in} / Ohm');\n");
         fprintf(fp, "legend('real', 'imag');\n");
         fprintf(fp, "print('-dsvg', [plot_path '/Zin_' num2str(%d) '.svg']);\n", idx);
+        fprintf(fp, "hgsave([plot_path '/Zin_' num2str(%d) '.ofig']);\n", idx);
         
         fprintf(fp, "if exist('s11_min_freq_idx')\n");
         fprintf(fp, "    printf('freq:%%g Z(%%g + %%gi)\\n', freq(s11_min_freq_idx), real(Zin(s11_min_freq_idx)), imag(Zin(s11_min_freq_idx)));\n");
@@ -1637,6 +1638,7 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
         fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
         fprintf(fp, "print('-dsvg', [plot_path '/S11_' num2str(%d) '.svg']);\n", idx);
+        fprintf(fp, "hgsave([plot_path '/S11_' num2str(%d) '.ofig']);\n", idx);
         
         fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
@@ -1729,6 +1731,7 @@ void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
     fprintf(fp, "ylabel('S-Parameter (dB)', 'FontSize',12);\n");
     fprintf(fp, "xlabel('frequency (MHz) \\rightarrow', 'FontSize', 12);\n");
     fprintf(fp, "print('-dsvg', [plot_path '/S-Parameter.svg']);\n");
+    fprintf(fp, "hgsave([plot_path '/S-Parameter.ofig']);\n");
     
     
     fprintf(fp, "\n\n");
@@ -1771,6 +1774,7 @@ void openems_model_gen::_add_plot_vswr(FILE *fp)
         fprintf(fp, "xlabel('frequency f / MHz');\n");
         fprintf(fp, "ylabel('vswr');\n");
         fprintf(fp, "print('-dsvg', [plot_path '/VSWR_' num2str(%d) '.svg']);\n", idx);
+        fprintf(fp, "hgsave([plot_path '/VSWR_' num2str(%d) '.ofig']);\n", idx);
         
         
         {
@@ -1807,10 +1811,12 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
         
         fprintf(fp, "print('-dsvg', [plot_path '/FF.svg']);\n");
+        fprintf(fp, "hgsave([plot_path '/FF.ofig']);\n");
         
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
         fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
+        fprintf(fp, "hgsave([plot_path '/FFdB.ofig']);\n");
         
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
@@ -1843,6 +1849,7 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "ylabel('y');\n");
         fprintf(fp, "zlabel('z');\n");
         fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
+        fprintf(fp, "hgsave([plot_path '/FF3D.ofig']);\n");
         
         fprintf(fp, "E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));\n");
         fprintf(fp, "DumpFF2VTK([sim_path '/FF_pattern.vtk'], E_far_normalized, thetaRange, phiRange);\n");
@@ -1862,10 +1869,12 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "figure\n");
         fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
         fprintf(fp, "print('-dsvg', [plot_path '/FF.svg']);\n");
+        fprintf(fp, "hgsave([plot_path '/FF.ofig']);\n");
         
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFFdB(nf2ff, 'xaxis', 'theta', 'param', [1 2]); drawnow;\n");
         fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
+        fprintf(fp, "hgsave([plot_path '/FFdB.ofig']);\n");
         
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
@@ -1893,6 +1902,7 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
         fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
+        fprintf(fp, "hgsave([plot_path '/FF3D.ofig']);\n");
         
         fprintf(fp, "E_far_normalized = nf2ff.E_norm{1} / max(nf2ff.E_norm{1}(:));\n");
         fprintf(fp, "DumpFF2VTK([sim_path '/FF_pattern.vtk'], E_far_normalized, thetaRange, phiRange);\n");
