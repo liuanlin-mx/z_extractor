@@ -153,6 +153,7 @@ public:
             SHAPE_CIRCLE,
             SHAPE_ROUNDRECT,
             SHAPE_OVAL,
+            SHAPE_TRAPEZOID,
         };
         enum
         {
@@ -162,7 +163,7 @@ public:
         };
         
         pad()
-            : type(TYPE_SMD), shape(SHAPE_CIRCLE), net(0), ref_at_angle(0), at_angle(0)
+            : type(TYPE_SMD), shape(SHAPE_RECT), net(0), ref_at_angle(0), at_angle(0)
             , size_w(0)
             , size_h(0)
             , drill(0)

@@ -266,7 +266,7 @@ class antenna_base ( wx.Dialog ):
 		self.m_staticText5 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"End Criteria(db):", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText5.Wrap( -1 )
 
-		gSizer2.Add( self.m_staticText5, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+		gSizer2.Add( self.m_staticText5, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.RIGHT, 5 )
 
 		self.m_textCtrlEndCriteria = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
 		gSizer2.Add( self.m_textCtrlEndCriteria, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
@@ -274,7 +274,7 @@ class antenna_base ( wx.Dialog ):
 		self.m_staticText2 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Max Freq:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText2.Wrap( -1 )
 
-		gSizer2.Add( self.m_staticText2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+		gSizer2.Add( self.m_staticText2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.RIGHT, 5 )
 
 		self.m_textCtrlMaxFreq = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
 		gSizer2.Add( self.m_textCtrlMaxFreq, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
@@ -282,10 +282,20 @@ class antenna_base ( wx.Dialog ):
 		self.m_staticText4 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Freq:", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_staticText4.Wrap( -1 )
 
-		gSizer2.Add( self.m_staticText4, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.ALL, 5 )
+		gSizer2.Add( self.m_staticText4, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.RIGHT, 5 )
 
 		self.m_textCtrlFreq = wx.TextCtrl( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, 0 )
 		gSizer2.Add( self.m_textCtrlFreq, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
+
+		self.m_staticText41 = wx.StaticText( sbSizer6.GetStaticBox(), wx.ID_ANY, u"BC", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_staticText41.Wrap( -1 )
+
+		gSizer2.Add( self.m_staticText41, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_RIGHT|wx.RIGHT, 5 )
+
+		m_choiceBCChoices = [ u"MUR", u"PML" ]
+		self.m_choiceBC = wx.Choice( sbSizer6.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, m_choiceBCChoices, 0 )
+		self.m_choiceBC.SetSelection( 0 )
+		gSizer2.Add( self.m_choiceBC, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALIGN_LEFT, 5 )
 
 		self.m_buttonGenerate = wx.Button( sbSizer6.GetStaticBox(), wx.ID_ANY, u"Generate", wx.DefaultPosition, wx.DefaultSize, 0 )
 		gSizer2.Add( self.m_buttonGenerate, 0, wx.ALIGN_CENTER, 5 )
@@ -345,6 +355,7 @@ class antenna_base ( wx.Dialog ):
 		self.m_textCtrlEndCriteria.Bind( wx.EVT_TEXT, self.m_textCtrlEndCriteriaOnText )
 		self.m_textCtrlMaxFreq.Bind( wx.EVT_TEXT, self.m_textCtrlMaxFreqOnText )
 		self.m_textCtrlFreq.Bind( wx.EVT_TEXT, self.m_textCtrlFreqOnText )
+		self.m_choiceBC.Bind( wx.EVT_CHOICE, self.m_choiceBCOnChoice )
 		self.m_buttonGenerate.Bind( wx.EVT_BUTTON, self.m_buttonGenerateOnButtonClick )
 		self.m_buttonRun.Bind( wx.EVT_BUTTON, self.m_buttonRunOnButtonClick )
 		self.Bind( wx.EVT_TIMER, self.m_timerOnTimer, id=wx.ID_ANY )
@@ -427,6 +438,9 @@ class antenna_base ( wx.Dialog ):
 	def m_textCtrlFreqOnText( self, event ):
 		event.Skip()
 
+	def m_choiceBCOnChoice( self, event ):
+		event.Skip()
+
 	def m_buttonGenerateOnButtonClick( self, event ):
 		event.Skip()
 
@@ -435,8 +449,6 @@ class antenna_base ( wx.Dialog ):
 
 	def m_timerOnTimer( self, event ):
 		event.Skip()
-
-
 
 
 
@@ -451,6 +463,7 @@ class ant_config_item():
         self.freq = "2.4e9"
         self.max_freq = "5e9"
         self.end_criteria= "-50"
+        self.bc = "MUR"
         self.mesh = []
         #for i in range(6):
         #    self.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'Not used'})
@@ -541,6 +554,8 @@ class antenna_gui(antenna_base):
                 item.nf2ff_box = cfg["nf2ff_box"]
             if "mesh" in cfg:
                 item.mesh = cfg["mesh"]
+            if "bc" in cfg:
+                item.bc = cfg["bc"]
                 
             self.cfg_list.append(item)
         
@@ -582,9 +597,12 @@ class antenna_gui(antenna_base):
                     continue
                 cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
                 
-            cmd = cmd + ' -freq ' + cfg.freq
+            if len(cfg.freq) > 0:
+                cmd = cmd + ' -freq ' + cfg.freq
+                
             cmd = cmd + ' -max_freq ' + cfg.max_freq
             cmd = cmd + ' -criteria ' + cfg.end_criteria
+            cmd = cmd + ' -bc ' + cfg.bc
             cmd = cmd + " -o " + cfg.name + ";"
         
         return  cmd.strip(';')
@@ -636,6 +654,7 @@ class antenna_gui(antenna_base):
         self.m_textCtrlFreq.SetValue(self.cur_cfg.freq)
         self.m_textCtrlMaxFreq.SetValue(self.cur_cfg.max_freq)
         self.m_textCtrlEndCriteria.SetValue(self.cur_cfg.end_criteria)
+        self.m_choiceBC.SetStringSelection(self.cur_cfg.bc)
     
     def update_net_ui(self):
         self.m_listBoxNet.Clear()
@@ -879,6 +898,8 @@ class antenna_gui(antenna_base):
     def m_textCtrlFreqOnText( self, event ):
         self.cur_cfg.freq = self.m_textCtrlFreq.GetValue()
         
+    def m_choiceBCOnChoice( self, event ):
+        self.cur_cfg.bc = self.m_choiceBC.GetStringSelection()
         
     def m_buttonGenerateOnButtonClick( self, event ):
         if self.m_buttonGenerate.GetLabel() == "Terminate":

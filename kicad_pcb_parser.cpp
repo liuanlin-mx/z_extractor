@@ -489,6 +489,10 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 {
                     p.shape = pcb::pad::SHAPE_ROUNDRECT;
                 }
+                else if (pad->params[2] == "trapezoid")
+                {
+                    p.shape = pcb::pad::SHAPE_TRAPEZOID;
+                }
                 
                 if (pad->params[1] == "thru_hole")
                 {

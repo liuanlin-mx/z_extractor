@@ -972,48 +972,8 @@ void openems_model_gen::_add_segment(FILE *fp)
             }
             else
             {
-                std::complex<float> start(s.start.x, s.start.y);
-                std::complex<float> end(s.end.x, s.end.y);
-                std::complex<float> unit_vector = 1;
-                if (std::abs(end - start) < s.width * 0.5)
-                {
-                    continue;
-                }
-                
-                unit_vector = (end - start) / std::abs(end - start);
-                
-                std::uint32_t idx = 1;
-                
-                float n = 4;
-                for (std::int32_t i = 0; i <= n; i++)
-                {
-                    std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + M_PI_2 + i * M_PI / n));
-                    std::complex<float> p = start + tmp * (s.width / 2);
-                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
-                    idx++;
-                    if (info.gen_mesh && !info.use_uniform_grid)
-                    {
-                        _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
-                        _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
-                    }
-                }
-                
-                for (std::int32_t i = 0; i <= n; i++)
-                {
-                    std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + -M_PI_2 + i * M_PI / n));
-                    std::complex<float> p = end + tmp * (s.width / 2);
-                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
-                    idx++;
-                    if (info.gen_mesh && !info.use_uniform_grid)
-                    {
-                        _mesh.x.insert(mesh::line(p.real(), info.mesh_prio));
-                        _mesh.y.insert(mesh::line(p.imag(), info.mesh_prio));
-                    }
-                }
-                
-                
-                fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
-                fprintf(fp, "clear p;\n");
+                range_det range;
+                _add_line(fp, _pcb->get_net_name(s.net), s.start, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
             }
             
             x_min = std::min(x_min, std::min(s.start.x - s.width, s.end.x - s.width));
@@ -1264,11 +1224,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         pcb::point end = gr.end;
         _pcb->get_rotation_pos(at, angle, start);
         _pcb->get_rotation_pos(at, angle, end);
-        
-        //cv::Point p1(_cvt_img_x(start.x, pix_unit), _cvt_img_y(start.y, pix_unit));
-        //cv::Point p2(_cvt_img_x(end.x, pix_unit), _cvt_img_y(end.y, pix_unit));
-        //float thickness = _cvt_img_len(gr.stroke_width, pix_unit);
-        //cv::line(img, p1, p2, cv::Scalar(b, g, r), thickness);
+        _add_line(fp, name, start, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
     }
     else if (gr.gr_type == pcb::gr::GR_CIRCLE)
     {
@@ -1360,13 +1316,16 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
         }
     }
     
+    
     for (const auto& layer: layers)
     {
         float z1 = _pcb->get_layer_z_axis(layer);
         float thickness = _pcb->get_layer_thickness(layer);
         float z2 = z1 + thickness;
         
-        if (p.shape == pcb::pad::SHAPE_RECT || p.shape == pcb::pad::SHAPE_ROUNDRECT)
+        if (p.shape == pcb::pad::SHAPE_RECT
+            || p.shape == pcb::pad::SHAPE_ROUNDRECT
+             || p.shape == pcb::pad::SHAPE_TRAPEZOID)
         {
             pcb::point p1(p.at.x - p.size_w / 2, p.at.y + p.size_h / 2);
             pcb::point p2(p.at.x + p.size_w / 2, p.at.y + p.size_h / 2);
@@ -1429,6 +1388,55 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
     fprintf(fp, "\n\n");
     
 }
+
+
+void openems_model_gen::_add_line(FILE *fp, const std::string& name, const pcb::point& p1, const pcb::point& p2, float width,float z1, float z2,
+                                    range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio)
+{
+    std::complex<float> start(p1.x, p1.y);
+    std::complex<float> end(p2.x, p2.y);
+    std::complex<float> unit_vector = 1;
+    
+    if (std::abs(end - start) < width * 0.5)
+    {
+        return;
+    }
+                
+    unit_vector = (end - start) / std::abs(end - start);
+                
+    std::uint32_t idx = 1;
+                
+    float n = 4;
+    for (std::int32_t i = 0; i <= n; i++)
+    {
+        std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + M_PI_2 + i * M_PI / n));
+        std::complex<float> p = start + tmp * (width / 2);
+        fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+        idx++;
+        if (gen_mesh && !use_uniform_grid)
+        {
+            _mesh.x.insert(mesh::line(p.real(), mesh_prio));
+            _mesh.y.insert(mesh::line(p.imag(), mesh_prio));
+        }
+    }
+                
+    for (std::int32_t i = 0; i <= n; i++)
+    {
+        std::complex<float> tmp = std::polar(std::abs(unit_vector), (float)(std::arg(unit_vector) + -M_PI_2 + i * M_PI / n));
+        std::complex<float> p = end + tmp * (width / 2);
+        fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.real(), idx, p.imag());
+        idx++;
+        if (gen_mesh && !use_uniform_grid)
+        {
+            _mesh.x.insert(mesh::line(p.real(), mesh_prio));
+            _mesh.y.insert(mesh::line(p.imag(), mesh_prio));
+        }
+    }
+    
+    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, z2 - z1);
+    fprintf(fp, "clear p;\n");
+}
+
 
 
 void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
