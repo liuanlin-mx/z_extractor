@@ -256,6 +256,9 @@ private:
     void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
     void _add_line(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& end, float width, float z1, float z2,
                         range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio);
+                        
+    void _add_arc(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& mid, const pcb::point& end, float width, float z1, float z2,
+                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio);
     
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);

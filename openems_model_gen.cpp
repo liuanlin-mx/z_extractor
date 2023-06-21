@@ -932,43 +932,8 @@ void openems_model_gen::_add_segment(FILE *fp)
             float thickness = _pcb->get_layer_thickness(layer);
             if (s.is_arc())
             {
-                double cx;
-                double cy;
-                double radius;
-                calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
-                
-                
-                float s_len = _pcb->get_segment_len(s);
-                if (s_len < s.width * 0.5)
-                {
-                    continue;
-                }
-                
-                std::list<pcb::point> points;
-                for (float i = 0; i < s_len + 0.1; i += 0.1)
-                {
-                    float x = 0;
-                    float y = 0;
-                    _pcb->get_segment_pos(s, i, x, y);
-                    
-                    std::complex<float> c(cx, cy);
-                    std::complex<float> p(x, y);
-                    
-                    std::complex<float> unit_vector = (p - c) / std::abs(p - c);
-                    std::complex<float> p1 = p + unit_vector * (s.width / 2);
-                    std::complex<float> p2 = p - unit_vector * (s.width / 2);
-                    
-                    points.push_back(pcb::point(p1.real(), p1.imag()));
-                    points.push_front(pcb::point(p2.real(), p2.imag()));
-                }
-                std::uint32_t idx = 1;
-                for (const auto& p: points)
-                {
-                    fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.x, idx, p.y);
-                    idx++;
-                }
-                fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(s.net).c_str(), z1, thickness);
-                fprintf(fp, "clear p;\n");
+                range_det range;
+                _add_arc(fp, _pcb->get_net_name(s.net), s.start, s.mid, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
             }
             else
             {
@@ -1226,6 +1191,17 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         _pcb->get_rotation_pos(at, angle, end);
         _add_line(fp, name, start, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
     }
+    else if (gr.gr_type == pcb::gr::GR_ARC)
+    {
+        pcb::point start = gr.start;
+        pcb::point end = gr.end;
+        pcb::point mid = gr.mid;
+        _pcb->get_rotation_pos(at, angle, start);
+        _pcb->get_rotation_pos(at, angle, end);
+        _pcb->get_rotation_pos(at, angle, mid);
+        
+        _add_arc(fp, name, start, mid, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
+    }
     else if (gr.gr_type == pcb::gr::GR_CIRCLE)
     {
         pcb::point start = gr.start;
@@ -1438,6 +1414,54 @@ void openems_model_gen::_add_line(FILE *fp, const std::string& name, const pcb::
 }
 
 
+
+void openems_model_gen::_add_arc(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& mid, const pcb::point& end, float width, float z1, float z2,
+                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio)
+{
+    pcb::segment s;
+    s.start = start;
+    s.end = end;
+    s.mid = mid;
+    s.width = width;
+    
+    double cx;
+    double cy;
+    double radius;
+    calc_arc_center_radius(s.start.x, s.start.y, s.mid.x, s.mid.y, s.end.x, s.end.y, cx, cy, radius);
+                
+    
+    float s_len = _pcb->get_segment_len(s);
+    if (s_len < s.width * 0.5)
+    {
+        return;
+    }
+                
+    std::list<pcb::point> points;
+    for (float i = 0; i < s_len + 0.1; i += 0.1)
+    {
+        float x = 0;
+        float y = 0;
+        _pcb->get_segment_pos(s, i, x, y);
+        
+        std::complex<float> c(cx, cy);
+        std::complex<float> p(x, y);
+        
+        std::complex<float> unit_vector = (p - c) / std::abs(p - c);
+        std::complex<float> p1 = p + unit_vector * (s.width / 2);
+        std::complex<float> p2 = p - unit_vector * (s.width / 2);
+        
+        points.push_back(pcb::point(p1.real(), p1.imag()));
+        points.push_front(pcb::point(p2.real(), p2.imag()));
+    }
+    std::uint32_t idx = 1;
+    for (const auto& p: points)
+    {
+        fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.x, idx, p.y);
+        idx++;
+    }
+    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, z2 - z1);
+    fprintf(fp, "clear p;\n");
+}
 
 void openems_model_gen::_add_excitation(FILE *fp, std::uint32_t mesh_prio)
 {
