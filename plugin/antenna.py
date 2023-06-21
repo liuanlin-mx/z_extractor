@@ -940,6 +940,8 @@ class antenna_gui(antenna_base):
             if self.m_checkBoxOnlyPlot.GetValue():
                 cmd_line = cmd_line + '--only-plot '
             
+            cmd_line = cmd_line + ' --no-show-model '
+                
             cmd_line = cmd_line + '" &'
         self.m_textCtrlOutput.AppendText(cmd_line + "\n")
         os.system(cmd_line)
