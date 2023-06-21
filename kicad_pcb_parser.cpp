@@ -219,7 +219,7 @@ void kicad_pcb_parser::_add_layers()
         std::shared_ptr<pcb_object> type = layer->find_child("type");
         std::shared_ptr<pcb_object> thickness = layer->find_child("thickness");
         std::shared_ptr<pcb_object> epsilon_r = layer->find_child("epsilon_r");
-        //std::shared_ptr<pcb_object> loss_tangent = layer->find_child("loss_tangent");
+        std::shared_ptr<pcb_object> loss_tangent = layer->find_child("loss_tangent");
         
         if (layer->params.size() > 0 && type && type->params.size() == 1)
         {
@@ -237,6 +237,10 @@ void kicad_pcb_parser::_add_layers()
                 l.epsilon_r = atof(epsilon_r->params[0].c_str());
             }
             
+            if (loss_tangent && loss_tangent->params.size() > 0)
+            {
+                l.loss_tangent = atof(epsilon_r->params[0].c_str());
+            }
     
             if (layer_type == "copper"
                 || layer_type == "core"

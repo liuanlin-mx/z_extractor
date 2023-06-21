@@ -215,12 +215,13 @@ public:
             BOTTOM_SOLDER_MASK
         };
         
-        layer(): type(COPPER), thickness(0), epsilon_r(0) {}
+        layer(): type(COPPER), thickness(0), epsilon_r(1), loss_tangent(0) {}
         
         std::string name;
         std::uint32_t type;
         float thickness;
         float epsilon_r;
+        float loss_tangent;
     };
     
 public:
