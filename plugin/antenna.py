@@ -680,7 +680,8 @@ class antenna_gui(antenna_base):
             footprint = m.GetReference()
             if footprint in self.cur_cfg.fp:
                 for pad in m.Pads():
-                    choices.append(footprint + ':' + pad.GetName())
+                    if len(pad.GetName()) > 0:
+                        choices.append(footprint + ':' + pad.GetName())
         
         
         self.m_gridEx.DeleteRows(0, self.m_gridEx.GetNumberRows())
