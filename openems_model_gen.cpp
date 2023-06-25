@@ -1694,6 +1694,10 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "print('-dsvg', [plot_path '/S11_' num2str(%d) '.svg']);\n", idx);
         fprintf(fp, "hgsave([plot_path '/S11_' num2str(%d) '.ofig']);\n", idx);
         
+        fprintf(fp, "spara(1, 1, :) = s11;\n");
+        fprintf(fp, "write_touchstone('s', freq, spara, [plot_path '/S11_' num2str(%d) '.s1p'], %f);\n", idx, ex.R);
+        
+        
         fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "s11_db = 20 * log10(abs(s11));\n");
         
