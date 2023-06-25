@@ -600,7 +600,7 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "no_plot = 0;\n");
-        fprintf(fp, "sim_path = '%sant'; plot_path = [sim_path '/plot']; sim_csx = 'ant.xml';\n", prefix_.c_str());
+        fprintf(fp, "sim_path = '%stmp'; plot_path = '%splot'; sim_csx = 'ant.xml';\n", prefix_.c_str(), prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
@@ -687,7 +687,7 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "no_plot = 0;\n");
-        fprintf(fp, "sim_path = '%sS-Parameter'; plot_path = [sim_path '/plot']; sim_csx = 'S-Parameter.xml';\n", prefix_.c_str());
+        fprintf(fp, "sim_path = '%stmp'; plot_path = '%splot'; sim_csx = 'S-Parameter.xml';\n", prefix_.c_str(), prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
