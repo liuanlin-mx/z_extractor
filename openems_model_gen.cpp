@@ -891,6 +891,12 @@ void openems_model_gen::_add_dielectric(FILE *fp)
     float y1 = _pcb->get_edge_top();
     float y2 = _pcb->get_edge_bottom();
     
+    float freq = _fc + _f0;
+    if (!_freq.empty())
+    {
+        freq = _freq.front();
+    }
+    
     std::vector<pcb::layer> layers = _pcb->get_layers();
     for (const auto& layer: layers)
     {
@@ -907,7 +913,9 @@ void openems_model_gen::_add_dielectric(FILE *fp)
         fprintf(fp, "start = [%f %f %f];\n", x1, y1, z1);
         fprintf(fp, "stop = [%f %f %f];\n", x2, y2, z2);
         fprintf(fp, "CSX = AddMaterial(CSX, '%s');\n", layer.name.c_str());
-        fprintf(fp, "CSX = SetMaterialProperty(CSX, '%s', 'Epsilon', %f);\n", layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name));
+        fprintf(fp, "CSX = SetMaterialProperty(CSX, '%s', 'Epsilon', %f, 'Kappa', %f * 2 * pi * %g * EPS0 * %f);\n",
+            layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name),
+            _pcb->get_layer_loss_tangent(layer.name), freq, _pcb->get_layer_epsilon_r(layer.name));
         fprintf(fp, "CSX = AddBox(CSX, '%s', 1, start, stop);\n", layer.name.c_str());
     }
     fprintf(fp, "\n\n");
@@ -1699,8 +1707,8 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
             
             fprintf(fp, "printf('Minimum S11 freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
-                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
-                            ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
+                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx - 1)"
+                            ", (freq(freq_idx + right_idx - 1) - freq(left_idx)) / 1e6);\n");
         }
         
         for (const auto& freq: _freq)
@@ -1715,8 +1723,8 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             
             
             fprintf(fp, "printf('freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
-                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx)"
-                            ", (freq(freq_idx + right_idx) - freq(left_idx)) / 1e6);\n");
+                            "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx - 1)"
+                            ", (freq(freq_idx + right_idx - 1) - freq(left_idx)) / 1e6);\n");
         }
         
         fprintf(fp, "printf('\\n\\n');\n");

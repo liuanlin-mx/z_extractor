@@ -296,6 +296,7 @@ public:
     float get_layer_epsilon_r(const std::string& layer_name);
     float get_cu_layer_epsilon_r(const std::string& layer_name);
     float get_layer_epsilon_r(const std::string& layer_start, const std::string& layer_end);
+    float get_layer_loss_tangent(const std::string& layer_name);
     float get_board_thickness();
     float get_cu_min_thickness();
     float get_min_thickness(std::uint32_t layer_type);

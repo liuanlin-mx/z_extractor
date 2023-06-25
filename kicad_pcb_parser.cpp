@@ -239,7 +239,7 @@ void kicad_pcb_parser::_add_layers()
             
             if (loss_tangent && loss_tangent->params.size() > 0)
             {
-                l.loss_tangent = atof(epsilon_r->params[0].c_str());
+                l.loss_tangent = atof(loss_tangent->params[0].c_str());
             }
     
             if (layer_type == "copper"

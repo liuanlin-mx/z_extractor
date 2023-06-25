@@ -939,8 +939,6 @@ class antenna_gui(antenna_base):
             cmd_line = 'xterm -e "cd ' + self.output_path + ' && octave --silent --persist ' + self.cur_cfg.name + '_ant.m '
             if self.m_checkBoxOnlyPlot.GetValue():
                 cmd_line = cmd_line + '--only-plot '
-            
-            cmd_line = cmd_line + ' --no-show-model '
                 
             cmd_line = cmd_line + '" &'
         self.m_textCtrlOutput.AppendText(cmd_line + "\n")

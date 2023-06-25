@@ -992,6 +992,22 @@ float pcb::get_layer_epsilon_r(const std::string& layer_start, const std::string
     return 1;
 }
 
+float pcb::get_layer_loss_tangent(const std::string& layer_name)
+{
+    for (auto& l: _layers)
+    {
+        if (l.name == layer_name)
+        {
+            if (l.type == pcb::layer::COPPER)
+            {
+                return 0;
+            }
+            return l.loss_tangent;
+        }
+    }
+    return 0;
+}
+
 float pcb::get_board_thickness()
 {
     float dist = 0;
