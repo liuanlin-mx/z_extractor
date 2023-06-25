@@ -936,7 +936,13 @@ class antenna_gui(antenna_base):
             cmd_line = ''
         elif sys == "Linux":
             self.plugin_bin_path = self.plugin_path + os.sep + "linux"
-            cmd_line = 'xterm -e "cd ' + self.output_path + ' && octave --silent --persist ' + self.cur_cfg.name + '_ant.m '
+            term = 'xterm -e '
+            if os.path.exists('/usr/bin/mate-terminal'):
+                term = 'mate-terminal -x bash -c '
+            if os.path.exists('/usr/bin/gnome-terminal'):
+                term = 'gnome-terminal -x bash -c '
+                
+            cmd_line = term + '"cd ' + self.output_path + ' && octave --silent --persist ' + self.cur_cfg.name + '_ant.m '
             if self.m_checkBoxOnlyPlot.GetValue():
                 cmd_line = cmd_line + '--only-plot '
                 
