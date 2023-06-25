@@ -1872,9 +1872,13 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
         fprintf(fp, "hgsave([plot_path '/FFdB.ofig']);\n");
         
+        fprintf(fp, "fid = fopen([plot_path '/info.txt'], 'wb');\n");
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
         fprintf(fp, "disp(['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
+        fprintf(fp, "fprintf(fid, '%%s\\n', ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
+        fprintf(fp, "fprintf(fid, '%%s\\n', ['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
+        
         
         
         std::uint32_t idx = 0;
@@ -1888,7 +1892,9 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
             fprintf(fp, "P_in = 0.5 * U%u.FD{1}.val .* conj(I%u.FD{1}.val);\n", idx, idx);
             
             fprintf(fp, "disp(['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
+            fprintf(fp, "fprintf(fid, '%%s\\n', ['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
         }
+        fprintf(fp, "fclose(fid);\n");
         
         
         fprintf(fp, "# calculate 3D pattern\n");
@@ -1931,9 +1937,12 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "print('-dsvg', [plot_path '/FFdB.svg']);\n");
         fprintf(fp, "hgsave([plot_path '/FFdB.ofig']);\n");
         
+        fprintf(fp, "fid = fopen([plot_path '/info.txt'], 'wb');\n");
         fprintf(fp, "Dlog = 10 * log10(nf2ff.Dmax);\n");
         fprintf(fp, "disp(['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
         fprintf(fp, "disp(['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
+        fprintf(fp, "fprintf(fid, '%%s\\n', ['radiated power: Prad = ' num2str(nf2ff.Prad) ' Watt']);\n");
+        fprintf(fp, "fprintf(fid, '%%s\\n', ['directivity: Dmax = ' num2str(Dlog) ' dBi']);\n");
         
         
         std::uint32_t idx = 0;
@@ -1947,7 +1956,9 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
             fprintf(fp, "P_in = 0.5 * U%u.FD{1}.val .* conj(I%u.FD{1}.val);\n", idx, idx);
             
             fprintf(fp, "disp(['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
+            fprintf(fp, "fprintf(fid, '%%s\\n', ['efficiency(port%u): nu_rad = ' num2str(100*nf2ff.Prad ./ real(P_in(f_res_ind))) ' %%']);\n", idx);
         }
+        fprintf(fp, "fclose(fid);\n");
         
         
         fprintf(fp, "# calculate 3D pattern\n");
