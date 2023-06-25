@@ -1913,13 +1913,14 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         return;
     }
     
+    std::uint32_t mode = (_freq.size() > 1)? 1: 0;
     for (const auto& freq: _freq)
     {
         fprintf(fp, "# NFFF contour plots\n");
         fprintf(fp, "f_res_ind = find(freq > %g)(1) - 1;\n", freq);
         //fprintf(fp, "f_res_ind = find(s11==min(s11));\n");
         fprintf(fp, "f_res = freq(f_res_ind);\n");
-        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, [-180: 2: 180] * pi / 180, [0 90] * pi / 180, 'Mode', 0, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, [-180: 2: 180] * pi / 180, [0 90] * pi / 180, 'Mode', %d, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n", mode);
         fprintf(fp, "figure\n");
         fprintf(fp, "polarFF(nf2ff, 'xaxis', 'theta', 'param', [1 2], 'logscale', -20, 'xtics', 5); drawnow;\n");
         fprintf(fp, "print('-dsvg', [plot_path '/FF.svg']);\n");
@@ -1952,7 +1953,7 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "# calculate 3D pattern\n");
         fprintf(fp, "phiRange = 0: 2: 360;\n");
         fprintf(fp, "thetaRange = 0: 2: 180;\n");
-        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', 0, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n");
+        fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', %d, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n", mode);
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
         fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
