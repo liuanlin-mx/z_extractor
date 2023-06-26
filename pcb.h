@@ -246,6 +246,8 @@ public:
     cv::Mat draw_zone(const std::string& layer_name, std::uint32_t net_id, float pix_unit = 0.1);
     
     void clean_segment();
+    void clean_segment(std::uint32_t net_id);
+    void clean_segment(const std::list<std::string>& nets);
     
     float get_edge_top() { return _pcb_top; }
     float get_edge_bottom() { return _pcb_bottom; }
@@ -359,6 +361,7 @@ private:
     void _draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, const std::string& layer_name, std::uint8_t b, std::uint8_t g, std::uint8_t r, float pix_unit);
     
     
+    void _clean_segment(std::uint32_t net_id);
 private:
     std::map<std::uint32_t, std::string> _nets;
     std::multimap<std::uint32_t, segment> _segments;

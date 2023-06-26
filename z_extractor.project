@@ -142,10 +142,10 @@
       </Completion>
     </Configuration>
     <Configuration Name="linux" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-g;-O0;-fopenmp;-Wall" C_Options="-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-pg;-g;-O0;-fopenmp;-Wall" C_Options="-pg;-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="/usr/include/opencv4/"/>
       </Compiler>
-      <Linker Options="-fopenmp" Required="yes">
+      <Linker Options="-pg;-fopenmp" Required="yes">
         <Library Value="opencv_highgui"/>
         <Library Value="opencv_imgcodecs"/>
         <Library Value="opencv_imgproc"/>
@@ -153,7 +153,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -max_freq 5e9 -port RX:1:F.Cu:RX:2:F.Cu:y:50:1 -port RX:3:B.Cu:RX:4:B.Cu:x:50:1 -fp &quot;RX&quot; -mesh_range 131:183:0.2:x  -mesh_range 97:148:0.2:y -nf2ff &quot;RX&quot;" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -t -ref &quot;GND&quot; -coupled &quot;USB_D0N:USB_D0P,USB_D1N:USB_D1P&quot; -coupled_max_gap 0.508 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -via_tl_mode 0 -step 0.5 -o usb" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

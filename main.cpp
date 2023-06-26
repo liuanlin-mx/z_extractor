@@ -203,6 +203,12 @@ static int main_tl_rl(int argc, char **argv)
         }
     }
     
+    pcb_->clean_segment(nets);
+    for (const auto& net: coupled_nets)
+    {
+        pcb_->clean_segment(pcb_->get_net_id(net.first));
+        pcb_->clean_segment(pcb_->get_net_id(net.second));
+    }
     
     z_extr->set_coupled_max_gap(coupled_max_gap);
     z_extr->set_coupled_min_len(coupled_min_len);
@@ -431,6 +437,9 @@ static int main_sparameter(int argc, char **argv)
         }
     }
     
+    
+    pcb_->clean_segment(nets);
+    
     ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
     for (const auto& f1: freq)
     {
@@ -587,6 +596,8 @@ static int main_antenna(int argc, char **argv)
         }
     }
     
+    pcb_->clean_segment(nets);
+    
     ems.set_boundary_cond((bc == "PML")? openems_model_gen::BC_PML: openems_model_gen::BC_MUR);
     for (const auto& f1: freq)
     {
@@ -727,7 +738,6 @@ int main(int argc, char **argv)
     {
         return 0;
     }
-    pcb_->clean_segment();
     
     if (mode == MODE_TL || mode == MODE_RL)
     {

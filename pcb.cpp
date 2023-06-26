@@ -251,133 +251,23 @@ void pcb::clean_segment()
 {
     for (const auto& net: _nets)
     {
-        std::uint32_t net_id = net.first;
-        
-        std::list<pad> pads = get_pads(net_id);
-        std::list<std::pair<std::uint32_t, pcb::segment> > no_conn;
-        std::list<pcb::segment> conn;
-        get_no_conn_segments(net_id, no_conn, conn);
-        
-        for (auto it = no_conn.begin(); it != no_conn.end();)
-        {
-            auto& s = *it;
-            for (const auto& p: pads)
-            {
-                std::uint32_t flag = segment_is_inside_pad(s.second, p);
-                if ((s.first & 0x01) && (flag & 0x01))
-                {
-                    float x;
-                    float y;
-                    get_pad_pos(p, x, y);
-                    pcb::segment new_s;
-                    new_s = s.second;
-                    new_s.end.x = x;
-                    new_s.end.y = y;
-                    new_s.tstamp = "s" + new_s.tstamp;
-                    _segments.emplace(new_s.net, new_s);
-                    s.first &= ~0x01;
-                }
-                if ((s.first & 0x02) && (flag & 0x02))
-                {
-                    float x;
-                    float y;
-                    get_pad_pos(p, x, y);
-                    pcb::segment new_s;
-                    new_s = s.second;
-                    new_s.start.x = x;
-                    new_s.start.y = y;
-                    new_s.tstamp = "e" + new_s.tstamp;
-                    _segments.emplace(new_s.net, new_s);
-                    s.first &= ~0x02;
-                }
-            }
-            if (s.first == 0)
-            {
-                it = no_conn.erase(it);
-                continue;
-            }
-            it++;
-        }
-        
-        while (!no_conn.empty())
-        {
-            auto s = no_conn.front();
-            no_conn.pop_front();
-            
-            for (auto it = no_conn.begin(); it != no_conn.end(); it++)
-            {
-                if (s.first & 0x01)
-                {
-                    if (it->first & 0x01)
-                    {
-                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.start.x, it->second.start.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            pcb::segment new_s;
-                            new_s = s.second;
-                            new_s.end.x = it->second.start.x;
-                            new_s.end.y = it->second.start.y;
-                            new_s.tstamp = "s" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x01;
-                            it->first &= ~0x01;
-                        }
-                    }
-                    if (it->first & 0x02)
-                    {
-                        if (calc_dist(s.second.start.x, s.second.start.y, it->second.end.x, it->second.end.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            pcb::segment new_s;
-                            new_s = s.second;
-                            new_s.end.x = it->second.end.x;
-                            new_s.end.y = it->second.end.y;
-                            new_s.tstamp = "s" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x01;
-                            it->first &= ~0x02;
-                        }
-                    }
-                }
-                
-                if (s.first & 0x02)
-                {
-                    if (it->first & 0x01)
-                    {
-                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.start.x, it->second.start.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            pcb::segment new_s;
-                            new_s = s.second;
-                            new_s.start.x = it->second.start.x;
-                            new_s.start.y = it->second.start.y;
-                            new_s.tstamp = "e" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x02;
-                            it->first &= ~0x01;
-                        }
-                    }
-                    if (it->first & 0x02)
-                    {
-                        if (calc_dist(s.second.end.x, s.second.end.y, it->second.end.x, it->second.end.y)
-                                    < s.second.width * 0.5 + it->second.width * 0.5)
-                        {
-                            pcb::segment new_s;
-                            new_s = s.second;
-                            new_s.start.x = it->second.end.x;
-                            new_s.start.y = it->second.end.y;
-                            new_s.tstamp = "e" + new_s.tstamp;
-                            _segments.emplace(new_s.net, new_s);
-                            s.first &= ~0x02;
-                            it->first &= ~0x02;
-                        }
-                    }
-                }
-            }
-        }
+        _clean_segment(net.first);
     }
 }
 
+
+void pcb::clean_segment(std::uint32_t net_id)
+{
+    _clean_segment(net_id);
+}
+
+void pcb::clean_segment(const std::list<std::string>& nets)
+{
+    for (const auto& net: nets)
+    {
+        _clean_segment(get_net_id(net));
+    }
+}
 
 std::list<pcb::segment> pcb::get_segments(std::uint32_t net_id)
 {
@@ -1638,5 +1528,131 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
     else if (p.shape == pcb::pad::SHAPE_OVAL)
     {
         
+    }
+}
+
+void pcb::_clean_segment(std::uint32_t net_id)
+{
+    std::list<pad> pads = get_pads(net_id);
+    std::list<std::pair<std::uint32_t, pcb::segment> > no_conn;
+    std::list<pcb::segment> conn;
+    get_no_conn_segments(net_id, no_conn, conn);
+    
+    for (auto it = no_conn.begin(); it != no_conn.end();)
+    {
+        auto& s = *it;
+        for (const auto& p: pads)
+        {
+            std::uint32_t flag = segment_is_inside_pad(s.second, p);
+            if ((s.first & 0x01) && (flag & 0x01))
+            {
+                float x;
+                float y;
+                get_pad_pos(p, x, y);
+                pcb::segment new_s;
+                new_s = s.second;
+                new_s.end.x = x;
+                new_s.end.y = y;
+                new_s.tstamp = "s" + new_s.tstamp;
+                _segments.emplace(new_s.net, new_s);
+                s.first &= ~0x01;
+            }
+            if ((s.first & 0x02) && (flag & 0x02))
+            {
+                float x;
+                float y;
+                get_pad_pos(p, x, y);
+                pcb::segment new_s;
+                new_s = s.second;
+                new_s.start.x = x;
+                new_s.start.y = y;
+                new_s.tstamp = "e" + new_s.tstamp;
+                _segments.emplace(new_s.net, new_s);
+                s.first &= ~0x02;
+            }
+        }
+        if (s.first == 0)
+        {
+            it = no_conn.erase(it);
+            continue;
+        }
+        it++;
+    }
+    
+    while (!no_conn.empty())
+    {
+        auto s = no_conn.front();
+        no_conn.pop_front();
+        
+        for (auto it = no_conn.begin(); it != no_conn.end(); it++)
+        {
+            if (s.first & 0x01)
+            {
+                if (it->first & 0x01)
+                {
+                    if (calc_dist(s.second.start.x, s.second.start.y, it->second.start.x, it->second.start.y)
+                                < s.second.width * 0.5 + it->second.width * 0.5)
+                    {
+                        pcb::segment new_s;
+                        new_s = s.second;
+                        new_s.end.x = it->second.start.x;
+                        new_s.end.y = it->second.start.y;
+                        new_s.tstamp = "s" + new_s.tstamp;
+                        _segments.emplace(new_s.net, new_s);
+                        s.first &= ~0x01;
+                        it->first &= ~0x01;
+                    }
+                }
+                if (it->first & 0x02)
+                {
+                    if (calc_dist(s.second.start.x, s.second.start.y, it->second.end.x, it->second.end.y)
+                                < s.second.width * 0.5 + it->second.width * 0.5)
+                    {
+                        pcb::segment new_s;
+                        new_s = s.second;
+                        new_s.end.x = it->second.end.x;
+                        new_s.end.y = it->second.end.y;
+                        new_s.tstamp = "s" + new_s.tstamp;
+                        _segments.emplace(new_s.net, new_s);
+                        s.first &= ~0x01;
+                        it->first &= ~0x02;
+                    }
+                }
+            }
+            
+            if (s.first & 0x02)
+            {
+                if (it->first & 0x01)
+                {
+                    if (calc_dist(s.second.end.x, s.second.end.y, it->second.start.x, it->second.start.y)
+                                < s.second.width * 0.5 + it->second.width * 0.5)
+                    {
+                        pcb::segment new_s;
+                        new_s = s.second;
+                        new_s.start.x = it->second.start.x;
+                        new_s.start.y = it->second.start.y;
+                        new_s.tstamp = "e" + new_s.tstamp;
+                        _segments.emplace(new_s.net, new_s);
+                        s.first &= ~0x02;
+                        it->first &= ~0x01;
+                    }
+                }
+                if (it->first & 0x02)
+                {
+                    if (calc_dist(s.second.end.x, s.second.end.y, it->second.end.x, it->second.end.y)
+                                < s.second.width * 0.5 + it->second.width * 0.5)
+                    {
+                        pcb::segment new_s;
+                        new_s = s.second;
+                        new_s.start.x = it->second.end.x;
+                        new_s.start.y = it->second.end.y;
+                        new_s.tstamp = "e" + new_s.tstamp;
+                        _segments.emplace(new_s.net, new_s);
+                        s.first &= ~0x02;
+                        it->first &= ~0x02;
+                    }
+                }
+            }
+        }
     }
 }
