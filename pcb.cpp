@@ -1194,7 +1194,7 @@ void pcb::get_no_conn_segments(std::uint32_t net_id, std::list<std::pair<std::ui
         
         for (const auto&p: pads)
         {
-            std::vector<std::string> layers = get_pad_conn_layers(p);
+            std::vector<std::string> layers = get_pad_layers(p);
             bool brk = true;
             for (const auto& l: layers)
             {
@@ -1228,7 +1228,7 @@ void pcb::get_no_conn_segments(std::uint32_t net_id, std::list<std::pair<std::ui
         
         for (const auto&v: vias)
         {
-            std::vector<std::string> layers = get_via_conn_layers(v);
+            std::vector<std::string> layers = get_via_layers(v);
             bool brk = true;
             for (const auto& l: layers)
             {
