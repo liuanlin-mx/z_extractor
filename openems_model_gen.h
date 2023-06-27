@@ -226,7 +226,7 @@ public:
     
     void add_freq(float freq);
     
-    void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 0);
+    void add_mesh_range(float start, float end, float gap, std::uint32_t dir = mesh::DIR_X, std::uint32_t prio = 1);
     void set_mesh_lambda_ratio(float ratio) { _lambda_mesh_ratio  = ratio; }
     
     void set_boundary_cond(std::uint32_t bc);
@@ -273,6 +273,11 @@ private:
     void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);
     
+    void _smooth_mesh_line(std::set<mesh::line>& mesh_line, float min_gap, float max_gap, float ratio);
+    bool _smooth_add_line(std::list<mesh::line>& mesh_line_list, float min_gap, float max_gap, float ratio, float dir = 1);
+    bool _smooth_line(std::list<mesh::line>& mesh_line_list);
+    void _check_mesh(const std::set<mesh::line>& mesh_line);
+
     std::vector<pcb::point> _get_fp_poly_points(const pcb::footprint& fp, const std::string& pad_number);
     
     float _round_xy(float v);

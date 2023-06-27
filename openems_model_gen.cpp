@@ -859,9 +859,12 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     
     
-    
     _clean_mesh_line(_mesh.x, _mesh_x_min_gap);
     _clean_mesh_line(_mesh.y, _mesh_y_min_gap);
+    _smooth_mesh_line(_mesh.x, _mesh_x_min_gap, lambda / _lambda_mesh_ratio, 1.2);
+    _smooth_mesh_line(_mesh.y, _mesh_y_min_gap, lambda / _lambda_mesh_ratio, 1.2);
+    _check_mesh(_mesh.x);
+    _check_mesh(_mesh.y);
     
     fprintf(fp, "mesh.x = [");
     for (auto x: _mesh.x)
@@ -878,9 +881,9 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     fprintf(fp, "];\n");
     
     
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
-    fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.3);\n");
-    fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.3);\n");
+    //fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
+    //fprintf(fp, "mesh.x = SmoothMeshLines(mesh.x, max_res, 1.3);\n");
+    //fprintf(fp, "mesh.y = SmoothMeshLines(mesh.y, max_res, 1.3);\n");
 }
 
 
@@ -2002,7 +2005,7 @@ void openems_model_gen::_apply_mesh_line_range(std::set<mesh::line>& mesh_line, 
             bool continue_ = false;
             for (auto it2 = mesh_line_range.begin(); it2 != it; it2++)
             {
-                if (v >= it2->start && v < it2->end)
+                if (v >= it2->start - gap && v < it2->end + gap)
                 {
                     continue_ = true;
                     break;
@@ -2066,6 +2069,133 @@ void openems_model_gen::_clean_mesh_line(std::set<mesh::line>& mesh_line, float 
     } while (brk == false);
 }
 
+
+void openems_model_gen::_smooth_mesh_line(std::set<mesh::line>& mesh_line, float min_gap, float max_gap, float ratio)
+{
+    if (mesh_line.size() < 3)
+    {
+        return;
+    }
+    
+    std::list<mesh::line> mesh_line_list;
+    for (auto& line: mesh_line)
+    {
+        mesh_line_list.push_back(line);
+    }
+    
+    while (1)
+    {
+        bool brk1 = _smooth_add_line(mesh_line_list, min_gap, max_gap, ratio, 1.);
+        //while (_smooth_line(mesh_line_list));
+        mesh_line_list.reverse();
+        bool brk2 = _smooth_add_line(mesh_line_list, min_gap, max_gap, ratio, -1.);
+        mesh_line_list.reverse();
+        //while (_smooth_line(mesh_line_list));
+        if (brk1 && brk2)
+        {
+            break;
+        }
+    }
+    while (_smooth_line(mesh_line_list));
+    mesh_line.clear();
+    for (auto& line: mesh_line_list)
+    {
+        mesh_line.insert(line);
+    }
+}
+
+bool openems_model_gen::_smooth_add_line(std::list<mesh::line>& mesh_line_list, float min_gap, float max_gap, float ratio, float dir)
+{
+    bool brk = true;
+    
+    auto it1 = mesh_line_list.begin();
+    auto it2 = it1;
+    it2++;
+    auto it3 = it2;
+    it3++;
+    
+    for (; it3 != mesh_line_list.end(); )
+    {
+        float a = fabs(it2->v - it1->v);
+        float b = fabs(it3->v - it2->v);
+        float ab_ratio = std::max(a, b) / std::min(a, b);
+        
+        if (a < b && ab_ratio >= 2.0)
+        {
+            float c = std::min(max_gap, a * ratio);
+            
+            if (c < b && b - c > min_gap && b - c > c * 0.4)
+            {
+                brk = false;
+                mesh::line new_line(it2->v + c * dir, 0);
+                mesh_line_list.insert(it3, new_line);
+                it1 = it3;
+                it2 = it1;
+                it2++;
+                if (it2 == mesh_line_list.end())
+                {
+                    break;
+                }
+                it3 = it2;
+                it3++;
+                continue;
+            }
+        }
+        it1++;
+        it2++;
+        it3++;
+    }
+    return brk;
+}
+
+bool openems_model_gen::_smooth_line(std::list<mesh::line>& mesh_line_list)
+{
+    auto it1 = mesh_line_list.begin();
+    auto it2 = it1;
+    it2++;
+    auto it3 = it2;
+    it3++;
+    float R = 0;
+    for (; it3 != mesh_line_list.end(); )
+    {
+        if (it2->prio == 0)
+        {
+            float tmp = (it1->v + it3->v) * 0.5;
+            if (fabs(tmp - it2->v) > R)
+            {
+                R = fabs(tmp - it2->v);
+            }
+            it2->v = tmp;
+        }
+        it1++;
+        it2++;
+        it3++;
+    }
+    return R < 0.05;
+}
+    
+void openems_model_gen::_check_mesh(const std::set<mesh::line>& mesh_line)
+{
+    auto it1 = mesh_line.begin();
+    auto it2 = it1;
+    it2++;
+    auto it3 = it2;
+    it3++;
+            
+    for (; it3 != mesh_line.end(); )
+    {
+        float a = fabs(it2->v - it1->v);
+        float b = fabs(it3->v - it2->v);
+        float ab_ratio = std::max(a, b) / std::min(a, b);
+        if (ab_ratio >= 2.0)
+        {
+            printf("Warn: mesh(%02f %02f %02f) ratio:%02f >= 2.0\n", it1->v, it2->v, it3->v, ab_ratio);
+        }
+        it1++;
+        it2++;
+        it3++;
+    }
+}
 
 std::vector<pcb::point> openems_model_gen::_get_fp_poly_points(const pcb::footprint& fp, const std::string& pad_number)
 {
