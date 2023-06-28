@@ -6,6 +6,7 @@
     </Plugin>
   </Plugins>
   <VirtualDirectory Name="plugin">
+    <File Name="plugin/s_parameter.py"/>
     <File Name="plugin/antenna.py"/>
     <File Name="plugin/rl_extractor.py"/>
     <File Name="plugin/metadata.json"/>
@@ -169,6 +170,7 @@
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/antenna.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/s_parameter.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
         <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">

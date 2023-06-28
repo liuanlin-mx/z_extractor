@@ -680,7 +680,7 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
         prefix_  = prefix + "_";
     }
     
-    FILE *fp = fopen((prefix_ + "s_parameter.m").c_str(), "wb");
+    FILE *fp = fopen((prefix_ + "sp.m").c_str(), "wb");
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
@@ -1974,6 +1974,11 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "nf2ff = CalcNF2FF(nf2ff, sim_path, f_res, thetaRange*pi/180, phiRange*pi/180, 'Verbose', 2, 'Outfile', 'nf2ff_3D.h5', 'Mode', %d, 'Center', (nf2ff_start + nf2ff_stop) * 0.5 * unit);\n", mode);
         fprintf(fp, "figure\n");
         fprintf(fp, "plotFF3D(nf2ff, 'logscale', -20); drawnow;\n");
+        fprintf(fp, "grid on;\n");
+        fprintf(fp, "axis on;\n");
+        fprintf(fp, "xlabel('x');\n");
+        fprintf(fp, "ylabel('y');\n");
+        fprintf(fp, "zlabel('z');\n");
         fprintf(fp, "print('-dpng', [plot_path '/FF3D.png']);\n");
         fprintf(fp, "hgsave([plot_path '/FF3D.ofig']);\n");
         
