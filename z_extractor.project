@@ -154,7 +154,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/a33_core/a33_core.kicad_pcb -t -ref &quot;GND&quot; -coupled &quot;USB_D0N:USB_D0P,USB_D1N:USB_D1P&quot; -coupled_max_gap 0.508 -coupled_min_len 0.5 -ltra 0 -mmtl 1 -lossless_tl 1 -via_tl_mode 0 -step 0.5 -o usb" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -net &quot;GND&quot; -fp AE1 -port AE1:1:F.Cu:AE1:1:gnd.Cu:z:50.0:1 -nf2ff &quot;AE1&quot; -mesh_range 137.0:154.0:0.1:x -mesh_range 76.0:83.0:0.1:y  -freq 2.4e9 -max_freq 3e9 -criteria -30 -bc MUR -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

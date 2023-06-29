@@ -734,6 +734,24 @@ std::vector<std::string> pcb::get_pad_layers(const pad& p)
 
 
 
+std::string pcb::get_layer_name(const std::string& aname)
+{
+    if (aname.empty())
+    {
+        return "";
+    }
+    
+    for (auto& l: _layers)
+    {
+        if (l.aname == aname || l.name == aname)
+        {
+            return l.name;
+        }
+    }
+    return "";
+}
+
+
 float pcb::get_layer_distance(const std::string& layer_name1, const std::string& layer_name2)
 {
     bool flag = false;

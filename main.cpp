@@ -492,12 +492,15 @@ static int main_sparameter(int argc, char **argv)
                 ex_dir = openems_model_gen::excitation::DIR_Z;
             }
             
-            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+            ems.add_lumped_port(arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[2]),
+                                    arg_v[3], arg_v[4], pcb_->get_layer_name(arg_v[5]),
+                                    ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
             no_port = false;
         }
         else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
         {
-            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
+            ems.add_lumped_port(arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[2]),
+                                arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[3]),
                                     openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
             no_port = false;
         }
@@ -655,12 +658,15 @@ static int main_antenna(int argc, char **argv)
                 ex_dir = openems_model_gen::excitation::DIR_Z;
             }
             
-            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[3], arg_v[4], arg_v[5], ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
+            ems.add_lumped_port(arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[2]),
+                                arg_v[3], arg_v[4], pcb_->get_layer_name(arg_v[5]),
+                                ex_dir, atof(arg_v[7].c_str()), arg_v[8] == "1", false);
             no_excitation = false;
         }
         else if (6  == arg_v.size())//eg R1:1:F.Cu:F.Cu:50:1
         {
-            ems.add_lumped_port(arg_v[0], arg_v[1], arg_v[2], arg_v[0], arg_v[1], arg_v[3],
+            ems.add_lumped_port(arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[2]),
+                                    arg_v[0], arg_v[1], pcb_->get_layer_name(arg_v[3]),
                                     openems_model_gen::excitation::DIR_Z, atof(arg_v[4].c_str()), arg_v[5] == "1", false);
             no_excitation = false;
         }

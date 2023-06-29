@@ -202,6 +202,16 @@ void kicad_pcb_parser::_add_to_pcb()
 
 void kicad_pcb_parser::_add_layers()
 {
+    std::map<std::string, std::string> aname_map;
+    std::shared_ptr<pcb_object> layers = _root->find_child("layers");
+    for (auto& child: layers->childs)
+    {
+        if (child->params.size() >= 3)
+        {
+            aname_map.emplace(std::pair<std::string, std::string>(child->params[0], child->params[2]));
+        }
+    }
+    
     std::shared_ptr<pcb_object> setup = _root->find_child("setup");
     if (!setup)
     {
@@ -225,6 +235,11 @@ void kicad_pcb_parser::_add_layers()
         {
             pcb::layer l;
             l.name = layer->params[0];
+            if (aname_map.count(l.name))
+            {
+                l.aname = aname_map[l.name];
+            }
+            
             std::string layer_type = _strip_string(type->params[0]);
             
             if (thickness && thickness->params.size() > 0)

@@ -218,6 +218,7 @@ public:
         layer(): type(COPPER), thickness(0), epsilon_r(1), loss_tangent(0) {}
         
         std::string name;
+        std::string aname;
         std::uint32_t type;
         float thickness;
         float epsilon_r;
@@ -292,6 +293,7 @@ public:
     std::vector<std::string> get_pad_layers(const pad& p);
     
     
+    std::string get_layer_name(const std::string& aname);
     float get_layer_distance(const std::string& layer_name1, const std::string& layer_name2);
     float get_layer_thickness(const std::string& layer_name);
     float get_layer_z_axis(const std::string& layer_name);
