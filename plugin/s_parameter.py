@@ -27,6 +27,7 @@ import time
 import platform
 import signal
 import threading
+import copy
 
 ###########################################################################
 ## Class sparameter_base
@@ -140,11 +141,14 @@ class sparameter_base ( wx.Dialog ):
 		self.m_buttonCfgRename = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"rename", wx.DefaultPosition, wx.DefaultSize, 0 )
 		gSizer1.Add( self.m_buttonCfgRename, 0, wx.EXPAND, 5 )
 
-		self.m_buttonSave = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"save", wx.DefaultPosition, wx.DefaultSize, 0 )
-		gSizer1.Add( self.m_buttonSave, 0, wx.EXPAND, 5 )
+		self.m_buttonCfgDup = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"Dup", wx.DefaultPosition, wx.DefaultSize, 0 )
+		gSizer1.Add( self.m_buttonCfgDup, 0, wx.EXPAND, 5 )
 
 
 		sbSizer4.Add( gSizer1, 0, wx.EXPAND, 5 )
+
+		self.m_buttonSave = wx.Button( sbSizer4.GetStaticBox(), wx.ID_ANY, u"save", wx.DefaultPosition, wx.DefaultSize, 0 )
+		sbSizer4.Add( self.m_buttonSave, 0, wx.EXPAND, 5 )
 
 
 		bSizer1.Add( sbSizer4, 1, wx.EXPAND, 5 )
@@ -326,6 +330,7 @@ class sparameter_base ( wx.Dialog ):
 		self.m_buttonCfgAdd.Bind( wx.EVT_BUTTON, self.m_buttonCfgAddOnButtonClick )
 		self.m_buttonCfgDel.Bind( wx.EVT_BUTTON, self.m_buttonCfgDelOnButtonClick )
 		self.m_buttonCfgRename.Bind( wx.EVT_BUTTON, self.m_buttonCfgRenameOnButtonClick )
+		self.m_buttonCfgDup.Bind( wx.EVT_BUTTON, self.m_buttonCfgDupOnButtonClick )
 		self.m_buttonSave.Bind( wx.EVT_BUTTON, self.m_buttonSaveOnButtonClick )
 		self.m_gridEx.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridExOnGridCellChange )
 		self.m_buttonExAddLine.Bind( wx.EVT_BUTTON, self.m_buttonExAddLineOnButtonClick )
@@ -383,6 +388,9 @@ class sparameter_base ( wx.Dialog ):
 		event.Skip()
 
 	def m_buttonCfgRenameOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_buttonCfgDupOnButtonClick( self, event ):
 		event.Skip()
 
 	def m_buttonSaveOnButtonClick( self, event ):
@@ -786,57 +794,6 @@ class s_parameter_gui(sparameter_base):
         self.update_excitation_ui()
         self.update_mesh_ui()
         
-    def m_buttonCfgAddOnButtonClick( self, event ):
-        dlg = wx.TextEntryDialog(None, u"cfg name", u"name:")
-        if dlg.ShowModal() == wx.ID_OK:
-            name = dlg.GetValue()
-            if name != "" and self.m_listBoxCfg.FindString(name) < 0:
-                cfg = sp_config_item()
-                cfg.name = name
-                self.cfg_list.append(cfg)
-                self.m_listBoxCfg.Append(name)
-        dlg.Destroy()
-
-    def m_buttonCfgDelOnButtonClick( self, event ):
-        selected = self.m_listBoxCfg.GetSelections()
-        size = len(selected)
-        
-        if len(self.cfg_list) == 1 or size <= 0:
-            return
-            
-        while size > 0:
-            size = size - 1
-            name = self.m_listBoxCfg.GetString(selected[size])
-            self.m_listBoxCfg.Delete(selected[size])
-            for cfg in self.cfg_list:
-                if cfg.name == name:
-                    self.cfg_list.remove(cfg)
-                    break
-            
-        self.cur_cfg = self.cfg_list[0]
-        self.update_cfg_ui()
-        self.update_fp_list_ui()
-        self.update_net_ui()
-        self.update_fp_ui()
-        self.update_excitation_ui()
-        self.update_mesh_ui()
-        
-    def m_buttonCfgRenameOnButtonClick( self, event ):
-        selected = self.m_listBoxCfg.GetSelections()
-        size = len(selected)
-        if size <= 0:
-            return
-        n = selected[0]
-        name = self.m_listBoxCfg.GetString(n)
-        
-        dlg = wx.TextEntryDialog(None, u"cfg name", u"name:", name)
-        if dlg.ShowModal() == wx.ID_OK:
-            name = dlg.GetValue()
-            if name != "" and self.m_listBoxCfg.FindString(name) < 0:
-                self.cur_cfg.name = name
-                self.m_listBoxCfg.SetString(n, name)
-        dlg.Destroy()
-
     def m_textCtrlEndCriteriaOnText( self, event ):
         self.cur_cfg.end_criteria = self.m_textCtrlEndCriteria.GetValue()
 
@@ -893,6 +850,69 @@ class s_parameter_gui(sparameter_base):
             cmd_line = cmd_line + '" &'
         self.m_textCtrlOutput.AppendText(cmd_line + "\n")
         os.system(cmd_line)
+        
+
+    def m_buttonCfgAddOnButtonClick( self, event ):
+        dlg = wx.TextEntryDialog(None, u"cfg name", u"name:")
+        if dlg.ShowModal() == wx.ID_OK:
+            name = dlg.GetValue()
+            if name != "" and self.m_listBoxCfg.FindString(name) < 0:
+                cfg = sp_config_item()
+                cfg.name = name
+                self.cfg_list.append(cfg)
+                self.m_listBoxCfg.Append(name)
+        dlg.Destroy()
+
+    def m_buttonCfgDelOnButtonClick( self, event ):
+        selected = self.m_listBoxCfg.GetSelections()
+        size = len(selected)
+        
+        if len(self.cfg_list) == 1 or size <= 0:
+            return
+            
+        while size > 0:
+            size = size - 1
+            name = self.m_listBoxCfg.GetString(selected[size])
+            self.m_listBoxCfg.Delete(selected[size])
+            for cfg in self.cfg_list:
+                if cfg.name == name:
+                    self.cfg_list.remove(cfg)
+                    break
+            
+        self.cur_cfg = self.cfg_list[0]
+        self.update_cfg_ui()
+        self.update_fp_list_ui()
+        self.update_net_ui()
+        self.update_fp_ui()
+        self.update_excitation_ui()
+        self.update_mesh_ui()
+        
+    def m_buttonCfgRenameOnButtonClick( self, event ):
+        selected = self.m_listBoxCfg.GetSelections()
+        size = len(selected)
+        if size <= 0:
+            return
+        n = selected[0]
+        name = self.m_listBoxCfg.GetString(n)
+        
+        dlg = wx.TextEntryDialog(None, u"cfg name", u"name:", name)
+        if dlg.ShowModal() == wx.ID_OK:
+            name = dlg.GetValue()
+            if name != "" and self.m_listBoxCfg.FindString(name) < 0:
+                self.cur_cfg.name = name
+                self.m_listBoxCfg.SetString(n, name)
+        dlg.Destroy()
+
+    def m_buttonCfgDupOnButtonClick( self, event ):
+        dlg = wx.TextEntryDialog(None, u"cfg name", u"name:", self.cur_cfg.name + '_dup')
+        if dlg.ShowModal() == wx.ID_OK:
+            name = dlg.GetValue()
+            if name != "" and self.m_listBoxCfg.FindString(name) < 0:
+                cfg = copy.deepcopy(self.cur_cfg)
+                cfg.name = name
+                self.cfg_list.append(cfg)
+                self.m_listBoxCfg.Append(name)
+        dlg.Destroy()
         
     def m_buttonSaveOnButtonClick( self, event ):
         json_str = json.dumps(self.cur_cfg.__dict__)
