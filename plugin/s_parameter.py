@@ -832,24 +832,32 @@ class s_parameter_gui(sparameter_base):
         
         
     def m_buttonRunOnButtonClick( self, event ):
+        if self.m_checkBoxExtractAll.GetValue():
+            cfg_list = self.cfg_list
+            arg = '--no-show-model --auto-exit'
+        else:
+            cfg_list = [self.cur_cfg]
+            arg = ''
+            
         sys = platform.system()
-        if sys == "Windows":
-            cmd_line = ''
-        elif sys == "Linux":
-            self.plugin_bin_path = self.plugin_path + os.sep + "linux"
-            term = 'xterm -e '
-            if os.path.exists('/usr/bin/mate-terminal'):
-                term = 'mate-terminal -x bash -c '
-            if os.path.exists('/usr/bin/gnome-terminal'):
-                term = 'gnome-terminal -x bash -c '
-                
-            cmd_line = term + '"cd ' + self.output_path + ' && octave --silent --persist ' + self.cur_cfg.name + '_sp.m '
-            if self.m_checkBoxOnlyPlot.GetValue():
-                cmd_line = cmd_line + '--only-plot '
-                
-            cmd_line = cmd_line + '" &'
-        self.m_textCtrlOutput.AppendText(cmd_line + "\n")
-        os.system(cmd_line)
+        for cfg in cfg_list:
+            if sys == "Windows":
+                cmd_line = ''
+            elif sys == "Linux":
+                self.plugin_bin_path = self.plugin_path + os.sep + "linux"
+                term = 'xterm -e '
+                if os.path.exists('/usr/bin/mate-terminal'):
+                    term = 'mate-terminal -x bash -c '
+                if os.path.exists('/usr/bin/gnome-terminal'):
+                    term = 'gnome-terminal -x bash -c '
+                    
+                cmd_line = term + '"cd ' + self.output_path + ' && octave --silent --persist ' + cfg.name + '_sp.m '
+                if self.m_checkBoxOnlyPlot.GetValue():
+                    cmd_line = cmd_line + '--only-plot '
+                    
+                cmd_line = cmd_line + arg + '" &'
+            self.m_textCtrlOutput.AppendText(cmd_line + "\n")
+            os.system(cmd_line)
         
 
     def m_buttonCfgAddOnButtonClick( self, event ):

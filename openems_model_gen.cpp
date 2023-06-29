@@ -599,16 +599,16 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
-        fprintf(fp, "no_plot = 0;\n");
+        fprintf(fp, "auto_exit = 0;\n");
         fprintf(fp, "sim_path = '%stmp'; plot_path = '%splot'; sim_csx = 'ant.xml';\n", prefix_.c_str(), prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
-        fprintf(fp, "        plot_only = 1\n");
+        fprintf(fp, "        plot_only = 1;\n");
         fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-show-model'))\n");
         fprintf(fp, "        show_model = 0;\n");
-        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-plot'))\n");
-        fprintf(fp, "        no_plot = 1;\n");
+        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--auto-exit'))\n");
+        fprintf(fp, "        auto_exit = 1;\n");
         fprintf(fp, "    end\n");
         fprintf(fp, "end\n");
         fprintf(fp, "physical_constants;\n");
@@ -649,10 +649,6 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         fprintf(fp, "end\n");
         
-        fprintf(fp, "if (no_plot == 1)\n");
-        fprintf(fp, "    exit\n");
-        fprintf(fp, "end\n");
-        
         fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
         _add_plot_s11(fp);
@@ -661,6 +657,10 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         
         _add_plot_far_field(fp);
 
+        fprintf(fp, "if (auto_exit == 1)\n");
+        fprintf(fp, "    exit\n");
+        fprintf(fp, "end\n");
+        
         //fprintf(fp, "%s\n", plot_s);
         fprintf(fp, "\n");
         fprintf(fp, "\n");
@@ -686,16 +686,16 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
         fprintf(fp, "close all; clear; clc;\n");
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
-        fprintf(fp, "no_plot = 0;\n");
+        fprintf(fp, "auto_exit = 0;\n");
         fprintf(fp, "sim_path = '%stmp'; plot_path = '%splot'; sim_csx = 'S-Parameter.xml';\n", prefix_.c_str(), prefix_.c_str());
         fprintf(fp, "arg_list = argv();\n");
         fprintf(fp, "for i = 1: nargin\n");
         fprintf(fp, "    if (strcmp(arg_list{i}, '--only-plot'))\n");
-        fprintf(fp, "        plot_only = 1\n");
+        fprintf(fp, "        plot_only = 1;\n");
         fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-show-model'))\n");
         fprintf(fp, "        show_model = 0;\n");
-        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--no-plot'))\n");
-        fprintf(fp, "        no_plot = 1;\n");
+        fprintf(fp, "    elseif (strcmp(arg_list{i}, '--auto-exit'))\n");
+        fprintf(fp, "        auto_exit = 1;\n");
         fprintf(fp, "    end\n");
         fprintf(fp, "end\n");
         fprintf(fp, "physical_constants;\n");
@@ -737,15 +737,15 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
         fprintf(fp, "    RunOpenEMS(sim_path, sim_csx, '--debug-PEC');\n");
         fprintf(fp, "end\n");
         
-        fprintf(fp, "if (no_plot == 1)\n");
-        fprintf(fp, "    exit\n");
-        fprintf(fp, "end\n");
-        
         fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
         
         _add_plot_mult_port_sparameter(fp);
         _add_plot_feed_point_impedance(fp);
+        
+        fprintf(fp, "if (auto_exit == 1)\n");
+        fprintf(fp, "    exit\n");
+        fprintf(fp, "end\n");
         
         fprintf(fp, "\n");
         fprintf(fp, "\n");
