@@ -597,6 +597,7 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
+        _add_write_snp(fp);
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "auto_exit = 0;\n");
@@ -668,6 +669,7 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         
         fclose(fp);
     }
+    
     gen_model(prefix_ + "load_pcb_model");
     gen_mesh(prefix_ + "load_pcb_mesh");
 }
@@ -684,6 +686,7 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
     if (fp)
     {
         fprintf(fp, "close all; clear; clc;\n");
+        _add_write_snp(fp);
         fprintf(fp, "show_model = 1;\n");
         fprintf(fp, "plot_only = 0;\n");
         fprintf(fp, "auto_exit = 0;\n");
@@ -1698,7 +1701,9 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
         fprintf(fp, "hgsave([plot_path '/S11_' num2str(%d) '.ofig']);\n", idx);
         
         fprintf(fp, "spara(1, 1, :) = s11;\n");
-        fprintf(fp, "write_touchstone('s', freq, spara, [plot_path '/S11_' num2str(%d) '.s1p'], %f);\n", idx, ex.R);
+        fprintf(fp, "write_snp([plot_path '/S11_' num2str(%d) '.s1p'], freq, spara, %f);\n", idx, ex.R);
+        //fprintf(fp, "spara(1, 1, :) = s11;\n");
+        //fprintf(fp, "write_touchstone('s', freq, spara, [plot_path '/S11_' num2str(%d) '.s1p'], %f);\n", idx, ex.R);
         
         
         fprintf(fp, "printf('\\n\\n');\n");
@@ -1794,6 +1799,14 @@ void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
     fprintf(fp, "print('-dsvg', [plot_path '/S-Parameter.svg']);\n");
     fprintf(fp, "hgsave([plot_path '/S-Parameter.ofig']);\n");
     
+    if (_excitations.size() > 1)
+    {
+        fprintf(fp, "spara(1, 1, :) = s11;\n");
+        fprintf(fp, "spara(2, 1, :) = s21;\n");
+        fprintf(fp, "spara(1, 2, :) = zeros(1, length(s11));\n");
+        fprintf(fp, "spara(2, 2, :) = zeros(1, length(s11));\n");
+        fprintf(fp, "write_snp([plot_path '/S11_S21.s2p'], freq, spara, %f);\n", _excitations[0].R);
+    }
     
     fprintf(fp, "\n\n");
     
@@ -1988,6 +2001,43 @@ void openems_model_gen::_add_plot_far_field(FILE *fp)
         fprintf(fp, "printf('\\n\\n');\n");
         fprintf(fp, "\n\n");
     }
+}
+
+void openems_model_gen::_add_write_snp(FILE *fp)
+{
+    fprintf(fp, "\nfunction write_snp(filename, freq, spara, ref)\n");
+    fprintf(fp, "    fid = fopen(filename, 'wb');\n");
+    fprintf(fp, "    if (fid == -1)\n");
+    fprintf(fp, "        return;\n");
+    fprintf(fp, "    end\n");
+    fprintf(fp, "    fprintf(fid, '#   Hz   S  RI   R   %%f\\n', ref);\n");
+    fprintf(fp, "    rows = size(spara)(1);\n");
+    fprintf(fp, "    cols = size(spara)(2);\n");
+    fprintf(fp, "    for idx = 1 : length(freq)\n");
+    fprintf(fp, "        fprintf(fid, '%%e ', freq(idx));\n");
+    fprintf(fp, "        for row = 1:rows\n");
+    fprintf(fp, "            for col = 1:cols\n");
+    fprintf(fp, "                fprintf(fid, '%%e %%e ', real(spara(row, col, idx)), imag(spara(row, col, idx)));\n");
+    fprintf(fp, "            end\n");
+    fprintf(fp, "        end\n");
+    fprintf(fp, "        fprintf(fid, '\\n');\n");
+    fprintf(fp, "    end\n");
+    fprintf(fp, "    fclose(fid);\n");
+    fprintf(fp, "end\n\n\n");
+return;
+    fprintf(fp, "\nfunction write_s1p(filename, freq, s11, ref)\n");
+    fprintf(fp, "    fid = fopen(filename, 'wb');\n");
+    fprintf(fp, "    if (fid == -1)\n");
+    fprintf(fp, "        return;\n");
+    fprintf(fp, "    end\n");
+    fprintf(fp, "    fprintf(fid, '#   Hz   S  RI   R   %%f\\n', ref);\n");
+    fprintf(fp, "    for idx = 1 : length(freq)\n");
+    fprintf(fp, "        fprintf(fid, '%%e %%e %%e\\n', freq(idx), real(s11(idx)), imag(s11(idx)));\n");
+    fprintf(fp, "    end\n");
+    
+    fprintf(fp, "    fclose(fid);\n");
+    
+    fprintf(fp, "end\n\n\n");
 }
 
 void openems_model_gen::_apply_mesh_line_range(mesh& mesh)
