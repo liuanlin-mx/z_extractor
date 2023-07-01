@@ -842,7 +842,7 @@ class s_parameter_gui(sparameter_base):
         sys = platform.system()
         for cfg in cfg_list:
             if sys == "Windows":
-                cmd_line =  'cmd /k "cd ' + self.output_path + ' && octave --silent --persist ' + cfg.name + '_sp.m '
+                cmd_line =  'start cmd /k "cd /d ' + self.output_path + ' && octave --silent --persist ' + cfg.name + '_sp.m '
                 if self.m_checkBoxOnlyPlot.GetValue():
                     cmd_line = cmd_line + '--only-plot '
                     

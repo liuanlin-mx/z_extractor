@@ -640,9 +640,9 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         fprintf(fp, "    [CSX, mesh] = %sload_pcb_mesh(CSX, f0 + fc);\n", prefix_.c_str());
         fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
-        fprintf(fp, "    rmdir(sim_path, 's');\n");
-        fprintf(fp, "    mkdir(sim_path);\n");
-        fprintf(fp, "    mkdir(plot_path);\n");
+        fprintf(fp, "    [status, message, messageid] = rmdir(sim_path, 's');\n");
+        fprintf(fp, "    [status, message, messageid] = mkdir(sim_path);\n");
+        fprintf(fp, "    [status, message, messageid] = mkdir(plot_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
         fprintf(fp, "    if (show_model == 1)\n");
         fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-polydata-vtk=' sim_path]);\n");
@@ -730,9 +730,9 @@ void openems_model_gen::gen_sparameter_scripts(const std::string& prefix)
         fprintf(fp, "    [CSX, mesh] = %sload_pcb_mesh(CSX, f0 + fc);\n", prefix_.c_str());
         fprintf(fp, "    CSX = DefineRectGrid(CSX, unit, mesh);\n");
         fprintf(fp, "\n");
-        fprintf(fp, "    rmdir(sim_path, 's');\n");
-        fprintf(fp, "    mkdir(sim_path);\n");
-        fprintf(fp, "    mkdir(plot_path);\n");
+        fprintf(fp, "    [status, message, messageid] = rmdir(sim_path, 's');\n");
+        fprintf(fp, "    [status, message, messageid] = mkdir(sim_path);\n");
+        fprintf(fp, "    [status, message, messageid] = mkdir(plot_path);\n");
         fprintf(fp, "    WriteOpenEMS([sim_path '/' sim_csx], FDTD, CSX);\n");
         fprintf(fp, "    if (show_model == 1)\n");
         fprintf(fp, "        CSXGeomPlot([sim_path '/' sim_csx], ['--export-polydata-vtk=' sim_path]);\n");
