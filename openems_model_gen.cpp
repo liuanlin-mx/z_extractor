@@ -1815,6 +1815,10 @@ void openems_model_gen::_add_plot_mult_port_sparameter(FILE *fp)
     fprintf(fp, "td = arg / (2 * pi * (f0 + fc) / 2 / 1e9);\n");
     fprintf(fp, "printf('td:%%fNS\\n', td);\n");
     
+    fprintf(fp, "fid = fopen([plot_path '/info.txt'], 'wb');\n");
+    fprintf(fp, "fprintf(fid, 'td:%%fNS\\n', td);\n");
+    fprintf(fp, "fclose(fid);\n");
+    
     for (const auto& freq: _freq)
     {
         fprintf(fp, "freq_idx = find(freq > %g)(1) - 1;\n", freq);

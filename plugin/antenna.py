@@ -897,9 +897,13 @@ class antenna_gui(antenna_base):
         sys = platform.system()
         for cfg in cfg_list:
             if sys == "Windows":
-                cmd_line = ''
+                cmd_line =  'cmd /k "cd ' + self.output_path + ' && octave --silent --persist ' + cfg.name + '_sp.m '
+                if self.m_checkBoxOnlyPlot.GetValue():
+                    cmd_line = cmd_line + '--only-plot '
+                    
+                cmd_line = cmd_line + arg + '" &'
+                
             elif sys == "Linux":
-                self.plugin_bin_path = self.plugin_path + os.sep + "linux"
                 term = 'xterm -e '
                 if os.path.exists('/usr/bin/mate-terminal'):
                     term = 'mate-terminal -x bash -c '
