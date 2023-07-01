@@ -22,6 +22,7 @@
 #include <set>
 #include <map>
 #include <vector>
+#include <memory>
 #include "pcb.h"
 
 class openems_model_gen

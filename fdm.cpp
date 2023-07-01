@@ -20,6 +20,7 @@
 #if FDM_USE_OPENCV
 #include <opencv2/opencv.hpp>
 #endif
+#include <stdio.h>
 #include <math.h>
 #include <set>
 #include "fdm.h"

@@ -18,7 +18,7 @@
 
 #ifndef __KICAD_PCB_PARSER_H__
 #define __KICAD_PCB_PARSER_H__
-
+#include <memory>
 #include "pcb.h"
 
 class kicad_pcb_parser
