@@ -1724,8 +1724,8 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             
             fprintf(fp, "s11_db_left = s11_db(1:freq_idx);\n");
             fprintf(fp, "s11_db_right = s11_db(freq_idx:end);\n");
-            fprintf(fp, "left_idx = find(s11_db_left >= -10)(end);\n");
-            fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
+            fprintf(fp, "left_idx = find(s11_db_left >= min(max(s11_db_left), -10))(end);\n");
+            fprintf(fp, "right_idx = find(s11_db_right >= min(max(s11_db_right), -10))(1);\n");
             
             fprintf(fp, "printf('Minimum S11 freq:%%g band width(%%g %%g)%%gMHz\\n'\n"
                             "    , freq(freq_idx), freq(left_idx), freq(freq_idx + right_idx - 1)"
@@ -1738,8 +1738,8 @@ void openems_model_gen::_add_plot_s11(FILE *fp)
             
             fprintf(fp, "s11_db_left = s11_db(1:freq_idx);\n");
             fprintf(fp, "s11_db_right = s11_db(freq_idx:end);\n");
-            fprintf(fp, "left_idx = find(s11_db_left >= -10)(end);\n");
-            fprintf(fp, "right_idx = find(s11_db_right >= -10)(1);\n");
+            fprintf(fp, "left_idx = find(s11_db_left >= min(max(s11_db_left), -10))(end);\n");
+            fprintf(fp, "right_idx = find(s11_db_right >= min(max(s11_db_right), -10))(1);\n");
             
             
             
