@@ -634,7 +634,7 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         
         _add_lumped_element(fp, 99);
         _add_excitation(fp, 99);
-        _add_nf2ff_box(fp);
+        _add_nf2ff_box(fp, 1);
         fprintf(fp, "if (plot_only == 0)\n");
         fprintf(fp, "    CSX = %sload_pcb_model(CSX, f0 + fc);\n", prefix_.c_str());
         fprintf(fp, "    [CSX, mesh] = %sload_pcb_mesh(CSX, f0 + fc);\n", prefix_.c_str());
@@ -842,22 +842,30 @@ void openems_model_gen::_gen_mesh_xy(FILE *fp)
     
     if (!_mesh.x.empty() && _mesh.x.begin()->v > left)
     {
-        _mesh.x.insert(mesh::line(left, _mesh.x.begin()->prio));
+        mesh::line line(left, _mesh.x.begin()->prio);
+        _mesh.x.erase(_mesh.x.begin());
+        _mesh.x.insert(line);
     }
     
     if (!_mesh.x.empty() && _mesh.x.rbegin()->v < right)
     {
-        _mesh.x.insert(mesh::line(right, _mesh.x.rbegin()->prio));
+        mesh::line line(right, _mesh.x.rbegin()->prio);
+        _mesh.x.erase(--_mesh.x.end());
+        _mesh.x.insert(line);
     }
     
     if (!_mesh.y.empty() && _mesh.y.begin()->v > top)
     {
-        _mesh.y.insert(mesh::line(top, _mesh.y.begin()->prio));
+        mesh::line line(top, _mesh.y.begin()->prio);
+        _mesh.y.erase(_mesh.y.begin());
+        _mesh.y.insert(line);
     }
     
     if (!_mesh.y.empty() && _mesh.y.rbegin()->v < bottom)
     {
-        _mesh.y.insert(mesh::line(bottom, _mesh.y.rbegin()->prio));
+        mesh::line line(bottom, _mesh.y.rbegin()->prio);
+        _mesh.y.erase(--_mesh.y.end());
+        _mesh.y.insert(line);
     }
     
     
@@ -1603,12 +1611,13 @@ void openems_model_gen::_add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio)
     y_margin = std::max(y_margin, lambda / 2);
     float z_margin = std::max(_pcb->get_board_thickness() * ratio, lambda / 2);
     
-    _mesh.x.insert(mesh::line(nf2ff_cx - x_margin - lambda / ratio, mesh_prio));
-    _mesh.x.insert(mesh::line(nf2ff_cx + x_margin + lambda / ratio, mesh_prio));
-    _mesh.y.insert(mesh::line(nf2ff_cy - y_margin - lambda / ratio, mesh_prio));
-    _mesh.y.insert(mesh::line(nf2ff_cy + y_margin + lambda / ratio, mesh_prio));
-    _mesh.z.insert(mesh::line(nf2ff_cz - z_margin - lambda / ratio, mesh_prio));
-    _mesh.z.insert(mesh::line(nf2ff_cz + z_margin + lambda / ratio, mesh_prio));
+    float grid_size = lambda / ratio;
+    _mesh.x.insert(mesh::line(nf2ff_cx - x_margin - grid_size * 2.5, mesh_prio));
+    _mesh.x.insert(mesh::line(nf2ff_cx + x_margin + grid_size * 2.5, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy - y_margin - grid_size * 2.5, mesh_prio));
+    _mesh.y.insert(mesh::line(nf2ff_cy + y_margin + grid_size * 2.5, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz - z_margin - grid_size * 2.5, mesh_prio));
+    _mesh.z.insert(mesh::line(nf2ff_cz + z_margin + grid_size * 2.5, mesh_prio));
     
     fprintf(fp, "far_field_freq = %g;\n", _far_field_freq);
     fprintf(fp, "nf2ff_cx = %e; nf2ff_cy = %e; nf2ff_cz = %e;\n", nf2ff_cx, nf2ff_cy, nf2ff_cz);
