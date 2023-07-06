@@ -786,12 +786,38 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
             continue;
         }
         float z = _pcb->get_layer_z_axis(layer.name);
-        _mesh.z.insert(mesh::line(z, 0));
+        _mesh.z.insert(mesh::line(z, 2));
         last_layer = layer.name;
     }
-    _mesh.z.insert(mesh::line(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer), 0));
+    _mesh.z.insert(mesh::line(_pcb->get_layer_z_axis(last_layer) + _pcb->get_layer_thickness(last_layer), 1));
+    
+    if (min_z > 0.2 && !_mesh.z.empty())
+    {
+        mesh::line_range range(_mesh.z.begin()->v, _mesh.z.rbegin()->v, 0.2, 0);
+        _mesh.z_range.insert(range);
+        _apply_mesh_line_range(_mesh.z, _mesh.z_range);
+    }
+    
+    
+    float lambda = C0 / (_f0 + _fc) * 1e3;
+    float margin = std::max(lambda, _pcb->get_board_thickness() * 20);
+    if (mesh_z.size() > 1)
+    {
+        _mesh.z.insert(mesh::line(std::min(-margin, mesh_z.begin()->v), 1));
+        _mesh.z.insert(mesh::line(std::max(margin, mesh_z.rbegin()->v), 1));
+    }
+    else
+    {
+        _mesh.z.insert(mesh::line(-margin, 1));
+        _mesh.z.insert(mesh::line(margin, 1));
+    }
     
     _clean_mesh_line(_mesh.z, _mesh_z_min_gap);
+    
+    
+    _smooth_mesh_line(_mesh.z, _mesh_x_min_gap, lambda / _lambda_mesh_ratio, 1.3);
+    _check_mesh(_mesh.z);
+    
     
     fprintf(fp, "mesh.z = [");
     for (auto z: _mesh.z)
@@ -799,26 +825,6 @@ void openems_model_gen::_gen_mesh_z(FILE *fp)
         fprintf(fp, "%f ", z.v);
     }
     fprintf(fp, "];\n");
-    
-    fprintf(fp, "max_res = %f;\n", min_z);
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
-    
-    
-    
-    float lambda = C0 / (_f0 + _fc) * 1e3;
-    float margin = std::max(lambda, _pcb->get_board_thickness() * 20);
-    if (mesh_z.size() > 1)
-    {
-        fprintf(fp, "mesh.z = unique([mesh.z, %f, %f]);\n", std::min(-margin, mesh_z.begin()->v), std::max(margin, mesh_z.rbegin()->v));
-    }
-    else
-    {
-        fprintf(fp, "margin = %g;\n", margin);
-        fprintf(fp, "mesh.z = unique([mesh.z, -margin, margin]);\n");
-    }
-    
-    fprintf(fp, "max_res = c0 / (max_freq) / unit / %f;\n", _lambda_mesh_ratio);
-    fprintf(fp, "mesh.z = SmoothMeshLines(mesh.z, max_res, 1.3);\n");
     
     fprintf(fp, "\n\n");
 }
