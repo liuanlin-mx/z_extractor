@@ -19,6 +19,7 @@
 #include <float.h>
 #include <cstdint>
 #include <vector>
+#include <complex>
 #include "calc.h"
 
 static double _float_epsilon = 0.00005;
@@ -282,4 +283,17 @@ void calc_arc_angle(double x1, double y1, double x2, double y2, double x3, doubl
 float calc_arc_len(float radius, float angle)
 {
     return radius * fabs(angle);
+}
+
+
+void calc_rotation(float cx, float cy, float& x, float& y, float angle)
+{
+    float radians = angle * M_PI / 180.;
+    std::complex<float> start(cx, cy);
+    std::complex<float> end(x, y);
+    
+    std::complex<float> vector = end - start;
+    std::complex<float> tmp = std::polar(abs(vector), arg(vector) + radians);
+    x = (start + tmp).real();
+    y = ((start + tmp).imag());
 }

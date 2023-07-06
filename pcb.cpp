@@ -462,17 +462,27 @@ void pcb::get_pad_pos(const pad& p, float& x, float& y)
     y = p.ref_at.y - y1;
 }
 
-void pcb::get_rotation_pos(const point& c, float rotate_angle, point& p)
+void pcb::coo_cvt_fp2pcb(const point& fp_at, float fp_angle, point& p)
 {
-    float angle = rotate_angle * M_PI / 180;
+    float angle = fp_angle * M_PI / 180;
+#if 0
+    std::complex<float> start(c.x, c.y);
+    std::complex<float> end(p.x, p.y);
+    
+    std::complex<float> vector = end - start;
+    std::complex<float> tmp = std::polar(abs(vector), arg(vector) + angle);
+    p.x = (start + tmp).real();
+    p.y = ((start + tmp).imag());
+#else
     float at_x = p.x;
     float at_y = -p.y;
                 
     float x1 = cosf(angle) * at_x - sinf(angle) * at_y;
     float y1 = sinf(angle) * at_x + cosf(angle) * at_y;
     
-    p.x = c.x + x1;
-    p.y = c.y - y1;
+    p.x = fp_at.x + x1;
+    p.y = fp_at.y - y1;
+#endif
 }
 
 std::string pcb::get_tstamp_short(const std::string& tstamp)
@@ -1414,7 +1424,7 @@ void pcb::_draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, 
         std::vector<cv::Point> pts;
         for (auto xy : gr.pts)
         {
-            get_rotation_pos(at, angle, xy);
+            coo_cvt_fp2pcb(at, angle, xy);
             cv::Point p(_cvt_img_x(xy.x, pix_unit), _cvt_img_y(xy.y, pix_unit));
             pts.push_back(p);
         }
@@ -1432,10 +1442,10 @@ void pcb::_draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, 
         point p3 = gr.end;
         point p4; p4.x = gr.start.x; p4.y = gr.end.y;
         
-        get_rotation_pos(at, angle, p1);
-        get_rotation_pos(at, angle, p2);
-        get_rotation_pos(at, angle, p3);
-        get_rotation_pos(at, angle, p4);
+        coo_cvt_fp2pcb(at, angle, p1);
+        coo_cvt_fp2pcb(at, angle, p2);
+        coo_cvt_fp2pcb(at, angle, p3);
+        coo_cvt_fp2pcb(at, angle, p4);
         
         std::vector<cv::Point> pts;
         pts.push_back(cv::Point(_cvt_img_x(p1.x, pix_unit), _cvt_img_y(p1.y, pix_unit)));
@@ -1454,8 +1464,8 @@ void pcb::_draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, 
     {
         point start = gr.start;
         point end = gr.end;
-        get_rotation_pos(at, angle, start);
-        get_rotation_pos(at, angle, end);
+        coo_cvt_fp2pcb(at, angle, start);
+        coo_cvt_fp2pcb(at, angle, end);
         cv::Point p1(_cvt_img_x(start.x, pix_unit), _cvt_img_y(start.y, pix_unit));
         cv::Point p2(_cvt_img_x(end.x, pix_unit), _cvt_img_y(end.y, pix_unit));
         float thickness = _cvt_img_len(gr.stroke_width, pix_unit);
@@ -1465,8 +1475,8 @@ void pcb::_draw_gr(cv::Mat& img, const pcb::gr& gr, pcb::point at, float angle, 
     {
         point start = gr.start;
         point end = gr.end;
-        get_rotation_pos(at, angle, start);
-        get_rotation_pos(at, angle, end);
+        coo_cvt_fp2pcb(at, angle, start);
+        coo_cvt_fp2pcb(at, angle, end);
         cv::Point center(_cvt_img_x(start.x, pix_unit), _cvt_img_y(start.y, pix_unit));
         float radius = calc_dist(start.x, start.y, end.x, end.y);
         radius = _cvt_img_len(radius, pix_unit);
@@ -1520,10 +1530,10 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
         point p4(p.at.x - p.size_w / 2, p.at.y - p.size_h / 2);
         
         
-        get_rotation_pos(fp.at, fp.at_angle, p1);
-        get_rotation_pos(fp.at, fp.at_angle, p2);
-        get_rotation_pos(fp.at, fp.at_angle, p3);
-        get_rotation_pos(fp.at, fp.at_angle, p4);
+        coo_cvt_fp2pcb(fp.at, fp.at_angle, p1);
+        coo_cvt_fp2pcb(fp.at, fp.at_angle, p2);
+        coo_cvt_fp2pcb(fp.at, fp.at_angle, p3);
+        coo_cvt_fp2pcb(fp.at, fp.at_angle, p4);
         
         std::vector<cv::Point> pts;
         pts.push_back(cv::Point(_cvt_img_x(p1.x, pix_unit), _cvt_img_y(p1.y, pix_unit)));
@@ -1537,7 +1547,7 @@ void pcb::_draw_pad(cv::Mat& img, const pcb::footprint& fp, const pcb::pad& p, c
     {
         point c(p.at);
         
-        get_rotation_pos(fp.at, fp.at_angle, c);
+        coo_cvt_fp2pcb(fp.at, fp.at_angle, c);
         cv::Point center(_cvt_img_x(c.x, pix_unit), _cvt_img_y(c.y, pix_unit));
         float radius = p.size_w / 2;
         radius = _cvt_img_len(radius, pix_unit);

@@ -118,8 +118,8 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
     {
         pcb::point p1 = pad1.at;
         pcb::point p2 = pad2.at;
-        _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
-        _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
+        _pcb->coo_cvt_fp2pcb(footprint1.at, footprint1.at_angle, p1);
+        _pcb->coo_cvt_fp2pcb(footprint2.at, footprint2.at_angle, p2);
         
     
         excitation ex;
@@ -214,8 +214,8 @@ void openems_model_gen::add_lumped_port(const std::string& fp_name, float R, boo
         pcb::point p2 = footprint.pads[1].at;
         const pcb::pad& pad1 = footprint.pads[0];
         const pcb::pad& pad2 = footprint.pads[1];
-        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p1);
-        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p2);
+        _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p1);
+        _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p2);
         
     
         std::uint32_t dir = lumped_element::DIR_X;
@@ -301,8 +301,8 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
     {
         pcb::point p1 = pad1.at;
         pcb::point p2 = pad2.at;
-        _pcb->get_rotation_pos(footprint1.at, footprint1.at_angle, p1);
-        _pcb->get_rotation_pos(footprint2.at, footprint2.at_angle, p2);
+        _pcb->coo_cvt_fp2pcb(footprint1.at, footprint1.at_angle, p1);
+        _pcb->coo_cvt_fp2pcb(footprint2.at, footprint2.at_angle, p2);
         
     
         lumped_element element;
@@ -404,8 +404,8 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
         pcb::point p2 = footprint.pads[1].at;
         const pcb::pad& pad1 = footprint.pads[0];
         const pcb::pad& pad2 = footprint.pads[1];
-        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p1);
-        _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p2);
+        _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p1);
+        _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p2);
         
     
         std::uint32_t dir = lumped_element::DIR_X;
@@ -1168,7 +1168,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         std::uint32_t idx = 1;
         for (auto xy : gr.pts)
         {
-            _pcb->get_rotation_pos(at, angle, xy);
+            _pcb->coo_cvt_fp2pcb(at, angle, xy);
             fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, xy.x, idx, xy.y);
             idx++;
             range.det(xy.x, xy.y);
@@ -1189,10 +1189,10 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         pcb::point p3(gr.end.x, gr.end.y);
         pcb::point p4(gr.start.x, gr.end.y);
         
-        _pcb->get_rotation_pos(at, angle, p1);
-        _pcb->get_rotation_pos(at, angle, p2);
-        _pcb->get_rotation_pos(at, angle, p3);
-        _pcb->get_rotation_pos(at, angle, p4);
+        _pcb->coo_cvt_fp2pcb(at, angle, p1);
+        _pcb->coo_cvt_fp2pcb(at, angle, p2);
+        _pcb->coo_cvt_fp2pcb(at, angle, p3);
+        _pcb->coo_cvt_fp2pcb(at, angle, p4);
         
         if (gr.fill_type == pcb::gr::FILL_SOLID)
         {
@@ -1223,8 +1223,8 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
     {
         pcb::point start = gr.start;
         pcb::point end = gr.end;
-        _pcb->get_rotation_pos(at, angle, start);
-        _pcb->get_rotation_pos(at, angle, end);
+        _pcb->coo_cvt_fp2pcb(at, angle, start);
+        _pcb->coo_cvt_fp2pcb(at, angle, end);
         _add_line(fp, name, start, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
     }
     else if (gr.gr_type == pcb::gr::GR_ARC)
@@ -1232,9 +1232,9 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         pcb::point start = gr.start;
         pcb::point end = gr.end;
         pcb::point mid = gr.mid;
-        _pcb->get_rotation_pos(at, angle, start);
-        _pcb->get_rotation_pos(at, angle, end);
-        _pcb->get_rotation_pos(at, angle, mid);
+        _pcb->coo_cvt_fp2pcb(at, angle, start);
+        _pcb->coo_cvt_fp2pcb(at, angle, end);
+        _pcb->coo_cvt_fp2pcb(at, angle, mid);
         
         _add_arc(fp, name, start, mid, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
     }
@@ -1242,8 +1242,8 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
     {
         pcb::point start = gr.start;
         pcb::point end = gr.end;
-        _pcb->get_rotation_pos(at, angle, start);
-        _pcb->get_rotation_pos(at, angle, end);
+        _pcb->coo_cvt_fp2pcb(at, angle, start);
+        _pcb->coo_cvt_fp2pcb(at, angle, end);
         float radius = calc_dist(start.x, start.y, end.x, end.y);
         if (gr.fill_type == pcb::gr::FILL_SOLID)
         {
@@ -1308,7 +1308,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
         {
             pcb::point c(p.at);
             
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, c);
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.drill / 2;
             fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
@@ -1344,11 +1344,17 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             pcb::point p3(p.at.x + p.size_w / 2, p.at.y - p.size_h / 2);
             pcb::point p4(p.at.x - p.size_w / 2, p.at.y - p.size_h / 2);
             
+            pcb::point c((p1.x + p3.x) * 0.5, (p1.y + p3.y) * 0.5);
+            calc_rotation(c.x, c.y, p1.x, p1.y, p.at_angle - footprint.at_angle);
+            calc_rotation(c.x, c.y, p2.x, p2.y, p.at_angle - footprint.at_angle);
+            calc_rotation(c.x, c.y, p3.x, p3.y, p.at_angle - footprint.at_angle);
+            calc_rotation(c.x, c.y, p4.x, p4.y, p.at_angle - footprint.at_angle);
             
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p1);
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p2);
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p3);
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, p4);
+            
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p1);
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p2);
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p3);
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, p4);
             
             
             fprintf(fp, "p(1, 1) = %f; p(2, 1) = %f;\n", p1.x, p1.y);
@@ -1375,7 +1381,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
         {
             pcb::point c(p.at);
             
-            _pcb->get_rotation_pos(footprint.at, footprint.at_angle, c);
+            _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.size_w / 2;
             
             fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
@@ -2282,10 +2288,10 @@ std::vector<pcb::point> openems_model_gen::_get_fp_poly_points(const pcb::footpr
             pcb::point p4(p.at.x - p.size_w / 2, p.at.y - p.size_h / 2);
             
             
-            _pcb->get_rotation_pos(fp.at, fp.at_angle, p1);
-            _pcb->get_rotation_pos(fp.at, fp.at_angle, p2);
-            _pcb->get_rotation_pos(fp.at, fp.at_angle, p3);
-            _pcb->get_rotation_pos(fp.at, fp.at_angle, p4);
+            _pcb->coo_cvt_fp2pcb(fp.at, fp.at_angle, p1);
+            _pcb->coo_cvt_fp2pcb(fp.at, fp.at_angle, p2);
+            _pcb->coo_cvt_fp2pcb(fp.at, fp.at_angle, p3);
+            _pcb->coo_cvt_fp2pcb(fp.at, fp.at_angle, p4);
             
             points.push_back(p1);
             points.push_back(p2);
@@ -2296,7 +2302,7 @@ std::vector<pcb::point> openems_model_gen::_get_fp_poly_points(const pcb::footpr
         {
             pcb::point c(p.at);
             
-            _pcb->get_rotation_pos(fp.at, fp.at_angle, c);
+            _pcb->coo_cvt_fp2pcb(fp.at, fp.at_angle, c);
             float radius = p.size_w / 2;
             points.push_back(pcb::point(c.x - radius, c.y));
             points.push_back(pcb::point(c.x + radius, c.y));

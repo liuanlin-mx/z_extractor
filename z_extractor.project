@@ -154,7 +154,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -net &quot;GND&quot; -fp AE1 -port AE1:1:F.Cu:AE1:1:gnd.Cu:z:50.0:1 -nf2ff &quot;AE1&quot; -mesh_range 137.0:154.0:0.1:x -mesh_range 76.0:83.0:0.1:y  -freq 2.4e9 -max_freq 3e9 -criteria -30 -bc MUR -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_antenna/test_antenna.kicad_pcb -ant -net &quot;GND&quot; -fp PATCH_ANT1 -port PATCH_ANT1:1:F.Cu:PATCH_ANT1:1:B.Cu:z:50.0:1 -nf2ff &quot;PATCH_ANT1&quot; -mesh_range 118.5:159.6:0.3:x -mesh_range 129.8:162.4:0.3:y  -freq 2.4e9 -max_freq 3e9 -criteria -10 -bc MUR -o patch" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

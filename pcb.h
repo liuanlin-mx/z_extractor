@@ -272,7 +272,7 @@ public:
     
     
     void get_pad_pos(const pad& p, float& x, float& y);
-    void get_rotation_pos(const point& c, float rotate_angle, point& p);
+    void coo_cvt_fp2pcb(const point& fp_at, float fp_angle, point& p);
     std::string get_tstamp_short(const std::string& tstamp);
     static std::string format_net(const std::string& name);
     std::string pos2net(float x, float y, const std::string& layer);

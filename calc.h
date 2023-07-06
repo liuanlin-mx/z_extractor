@@ -51,5 +51,8 @@ void calc_arc_center_radius(double x1, double y1, double x2, double y2, double x
 /* (x1, y1)起点 (x2, y2)中点 (x3, y3)终点 (x, y)圆心 radius半径*/
 void calc_arc_angle(double x1, double y1, double x2, double y2, double x3, double y3, double x, double y, double radius, double& angle);
 float calc_arc_len(float radius, float angle);
-    
+
+
+
+void calc_rotation(float cx, float cy, float& x, float& y, float angle);
 #endif
