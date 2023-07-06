@@ -2074,6 +2074,7 @@ void openems_model_gen::_apply_mesh_line_range(std::set<mesh::line>& mesh_line, 
         float end = it->end;
         float gap = it->gap;
         
+        gap = fabs(end - start) / round(fabs(end - start) / gap);
         for (float v = start; v < end; v += gap)
         {
             bool continue_ = false;
