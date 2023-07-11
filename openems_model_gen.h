@@ -265,6 +265,7 @@ private:
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_nf2ff_box(FILE *fp, std::uint32_t mesh_prio = 0);
     void _add_read_ui(FILE *fp);
+    void _add_plot_time_domain_voltage(FILE *fp);
     void _add_plot_feed_point_impedance(FILE *fp);
     void _add_plot_s11(FILE *fp);
     void _add_plot_mult_port_sparameter(FILE *fp);

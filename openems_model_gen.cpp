@@ -652,6 +652,7 @@ void openems_model_gen::gen_antenna_simulation_scripts(const std::string& prefix
         
         fprintf(fp, "printf('\\n\\n');\n");
         _add_read_ui(fp);
+        //_add_plot_time_domain_voltage(fp);
         _add_plot_s11(fp);
         _add_plot_vswr(fp);
         _add_plot_feed_point_impedance(fp);
@@ -1655,6 +1656,37 @@ void openems_model_gen::_add_read_ui(FILE *fp)
     }
 }
 
+
+void openems_model_gen::_add_plot_time_domain_voltage(FILE *fp)
+{
+    std::uint32_t idx = 0;
+    for (auto& ex: _excitations)
+    {
+        if (ex.excite == false)
+        {
+            continue;
+        }
+        fprintf(fp, "# plot time domain voltage\n");
+        fprintf(fp, "figure\n");
+        fprintf(fp, "[ax, h1, h2] = plotyy(U%u.TD{1}.t/1e-9, U%u.TD{1}.val, U%u.TD{2}.t/1e-9, U%u.TD{2}.val );\n", idx, idx, idx, idx);
+        fprintf(fp, "set(h1, 'Linewidth', 2);\n");
+        fprintf(fp, "set(h1, 'Color', [1 0 0]);\n");
+        fprintf(fp, "set(h2, 'Linewidth', 2);\n");
+        fprintf(fp, "set(h2, 'Color', [0 0 0]);\n");
+        fprintf(fp, "grid on\n");
+        fprintf(fp, "title('time domain voltage');\n");
+        fprintf(fp, "xlabel('time t / ns' );\n");
+        fprintf(fp, "ylabel(ax(1), 'voltage ut1 / V');\n");
+        fprintf(fp, "ylabel(ax(2), 'voltage et / V');\n");
+        fprintf(fp, "# now make the y-axis symmetric to y=0 (align zeros of y1 and y2)\n");
+        fprintf(fp, "y1 = ylim(ax(1));\n");
+        fprintf(fp, "y2 = ylim(ax(2));\n");
+        fprintf(fp, "ylim(ax(1), [-max(abs(y1)) max(abs(y1))]);\n");
+        fprintf(fp, "ylim(ax(2), [-max(abs(y2)) max(abs(y2))]);\n");
+        idx++;
+    }
+
+}
 
 void openems_model_gen::_add_plot_feed_point_impedance(FILE *fp)
 {
