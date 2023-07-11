@@ -666,7 +666,7 @@ class s_parameter_gui(sparameter_base):
             self.m_gridEx.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(self.layer_name))
             self.m_gridEx.SetCellValue(row, 3, str(item['layer2']))
             
-            self.m_gridEx.SetCellEditor(row, 5, wx.grid.GridCellChoiceEditor(["x", "y", "z"]))
+            self.m_gridEx.SetCellEditor(row, 5, wx.grid.GridCellChoiceEditor(["x", "y", "z", "Not Used"]))
             self.m_gridEx.SetCellValue(row, 5, str(item['dir']))
             
             self.m_gridEx.SetCellValue(row, 4, str(item['R']))
@@ -685,7 +685,7 @@ class s_parameter_gui(sparameter_base):
         
         for row in range(len(self.cur_cfg.mesh)):
             self.m_gridMesh.AppendRows()
-            self.m_gridMesh.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(["x", "y"]))
+            self.m_gridMesh.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(["x", "y", "Not Used"]))
             item = self.cur_cfg.mesh[row]
             self.m_gridMesh.SetCellValue(row, 0, str(item['start']))
             self.m_gridMesh.SetCellValue(row, 1, str(item['end']))
