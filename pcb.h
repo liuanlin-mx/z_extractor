@@ -215,7 +215,7 @@ public:
             BOTTOM_SOLDER_MASK
         };
         
-        layer(): type(COPPER), thickness(0), epsilon_r(1), loss_tangent(0) {}
+        layer(): type(COPPER), thickness(0), epsilon_r(0), loss_tangent(0) {}
         
         std::string name;
         std::string aname;
