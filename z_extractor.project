@@ -143,10 +143,10 @@
       </Completion>
     </Configuration>
     <Configuration Name="linux" CompilerType="GCC" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
-      <Compiler Options="-pg;-g;-O0;-fopenmp;-Wall" C_Options="-pg;-g;-O0;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
+      <Compiler Options="-g;-O2;-fopenmp;-Wall" C_Options="-g;-O2;-fopenmp;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="1">
         <IncludePath Value="/usr/include/opencv4/"/>
       </Compiler>
-      <Linker Options="-pg;-fopenmp" Required="yes">
+      <Linker Options="-fopenmp" Required="yes">
         <Library Value="opencv_highgui"/>
         <Library Value="opencv_imgcodecs"/>
         <Library Value="opencv_imgproc"/>

@@ -510,7 +510,7 @@ class z_extractor_gui(z_extractor_base):
                 cmd = cmd + "-lossless_tl 0 "
                 
             if cfg.via_model == 1:
-                cmd = cmd + "-via_tl_mode 1"
+                cmd = cmd + "-via_tl_mode 1 "
             else:
                 cmd = cmd + "-via_tl_mode 0 "
             

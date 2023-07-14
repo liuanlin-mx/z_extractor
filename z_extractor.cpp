@@ -22,7 +22,7 @@
 #include "z_extractor.h"
 #include <opencv2/opencv.hpp>
 #include "fasthenry.h"
-#include "atlc.h"
+#include "fdm_Z0_calc.h"
 #include "Z0_calc.h"
 #include "calc.h"
 
@@ -2214,9 +2214,9 @@ std::string z_extractor::_gen_via_Z0_ckt(pcb::via& v, std::map<std::string, cv::
     float thickness = 0.0254 * 1;
     float atlc_pix_unit = thickness * 0.5;
     
-    atlc atlc_;
-    atlc_.set_precision(atlc_pix_unit);
-    atlc_.set_box_size(box_w, box_h);
+    fdm_Z0_calc fdm_;
+    fdm_.set_precision(atlc_pix_unit);
+    fdm_.set_box_size(box_w, box_h);
     
     
     std::uint32_t id = 0;
@@ -2242,23 +2242,23 @@ std::string z_extractor::_gen_via_Z0_ckt(pcb::via& v, std::map<std::string, cv::
         float r = 0.;
         float g = 0.;
         
-        atlc_.clean_all();
-        atlc_.add_elec(0, -box_h, box_w, box_h * 2, er);
-        atlc_.add_ring_wire(0, 0, radius, thickness);
+        fdm_.clean_all();
+        fdm_.add_elec(0, -box_h, box_w, box_h * 2, er);
+        fdm_.add_ring_wire(0, 0, radius, thickness);
         
         for (const auto& ref_via: vias)
         {
             float dist = calc_dist(ref_via.at.x, ref_via.at.y, v.at.x, v.at.y);
             if (dist < box_w - ref_via.drill)
             {
-                atlc_.add_ring_ground(ref_via.at.x - v.at.x, ref_via.at.y - v.at.y, ref_via.drill * 0.5, thickness);
+                fdm_.add_ring_ground(ref_via.at.x - v.at.x, ref_via.at.y - v.at.y, ref_via.drill * 0.5, thickness);
             }
         }
         
-        atlc_.add_ground(0, max_d, thickness, v.drill);
+        fdm_.add_ground(0, max_d, thickness, v.drill);
     
-        atlc_.calc_Z0(Z0, v_, c, l, r, g);
-        float td_ = h * 1000000 / v_;
+        fdm_.calc_Z0(Z0, v_, c, l, r, g);
+        float td_ = h * 1000000. / v_;
         
         td += td_;
         
