@@ -959,14 +959,11 @@ void openems_model_gen::_add_segment(FILE *fp)
 {
     for (auto net: _nets)
     {
+        range_det range;
         std::uint32_t net_id = net.first;
         const mesh_info& info = net.second;
         std::list<pcb::segment> segments = _pcb->get_segments(net_id);
         
-        float x_min = 100000;
-        float x_max = -100000;
-        float y_min = 100000;
-        float y_max = -100000;
                 
         for (const auto& s: segments)
         {
@@ -975,38 +972,26 @@ void openems_model_gen::_add_segment(FILE *fp)
             float thickness = _pcb->get_layer_thickness(layer);
             if (s.is_arc())
             {
-                range_det range;
                 _add_arc(fp, _pcb->get_net_name(s.net), s.start, s.mid, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
             }
             else
             {
-                range_det range;
                 _add_line(fp, _pcb->get_net_name(s.net), s.start, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
             }
             
-            x_min = std::min(x_min, std::min(s.start.x - s.width, s.end.x - s.width));
-            x_max = std::max(x_max, std::max(s.start.x + s.width, s.end.x + s.width));
-            y_min = std::min(y_min, std::min(s.start.y - s.width, s.end.y - s.width));
-            y_max = std::max(y_max, std::max(s.start.y + s.width, s.end.y + s.width));
+            range.det(s.start.x - s.width, s.start.y - s.width);
+            range.det(s.start.x + s.width, s.start.y + s.width);
+            range.det(s.end.x - s.width, s.end.y - s.width);
+            range.det(s.end.x + s.width, s.end.y + s.width);
         }
-        if (info.gen_mesh && info.use_uniform_grid
-            && x_min < 100000 && x_max > -100000 && x_min < x_max
-            && y_min < 100000 && y_max > -100000 && y_min < y_max)
+        if (info.gen_mesh && info.use_uniform_grid && range.is_valid())
         {
-            mesh::line_range x_range(x_min, x_max, info.x_gap, info.mesh_prio);
-            mesh::line_range y_range(y_min, y_max, info.y_gap, info.mesh_prio);
+            float x_margin = 1;
+            float y_margin = 1;
+            mesh::line_range x_range(range.x_min - x_margin, range.x_max + x_margin, info.x_gap, info.mesh_prio);
+            mesh::line_range y_range(range.y_min - y_margin, range.y_max + y_margin, info.y_gap, info.mesh_prio);
             _mesh.x_range.insert(x_range);
             _mesh.y_range.insert(y_range);
-        #if 0
-            for (float x = x_min; x < x_max; x += info.x_gap)
-            {
-                _mesh.x.insert(mesh::line(x, info.mesh_prio));
-            }
-            for (float y = y_min; y < y_max; y += info.y_gap)
-            {
-                _mesh.y.insert(mesh::line(y, info.mesh_prio));
-            }
-        #endif
         }
     }
     fprintf(fp, "\n\n");

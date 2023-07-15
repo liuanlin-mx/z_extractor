@@ -726,7 +726,7 @@ class antenna_gui(antenna_base):
         
         self.m_gridMesh.SetColFormatFloat(0, precision = 2)
         self.m_gridMesh.SetColFormatFloat(1, precision = 2)
-        self.m_gridMesh.SetColFormatFloat(2, precision = 2)
+        self.m_gridMesh.SetColFormatFloat(2, precision = 3)
         
         
         for row in range(len(self.cur_cfg.mesh)):

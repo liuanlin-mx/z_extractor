@@ -389,6 +389,7 @@ static int main_sparameter(int argc, char **argv)
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
     std::vector<std::string> mesh_range;
+    std::map<std::string, float> mesh_net;
     std::vector<std::string> freq;
     std::string bc = "MUR";
     
@@ -422,6 +423,14 @@ static int main_sparameter(int argc, char **argv)
         else if (std::string(arg) == "-mesh_range" && i < argc)
         {
             mesh_range.push_back(arg_next);
+        }
+        else if (std::string(arg) == "-mesh_net" && i < argc)
+        {
+            std::vector<std::string> arg_v = _string_split(arg_next, ":");
+            if (arg_v.size() == 2)
+            {
+                mesh_net.emplace(arg_v[0], atof(arg_v[1].c_str()));
+            }
         }
         else if (std::string(arg) == "-bc" && i < argc)
         {
@@ -461,7 +470,14 @@ static int main_sparameter(int argc, char **argv)
     
     for (const auto& net: nets)
     {
-        ems.add_net(pcb_->get_net_id(net), false);
+        if (mesh_net.count(net))
+        {
+            ems.add_net(pcb_->get_net_id(net), mesh_net[net], mesh_net[net], false, 1);
+        }
+        else
+        {
+            ems.add_net(pcb_->get_net_id(net), false);
+        }
     }
     
     for (const auto& fp: footprints)
@@ -518,7 +534,7 @@ static int main_sparameter(int argc, char **argv)
     
     
     ems.set_mesh_min_gap(0.01, 0.01, 0.01);
-    if (mesh_range.empty())
+    if (mesh_range.empty() && mesh_net.empty())
     {
         ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
         ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);

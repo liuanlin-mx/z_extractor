@@ -29,6 +29,7 @@ import signal
 import threading
 import copy
 
+
 ###########################################################################
 ## Class sparameter_base
 ###########################################################################
@@ -211,7 +212,7 @@ class sparameter_base ( wx.Dialog ):
 		self.m_gridMesh = wx.grid.Grid( sbSizerMesh.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
 
 		# Grid
-		self.m_gridMesh.CreateGrid( 0, 4 )
+		self.m_gridMesh.CreateGrid( 0, 5 )
 		self.m_gridMesh.EnableEditing( True )
 		self.m_gridMesh.EnableGridLines( True )
 		self.m_gridMesh.EnableDragGridSize( False )
@@ -224,7 +225,7 @@ class sparameter_base ( wx.Dialog ):
 		self.m_gridMesh.SetColLabelValue( 1, u"End(mm)" )
 		self.m_gridMesh.SetColLabelValue( 2, u"Gap(mm)" )
 		self.m_gridMesh.SetColLabelValue( 3, u"Dir" )
-		self.m_gridMesh.SetColLabelValue( 4, wx.EmptyString )
+		self.m_gridMesh.SetColLabelValue( 4, u"Net" )
 		self.m_gridMesh.SetColLabelSize( wx.grid.GRID_AUTOSIZE )
 		self.m_gridMesh.SetColLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
 
@@ -567,9 +568,10 @@ class s_parameter_gui(sparameter_base):
                     
                     
             for mesh in cfg.mesh:
-                if len(mesh['dir']) > 1:
-                    continue
-                cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
+                if mesh['dir'] == "Net Auto" and mesh.get('net', '') != '':
+                    cmd = cmd + '-mesh_net ' + str(mesh.get('net', '')) + ':' + str(mesh['gap']) + ' '
+                elif len(mesh['dir']) == 1:
+                    cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
                 
             cmd = cmd + ' -max_freq ' + cfg.max_freq
             cmd = cmd + ' -criteria ' + cfg.end_criteria
@@ -680,17 +682,18 @@ class s_parameter_gui(sparameter_base):
         
         self.m_gridMesh.SetColFormatFloat(0, precision = 2)
         self.m_gridMesh.SetColFormatFloat(1, precision = 2)
-        self.m_gridMesh.SetColFormatFloat(2, precision = 2)
-        
+        self.m_gridMesh.SetColFormatFloat(2, precision = 3)
         
         for row in range(len(self.cur_cfg.mesh)):
             self.m_gridMesh.AppendRows()
-            self.m_gridMesh.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(["x", "y", "Not Used"]))
+            self.m_gridMesh.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(["x", "y", "Net Auto", "Not Used"]))
+            self.m_gridMesh.SetCellEditor(row, 4, wx.grid.GridCellChoiceEditor(self.cur_cfg.net))
             item = self.cur_cfg.mesh[row]
             self.m_gridMesh.SetCellValue(row, 0, str(item['start']))
             self.m_gridMesh.SetCellValue(row, 1, str(item['end']))
             self.m_gridMesh.SetCellValue(row, 2, str(item['gap']))
             self.m_gridMesh.SetCellValue(row, 3, str(item['dir']))
+            self.m_gridMesh.SetCellValue(row, 4, str(item.get('net', '')))
             
         self.m_gridMesh.AutoSizeColumns()
         self.m_gridMesh.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
@@ -736,6 +739,7 @@ class s_parameter_gui(sparameter_base):
             if (net not in self.cur_cfg.net):
                 self.cur_cfg.net.append(net)
                 self.m_listBoxNet.Append(net)
+        self.update_mesh_ui()
         
     def m_buttonNetDelOnButtonClick( self, event ):
         selected = self.m_listBoxNet.GetSelections()
@@ -970,11 +974,12 @@ class s_parameter_gui(sparameter_base):
         item['end'] = float(self.m_gridMesh.GetCellValue(row, 1));
         item['gap'] = float(self.m_gridMesh.GetCellValue(row, 2));
         item['dir'] = self.m_gridMesh.GetCellValue(row, 3);
+        item['net'] = self.m_gridMesh.GetCellValue(row, 4);
         self.cur_cfg.mesh[row] = item
         self.m_gridMesh.AutoSizeColumns()
         
     def m_buttonMeshAddLineOnButtonClick( self, event ):
-        self.cur_cfg.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'x'})
+        self.cur_cfg.mesh.append({'start': 0, 'end': 0, 'gap': 0.1, 'dir': 'x', 'net': ''})
         self.update_mesh_ui()
         
     def m_buttonMeshDelLineOnButtonClick( self, event ):
