@@ -700,13 +700,13 @@ class antenna_gui(antenna_base):
         for row in range(len(self.cur_cfg.ex)):
             item = self.cur_cfg.ex[row]
             self.m_gridEx.AppendRows()
-            self.m_gridEx.SetCellEditor(row, 0, wx.grid.GridCellChoiceEditor(choices))
+            self.m_gridEx.SetCellEditor(row, 0, wx.grid.GridCellChoiceEditor(choices, True))
             self.m_gridEx.SetCellValue(row, 0, str(item['pad1']))
             
             self.m_gridEx.SetCellEditor(row, 1, wx.grid.GridCellChoiceEditor(self.layer_name))
             self.m_gridEx.SetCellValue(row, 1, str(item['layer1']))
             
-            self.m_gridEx.SetCellEditor(row, 2, wx.grid.GridCellChoiceEditor(choices))
+            self.m_gridEx.SetCellEditor(row, 2, wx.grid.GridCellChoiceEditor(choices, True))
             self.m_gridEx.SetCellValue(row, 2, str(item['pad2']))
             
             self.m_gridEx.SetCellEditor(row, 3, wx.grid.GridCellChoiceEditor(self.layer_name))
