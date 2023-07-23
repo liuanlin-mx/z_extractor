@@ -1035,7 +1035,7 @@ class s_parameter( pcbnew.ActionPlugin ):
         self.name = "S-Parameter"
         self.category = "S-Parameter Simulation"
         self.description = "S-Parameter Simulation"
-        self.show_toolbar_button = True
+        self.show_toolbar_button = False
         #self.icon_file_name = os.path.join(os.path.dirname(__file__), 'rl_icon.png')
 
     def Run( self ):

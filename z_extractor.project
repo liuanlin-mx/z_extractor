@@ -272,7 +272,9 @@
         <StartupCommands/>
       </Debugger>
       <PreBuild/>
-      <PostBuild/>
+      <PostBuild>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName).exe $(WorkspacePath)/z_extractor_pcm/plugins/win/</Command>
+      </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
         <CleanCommand/>

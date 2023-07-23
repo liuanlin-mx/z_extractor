@@ -1085,7 +1085,7 @@ class antenna( pcbnew.ActionPlugin ):
         self.name = "Antenna"
         self.category = "Antennas Simulation"
         self.description = "Antennas Simulation"
-        self.show_toolbar_button = True
+        self.show_toolbar_button = False
         #self.icon_file_name = os.path.join(os.path.dirname(__file__), 'rl_icon.png')
 
     def Run( self ):
