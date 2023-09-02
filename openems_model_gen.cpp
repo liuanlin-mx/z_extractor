@@ -919,6 +919,7 @@ void openems_model_gen::_add_dielectric(FILE *fp)
     }
     
     std::vector<pcb::layer> layers = _pcb->get_layers();
+    std::vector<pcb::gr> grs = _pcb->get_edge_grs();
     for (const auto& layer: layers)
     {
         if (layer.type == pcb::layer::TOP_SOLDER_MASK
@@ -931,13 +932,25 @@ void openems_model_gen::_add_dielectric(FILE *fp)
         float z1 = _pcb->get_layer_z_axis(layer.name);
         float z2 = z1 + _pcb->get_layer_thickness(layer.name);
         
-        fprintf(fp, "start = [%f %f %f];\n", x1, y1, z1);
-        fprintf(fp, "stop = [%f %f %f];\n", x2, y2, z2);
         fprintf(fp, "CSX = AddMaterial(CSX, '%s');\n", layer.name.c_str());
         fprintf(fp, "CSX = SetMaterialProperty(CSX, '%s', 'Epsilon', %f, 'Kappa', %f * 2 * pi * %g * EPS0 * %f);\n",
             layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name),
             _pcb->get_layer_loss_tangent(layer.name), freq, _pcb->get_layer_epsilon_r(layer.name));
-        fprintf(fp, "CSX = AddBox(CSX, '%s', 1, start, stop);\n", layer.name.c_str());
+        
+        if (grs.size() == 1)
+        {
+            range_det range;
+            pcb::point at(0, 0);
+            pcb::gr gr = grs[0];
+            gr.layer_name = layer.name;
+            _add_gr(gr, at, 0, layer.name, fp, range, 0, false);
+        }
+        else
+        {
+            fprintf(fp, "start = [%f %f %f];\n", x1, y1, z1);
+            fprintf(fp, "stop = [%f %f %f];\n", x2, y2, z2);
+            fprintf(fp, "CSX = AddBox(CSX, '%s', 1, start, stop);\n", layer.name.c_str());
+        }
     }
     fprintf(fp, "\n\n");
 }

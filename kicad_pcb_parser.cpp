@@ -840,42 +840,75 @@ void kicad_pcb_parser::_update_edge(const pcb::gr& g)
 {
     pcb::point center;
     
-    bool is_arc = g.gr_type == pcb::gr::GR_ARC;
-    bool is_circle = g.gr_type == pcb::gr::GR_CIRCLE;
-    
     if (g.layer_name == "Edge.Cuts")
     {
         float left = _pcb_left;
         float right = _pcb_right;
         float top = _pcb_top;
         float bottom = _pcb_bottom;
-            
-        if (is_arc)
-        {
-            double x;
-            double y;
-            double r;
-            calc_arc_center_radius(g.start.x, g.start.y, g.mid.x, g.mid.y, g.end.x, g.end.y, x, y, r);
-            center.x = x;
-            center.y = y;
-            is_circle = true;
-            is_arc = false;
-        }
         
-        if (is_circle)
+        _pcb->add_edge_gr(g);
+        if (g.gr_type == pcb::gr::GR_ARC || g.gr_type == pcb::gr::GR_CIRCLE || g.gr_type == pcb::gr::GR_LINE)
         {
-            float r = calc_dist(center.x, center.y, g.end.x, g.end.y);
-            left = center.x - r;
-            right = center.x + r;
-            top = center.y - r;
-            bottom = center.y + r;
+            bool is_arc = g.gr_type == pcb::gr::GR_ARC;
+            bool is_circle = g.gr_type == pcb::gr::GR_CIRCLE;
+            
+            if (is_arc)
+            {
+                double x;
+                double y;
+                double r;
+                calc_arc_center_radius(g.start.x, g.start.y, g.mid.x, g.mid.y, g.end.x, g.end.y, x, y, r);
+                center.x = x;
+                center.y = y;
+                is_circle = true;
+                is_arc = false;
+            }
+            
+            if (is_circle)
+            {
+                float r = calc_dist(center.x, center.y, g.end.x, g.end.y);
+                left = center.x - r;
+                right = center.x + r;
+                top = center.y - r;
+                bottom = center.y + r;
+            }
+            else
+            {
+                left = std::min(g.start.x, g.end.x);
+                right = std::max(g.start.x, g.end.x);
+                top = std::min(g.start.y, g.end.y);
+                bottom = std::max(g.start.y, g.end.y);
+            }
         }
-        else
+        else if (g.gr_type == pcb::gr::GR_RECT)
         {
             left = std::min(g.start.x, g.end.x);
             right = std::max(g.start.x, g.end.x);
             top = std::min(g.start.y, g.end.y);
             bottom = std::max(g.start.y, g.end.y);
+        }
+        else if (g.gr_type == pcb::gr::GR_POLY)
+        {
+            for (const auto& p: g.pts)
+            {
+                if (left > p.x)
+                {
+                    left = p.x;
+                }
+                if (right < p.x)
+                {
+                    right = p.x;
+                }
+                if (top > p.y)
+                {
+                    top = p.y;
+                }
+                if (bottom < p.y)
+                {
+                    bottom = p.y;
+                }
+            }
         }
         
         if (left < _pcb_left)

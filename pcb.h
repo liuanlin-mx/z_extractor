@@ -239,6 +239,7 @@ public:
     bool add_pad(const pad& p);
     bool add_layer(const layer& l);
     bool add_gr(const gr& g);
+    bool add_edge_gr(const gr& g);
     void set_edge(float top, float bottom, float left, float right);
     
     void ignore_cu_thickness(bool b) { _ignore_cu_thickness = b; }
@@ -256,6 +257,7 @@ public:
     float get_edge_right() { return _pcb_right; }
     float get_edge_size_x() { return fabs(_pcb_right - _pcb_left); }
     float get_edge_size_y() { return fabs(_pcb_bottom - _pcb_top); }
+    const std::vector<gr>& get_edge_grs() { return _edge_grs; }
     
     std::vector<layer> get_layers() { return _layers; }
     std::list<segment> get_segments(std::uint32_t net_id);
@@ -372,6 +374,7 @@ private:
     std::multimap<std::uint32_t, zone> _zones;
     
     std::vector<gr> _grs;
+    std::vector<gr> _edge_grs;
     std::vector<layer> _layers;
     std::vector<footprint> _footprints;
     

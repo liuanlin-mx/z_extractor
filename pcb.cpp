@@ -100,6 +100,11 @@ bool pcb::add_gr(const gr& g)
     return true;
 }
 
+bool pcb::add_edge_gr(const gr& g)
+{
+    _edge_grs.push_back(g);
+    return true;
+}
 
 void pcb::set_edge(float top, float bottom, float left, float right)
 {
