@@ -555,10 +555,10 @@ void openems_model_gen::gen_model(const std::string& func_name)
         //_gen_mesh_z(fp);
         _add_dielectric(fp);
         _add_metal(fp);
-        _add_segment(fp);
-        _add_via(fp);
-        _add_zone(fp);
-        _add_footprint(fp);
+        _add_segment(fp);   //prio 2
+        _add_via(fp);   //prio 3
+        _add_zone(fp);  //prio 3
+        _add_footprint(fp); //pad prio 4, gr prio 2
         //_gen_mesh_xy(fp);
         fprintf(fp, "end\n");
         fclose(fp);
@@ -1052,7 +1052,7 @@ void openems_model_gen::_add_via(FILE *fp)
                 {
                     max_z = z2;
                 }
-                
+            #if 0
                 float radius = v.size / 2;
                 
                 fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
@@ -1060,14 +1060,14 @@ void openems_model_gen::_add_via(FILE *fp)
                         c.x, c.y, z1,
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
-                        
+            #endif
             }
             if (min_z < 10000 && max_z > -10000)
             {
                 pcb::point c(v.at);
                 
                 float radius = v.drill / 2;
-                fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
+                fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
                             net_name.c_str(),
                             c.x, c.y, min_z,
                             c.x, c.y, max_z,
@@ -1114,7 +1114,7 @@ void openems_model_gen::_add_zone(FILE *fp)
                 }
             }
             
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(z.net).c_str(), z1, thickness);
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(z.net).c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
         }
     }
@@ -1315,7 +1315,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             
             _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.drill / 2;
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 4, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
                         c.x, c.y, min_z,
                         c.x, c.y, max_z,
@@ -1367,7 +1367,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "p(1, 3) = %f; p(2, 3) = %f;\n", p3.x, p3.y);
             fprintf(fp, "p(1, 4) = %f; p(2, 4) = %f;\n", p4.x, p4.y);
         
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 4, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
             fprintf(fp, "clear p;\n");
             
             range.det(p1.x, p1.y);
@@ -1389,7 +1389,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.size_w / 2;
             
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 4, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
                         c.x, c.y, z1,
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,

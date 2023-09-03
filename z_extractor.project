@@ -154,7 +154,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/esp32s3_core/esp32s3_core.kicad_pcb -t -ref &quot;GND&quot; -net &quot;/GPIO9&quot; -coupled_max_gap 0.508 -coupled_min_len 2.54 -ltra 0 -mmtl 0 -lossless_tl 1 -via_tl_mode 0 -step 0.508 -o xxx" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/esp32s3_core/esp32s3_core.kicad_pcb -ant -net &quot;GND,+3V3&quot; -fp ANT1 -port ANT1:1:F.Cu:ANT1:1:gnd.Cu:z:50.0:1 -nf2ff &quot;ANT1&quot; -mesh_range 121.0:137.0:0.1:x -mesh_range 69.0:76.0:0.1:y -mesh_range 77.0:80.0:0.2:y -mesh_range 113.0:120.0:0.3:x -mesh_range 138.0:145.0:0.3:x -mesh_range 81.0:107.0:0.3:y  -freq 2.44e9 -max_freq 5e9 -criteria -25 -bc MUR -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>
