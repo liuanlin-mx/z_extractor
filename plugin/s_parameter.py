@@ -569,7 +569,7 @@ class s_parameter_gui(sparameter_base):
                     
             for mesh in cfg.mesh:
                 if mesh['dir'] == "Net Auto" and mesh.get('net', '') != '':
-                    cmd = cmd + '-mesh_net ' + str(mesh.get('net', '')) + ':' + str(mesh['gap']) + ' '
+                    cmd = cmd + '-mesh_net ' + '"' + str(mesh.get('net', '')) + ':' + str(mesh['gap']) + '" '
                 elif len(mesh['dir']) == 1:
                     cmd = cmd + '-mesh_range ' + str(mesh['start']) + ':' + str(mesh['end']) + ':' + str(mesh['gap']) + ':' + mesh['dir'] + ' '
                 
