@@ -249,17 +249,17 @@ private:
     void _gen_mesh_xy(FILE *fp);
     void _add_dielectric(FILE *fp);
     void _add_metal(FILE *fp);
-    void _add_segment(FILE *fp);
-    void _add_via(FILE *fp);
-    void _add_zone(FILE *fp);
-    void _add_footprint(FILE *fp);
-    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
-    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true);
+    void _add_segment(FILE *fp, std::int32_t metal_prio = 1);
+    void _add_via(FILE *fp, std::int32_t metal_prio = 1);
+    void _add_zone(FILE *fp, std::int32_t metal_prio = 1);
+    void _add_footprint(FILE *fp, std::int32_t metal_prio = 1, std::int32_t metal_pad_prio = 1);
+    void _add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true, std::int32_t metal_prio = 1);
+    void _add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio = 0, bool gen_mesh = true, std::int32_t metal_prio = 1);
     void _add_line(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& end, float width, float z1, float z2,
-                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio);
+                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio, std::int32_t metal_prio = 1);
                         
     void _add_arc(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& mid, const pcb::point& end, float width, float z1, float z2,
-                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio);
+                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio, std::int32_t metal_prio = 1);
     
     void _add_excitation(FILE *fp, std::uint32_t mesh_prio = 99);
     void _add_lumped_element(FILE *fp, std::uint32_t mesh_prio = 99);

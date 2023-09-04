@@ -555,10 +555,10 @@ void openems_model_gen::gen_model(const std::string& func_name)
         //_gen_mesh_z(fp);
         _add_dielectric(fp);
         _add_metal(fp);
-        _add_segment(fp);   //prio 2
-        _add_via(fp);   //prio 3
-        _add_zone(fp);  //prio 3
-        _add_footprint(fp); //pad prio 4, gr prio 2
+        _add_segment(fp, 6);
+        _add_via(fp, 2);
+        _add_zone(fp, 3);
+        _add_footprint(fp, 4, 5);
         //_gen_mesh_xy(fp);
         fprintf(fp, "end\n");
         fclose(fp);
@@ -968,7 +968,7 @@ void openems_model_gen::_add_metal(FILE *fp)
 }
 
 
-void openems_model_gen::_add_segment(FILE *fp)
+void openems_model_gen::_add_segment(FILE *fp, std::int32_t metal_prio)
 {
     for (auto net: _nets)
     {
@@ -985,11 +985,11 @@ void openems_model_gen::_add_segment(FILE *fp)
             float thickness = _pcb->get_layer_thickness(layer);
             if (s.is_arc())
             {
-                _add_arc(fp, _pcb->get_net_name(s.net), s.start, s.mid, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
+                _add_arc(fp, _pcb->get_net_name(s.net), s.start, s.mid, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio, metal_prio);
             }
             else
             {
-                _add_line(fp, _pcb->get_net_name(s.net), s.start, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio);
+                _add_line(fp, _pcb->get_net_name(s.net), s.start, s.end, s.width, z1, z1 + thickness, range, info.gen_mesh, info.use_uniform_grid, info.mesh_prio, metal_prio);
             }
             
             range.det(s.start.x - s.width, s.start.y - s.width);
@@ -1012,7 +1012,7 @@ void openems_model_gen::_add_segment(FILE *fp)
 }
 
 
-void openems_model_gen::_add_via(FILE *fp)
+void openems_model_gen::_add_via(FILE *fp, std::int32_t metal_prio)
 {
     for (auto net: _nets)
     {
@@ -1067,8 +1067,9 @@ void openems_model_gen::_add_via(FILE *fp)
                 pcb::point c(v.at);
                 
                 float radius = v.drill / 2;
-                fprintf(fp, "CSX = AddCylinder(CSX, '%s', 3, [%f %f %f], [%f %f %f], %f);\n",
+                fprintf(fp, "CSX = AddCylinder(CSX, '%s', %d, [%f %f %f], [%f %f %f], %f);\n",
                             net_name.c_str(),
+                            metal_prio,
                             c.x, c.y, min_z,
                             c.x, c.y, max_z,
                             radius);
@@ -1089,7 +1090,7 @@ void openems_model_gen::_add_via(FILE *fp)
 }
 
 
-void openems_model_gen::_add_zone(FILE *fp)
+void openems_model_gen::_add_zone(FILE *fp, std::int32_t metal_prio)
 {
     for (auto net: _nets)
     {
@@ -1114,7 +1115,7 @@ void openems_model_gen::_add_zone(FILE *fp)
                 }
             }
             
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 3, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(z.net).c_str(), z1, thickness);
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", _pcb->get_net_name(z.net).c_str(), metal_prio, z1, thickness);
             fprintf(fp, "clear p;\n");
         }
     }
@@ -1122,7 +1123,7 @@ void openems_model_gen::_add_zone(FILE *fp)
     fprintf(fp, "\n\n");
 }
 
-void openems_model_gen::_add_footprint(FILE *fp)
+void openems_model_gen::_add_footprint(FILE *fp, std::int32_t metal_prio, std::int32_t metal_pad_prio)
 {
     const std::vector<pcb::footprint>& footprints = _pcb->get_footprints();
     for (const auto& footprint: footprints)
@@ -1136,13 +1137,13 @@ void openems_model_gen::_add_footprint(FILE *fp)
             {
                 if (_pcb->is_cu_layer(gr.layer_name))
                 {
-                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid);
+                    _add_gr(gr, footprint.at, footprint.at_angle, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid, metal_prio);
                 }
             }
             
             for (const auto& pad: footprint.pads)
             {
-                _add_pad(footprint, pad, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid);
+                _add_pad(footprint, pad, footprint.reference, fp, range, info.mesh_prio, info.gen_mesh && !info.use_uniform_grid, metal_pad_prio);
             }
             
             if (info.gen_mesh && info.use_uniform_grid && range.is_valid())
@@ -1161,7 +1162,8 @@ void openems_model_gen::_add_footprint(FILE *fp)
 }
 
 
-void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio, bool gen_mesh)
+void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, const std::string& name, FILE *fp, range_det& range,
+                                    std::uint32_t mesh_prio, bool gen_mesh, std::int32_t metal_prio)
 {
     const std::string& layer = gr.layer_name;
     float z1 = _pcb->get_layer_z_axis(layer);
@@ -1184,7 +1186,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
             }
         }
         
-        fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
+        fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), metal_prio, z1, thickness);
         fprintf(fp, "clear p;\n");
     }
     else if (gr.gr_type == pcb::gr::GR_RECT)
@@ -1208,7 +1210,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         
             //fprintf(fp, "CSX = AddBox(CSX, '%s', 2, [%f %f %f], [%f %f %f]);\n",
             //    name.c_str(), p1.x, p1.y, z1, p3.x, p3.y, z2);
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), metal_prio, z1, thickness);
             fprintf(fp, "clear p;\n");
             
             range.det(p1.x, p1.y);
@@ -1230,7 +1232,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         pcb::point end = gr.end;
         _pcb->coo_cvt_fp2pcb(at, angle, start);
         _pcb->coo_cvt_fp2pcb(at, angle, end);
-        _add_line(fp, name, start, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
+        _add_line(fp, name, start, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio, metal_prio);
     }
     else if (gr.gr_type == pcb::gr::GR_ARC)
     {
@@ -1241,7 +1243,7 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         _pcb->coo_cvt_fp2pcb(at, angle, end);
         _pcb->coo_cvt_fp2pcb(at, angle, mid);
         
-        _add_arc(fp, name, start, mid, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio);
+        _add_arc(fp, name, start, mid, end, gr.stroke_width, z1, z2, range, gen_mesh, false, mesh_prio, metal_prio);
     }
     else if (gr.gr_type == pcb::gr::GR_CIRCLE)
     {
@@ -1252,8 +1254,9 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
         float radius = calc_dist(start.x, start.y, end.x, end.y);
         if (gr.fill_type == pcb::gr::FILL_SOLID)
         {
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 2, [%f %f %f], [%f %f %f], %f);\n",
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', %d, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
+                        metal_prio,
                         start.x, start.y, z1,
                         start.x, start.y, z2,
                         radius);
@@ -1274,7 +1277,8 @@ void openems_model_gen::_add_gr(const pcb::gr& gr, pcb::point at, float angle, c
 }
 
 
-void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range, std::uint32_t mesh_prio, bool gen_mesh)
+void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad& p, const std::string& name, FILE *fp, range_det& range,
+                                    std::uint32_t mesh_prio, bool gen_mesh, std::int32_t metal_prio)
 {
     std::vector<std::string> layers = _pcb->get_pad_layers(p);
     
@@ -1315,8 +1319,9 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             
             _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.drill / 2;
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 4, [%f %f %f], [%f %f %f], %f);\n",
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', %d, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
+                        metal_prio,
                         c.x, c.y, min_z,
                         c.x, c.y, max_z,
                         radius);
@@ -1367,7 +1372,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             fprintf(fp, "p(1, 3) = %f; p(2, 3) = %f;\n", p3.x, p3.y);
             fprintf(fp, "p(1, 4) = %f; p(2, 4) = %f;\n", p4.x, p4.y);
         
-            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 4, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, thickness);
+            fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), metal_prio, z1, thickness);
             fprintf(fp, "clear p;\n");
             
             range.det(p1.x, p1.y);
@@ -1389,8 +1394,9 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
             _pcb->coo_cvt_fp2pcb(footprint.at, footprint.at_angle, c);
             float radius = p.size_w / 2;
             
-            fprintf(fp, "CSX = AddCylinder(CSX, '%s', 4, [%f %f %f], [%f %f %f], %f);\n",
+            fprintf(fp, "CSX = AddCylinder(CSX, '%s', %d, [%f %f %f], [%f %f %f], %f);\n",
                         name.c_str(),
+                        metal_prio,
                         c.x, c.y, z1,
                         c.x, c.y, _ignore_cu_thickness? z2 + 0.001: z2,
                         radius);
@@ -1414,7 +1420,7 @@ void openems_model_gen::_add_pad(const pcb::footprint& footprint, const pcb::pad
 
 
 void openems_model_gen::_add_line(FILE *fp, const std::string& name, const pcb::point& p1, const pcb::point& p2, float width,float z1, float z2,
-                                    range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio)
+                                    range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio, std::int32_t metal_prio)
 {
     std::complex<float> start(p1.x, p1.y);
     std::complex<float> end(p2.x, p2.y);
@@ -1456,14 +1462,14 @@ void openems_model_gen::_add_line(FILE *fp, const std::string& name, const pcb::
         }
     }
     
-    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, z2 - z1);
+    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), metal_prio, z1, z2 - z1);
     fprintf(fp, "clear p;\n");
 }
 
 
 
 void openems_model_gen::_add_arc(FILE *fp, const std::string& name, const pcb::point& start, const pcb::point& mid, const pcb::point& end, float width, float z1, float z2,
-                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio)
+                        range_det& range, bool gen_mesh, bool use_uniform_grid, std::uint32_t mesh_prio, std::int32_t metal_prio)
 {
     pcb::segment s;
     s.start = start;
@@ -1506,7 +1512,7 @@ void openems_model_gen::_add_arc(FILE *fp, const std::string& name, const pcb::p
         fprintf(fp, "p(1, %d) = %f; p(2, %d) = %f;\n", idx, p.x, idx, p.y);
         idx++;
     }
-    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', 2, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), z1, z2 - z1);
+    fprintf(fp, "CSX = AddLinPoly(CSX, '%s', %d, 2, %f, p, %f, 'CoordSystem', 0);\n", name.c_str(), metal_prio, z1, z2 - z1);
     fprintf(fp, "clear p;\n");
 }
 
