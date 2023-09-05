@@ -205,7 +205,7 @@ class antenna_base ( wx.Dialog ):
 		bSizer101 = wx.BoxSizer( wx.HORIZONTAL )
 
 		self.m_buttonExAddLine = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
-		bSizer101.Add( self.m_buttonExAddLine, 1, wx.EXPAND, 5 )
+		bSizer101.Add( self.m_buttonExAddLine, 1, 0, 5 )
 
 		self.m_buttonExDelLine = wx.Button( sbSizer21.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
 		bSizer101.Add( self.m_buttonExDelLine, 1, 0, 5 )
@@ -215,6 +215,49 @@ class antenna_base ( wx.Dialog ):
 
 
 		bSizer81.Add( sbSizer21, 2, wx.EXPAND, 5 )
+
+		sbSizer10 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"lumped element" ), wx.VERTICAL )
+
+		self.m_gridLE = wx.grid.Grid( sbSizer10.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
+
+		# Grid
+		self.m_gridLE.CreateGrid( 0, 1 )
+		self.m_gridLE.EnableEditing( True )
+		self.m_gridLE.EnableGridLines( True )
+		self.m_gridLE.EnableDragGridSize( False )
+		self.m_gridLE.SetMargins( 0, 0 )
+
+		# Columns
+		self.m_gridLE.EnableDragColMove( False )
+		self.m_gridLE.EnableDragColSize( True )
+		self.m_gridLE.SetColLabelValue( 0, u"RLC" )
+		self.m_gridLE.SetColLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridLE.SetColLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Rows
+		self.m_gridLE.EnableDragRowSize( True )
+		self.m_gridLE.SetRowLabelSize( wx.grid.GRID_AUTOSIZE )
+		self.m_gridLE.SetRowLabelAlignment( wx.ALIGN_CENTER, wx.ALIGN_CENTER )
+
+		# Label Appearance
+
+		# Cell Defaults
+		self.m_gridLE.SetDefaultCellAlignment( wx.ALIGN_LEFT, wx.ALIGN_TOP )
+		sbSizer10.Add( self.m_gridLE, 1, wx.EXPAND|wx.FIXED_MINSIZE, 5 )
+
+		bSizer1011 = wx.BoxSizer( wx.HORIZONTAL )
+
+		self.m_buttonLEAddLine = wx.Button( sbSizer10.GetStaticBox(), wx.ID_ANY, u"add", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer1011.Add( self.m_buttonLEAddLine, 1, 0, 5 )
+
+		self.m_buttonLEDelLine = wx.Button( sbSizer10.GetStaticBox(), wx.ID_ANY, u"delete", wx.DefaultPosition, wx.DefaultSize, 0 )
+		bSizer1011.Add( self.m_buttonLEDelLine, 1, 0, 5 )
+
+
+		sbSizer10.Add( bSizer1011, 0, wx.EXPAND, 5 )
+
+
+		bSizer81.Add( sbSizer10, 1, wx.EXPAND, 5 )
 
 		sbSizerMesh = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"MeshLines" ), wx.VERTICAL )
 
@@ -354,6 +397,9 @@ class antenna_base ( wx.Dialog ):
 		self.m_gridEx.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridExOnGridCellChange )
 		self.m_buttonExAddLine.Bind( wx.EVT_BUTTON, self.m_buttonExAddLineOnButtonClick )
 		self.m_buttonExDelLine.Bind( wx.EVT_BUTTON, self.m_buttonExDelLineOnButtonClick )
+		self.m_gridLE.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridLEOnGridCellChange )
+		self.m_buttonLEAddLine.Bind( wx.EVT_BUTTON, self.m_buttonLEAddLineOnButtonClick )
+		self.m_buttonLEDelLine.Bind( wx.EVT_BUTTON, self.m_buttonLEDelLineOnButtonClick )
 		self.m_gridMesh.Bind( wx.grid.EVT_GRID_CELL_CHANGED, self.m_gridMeshOnGridCellChange )
 		self.m_buttonMeshAddLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshAddLineOnButtonClick )
 		self.m_buttonMeshDelLine.Bind( wx.EVT_BUTTON, self.m_buttonMeshDelLineOnButtonClick )
@@ -428,6 +474,15 @@ class antenna_base ( wx.Dialog ):
 	def m_buttonExDelLineOnButtonClick( self, event ):
 		event.Skip()
 
+	def m_gridLEOnGridCellChange( self, event ):
+		event.Skip()
+
+	def m_buttonLEAddLineOnButtonClick( self, event ):
+		event.Skip()
+
+	def m_buttonLEDelLineOnButtonClick( self, event ):
+		event.Skip()
+
 	def m_gridMeshOnGridCellChange( self, event ):
 		event.Skip()
 
@@ -461,12 +516,17 @@ class antenna_base ( wx.Dialog ):
 
 
 
+
+
+
+
 class ant_config_item():
     def __init__(self):
         self.net = ['GND']
         self.fp = []
         self.nf2ff_box = ""
         self.ex = []
+        self.lumped_element = []
         self.name = "newcfg"
         self.freq = "2.4e9"
         self.max_freq = "5e9"
@@ -529,6 +589,7 @@ class antenna_gui(antenna_base):
         self.update_fp_ui()
         self.update_nf2ff_box_ui()
         self.update_excitation_ui()
+        self.update_lumped_element_ui()
         self.update_mesh_ui()
         
     def load_cfg(self):
@@ -552,6 +613,8 @@ class antenna_gui(antenna_base):
                 item.fp = cfg["fp"]
             if "ex" in cfg:
                 item.ex = cfg["ex"]
+            if "lumped_element" in cfg:
+                item.lumped_element = cfg["lumped_element"]
             if "freq" in cfg:
                 item.freq = cfg["freq"]
             if "max_freq" in cfg:
@@ -595,7 +658,14 @@ class antenna_gui(antenna_base):
             for ex in cfg.ex:
                 if len(ex['dir']) > 1:
                     continue
-                cmd = cmd + '-port ' + ex['pad1'] + ':' + ex['layer1'] + ':' + ex['pad2'] + ':' + ex['layer2'] + ':' + ex['dir'] + ':' + str(ex['R']) + ':1 '
+                cmd = cmd + '-port "' + ex['pad1'] + ':' + ex['layer1'] + ':' + ex['pad2'] + ':' + ex['layer2'] + ':' + ex['dir'] + ':' + str(ex['R']) + ':1" '
+            
+            
+            for le in cfg.lumped_element:
+                if len(le['name']) < 1:
+                    continue
+                cmd = cmd + '-le "' + le['name']  + '" '
+                    
                     
             if len(cfg.nf2ff_box) > 0:
                     cmd = cmd + '-nf2ff "' + cfg.nf2ff_box + '" '
@@ -719,6 +789,29 @@ class antenna_gui(antenna_base):
             
         self.m_gridEx.AutoSizeColumns()
         self.m_gridEx.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
+    
+    
+    def update_lumped_element_ui(self):
+        choices = []
+        for m in self.board.GetFootprints():
+            footprint = m.GetReference()
+            if footprint in self.cur_cfg.fp:
+                if footprint[0].lower() == 'r' or footprint[0].lower() == 'c':
+                    choices.append(footprint)
+        
+        
+        self.m_gridLE.DeleteRows(0, self.m_gridLE.GetNumberRows())
+        self.m_gridLE.SetDefaultCellAlignment(wx.ALIGN_RIGHT, wx.ALIGN_CENTER)
+        
+        
+        for row in range(len(self.cur_cfg.lumped_element)):
+            item = self.cur_cfg.lumped_element[row]
+            self.m_gridLE.AppendRows()
+            self.m_gridLE.SetCellEditor(row, 0, wx.grid.GridCellChoiceEditor(choices, True))
+            self.m_gridLE.SetCellValue(row, 0, str(item['name']))
+            
+        self.m_gridLE.AutoSizeColumns()
+        self.m_gridLE.SetRowLabelSize(wx.grid.GRID_AUTOSIZE)
         
     def update_mesh_ui( self ):
         self.m_gridMesh.DeleteRows(0, self.m_gridMesh.GetNumberRows())
@@ -812,6 +905,7 @@ class antenna_gui(antenna_base):
                 self.m_listBoxFpAdded.Append(fp)
         self.update_nf2ff_box_ui()
         self.update_excitation_ui()
+        self.update_lumped_element_ui()
 
     def m_buttonFpDelOnButtonClick( self, event ):
         selected = self.m_listBoxFpAdded.GetSelections()
@@ -823,6 +917,7 @@ class antenna_gui(antenna_base):
             self.cur_cfg.fp.remove(fp)
         self.update_nf2ff_box_ui()
         self.update_excitation_ui()
+        self.update_lumped_element_ui()
     
 
     def m_listBoxCfgOnListBox( self, event ):
@@ -844,6 +939,7 @@ class antenna_gui(antenna_base):
         self.update_fp_ui()
         self.update_nf2ff_box_ui()
         self.update_excitation_ui()
+        self.update_lumped_element_ui()
         self.update_mesh_ui()
         
     def m_textCtrlEndCriteriaOnText( self, event ):
@@ -952,6 +1048,7 @@ class antenna_gui(antenna_base):
         self.update_fp_ui()
         self.update_nf2ff_box_ui()
         self.update_excitation_ui()
+        self.update_lumped_element_ui()
         self.update_mesh_ui()
         
     def m_buttonCfgRenameOnButtonClick( self, event ):
@@ -1018,6 +1115,25 @@ class antenna_gui(antenna_base):
             self.m_gridEx.DeleteRows(selected[size])
             self.cur_cfg.ex.pop(selected[size])
         
+    def m_gridLEOnGridCellChange( self, event ):
+        row = event.GetRow()
+        item = {}
+        item['name'] = self.m_gridLE.GetCellValue(row, 0);
+        self.cur_cfg.lumped_element[row] = item
+        self.m_gridLE.AutoSizeColumns()
+        
+    def m_buttonLEAddLineOnButtonClick( self, event ):
+        self.cur_cfg.lumped_element.append({'name': ''})
+        self.update_lumped_element_ui()
+
+    def m_buttonLEDelLineOnButtonClick( self, event ):
+        selected = self.m_gridLE.GetSelectedRows()
+        size = len(selected)
+        while size > 0:
+            size = size - 1
+            self.m_gridLE.DeleteRows(selected[size])
+            self.cur_cfg.lumped_element.pop(selected[size])
+
     def m_gridMeshOnGridCellChange( self, event ):
         row = event.GetRow()
         item = {}
