@@ -144,6 +144,7 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 ex.start.y = p1.y - size;
                 ex.end.y = p1.y + size;
             }
@@ -158,6 +159,7 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_x_gap(p1.x));
                 ex.start.x = p1.x - size;
                 ex.end.x = p2.x + size;
             }
@@ -177,7 +179,8 @@ void openems_model_gen::add_lumped_port(const std::string& fp1, const std::strin
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
-                
+                size = std::min(size, _get_mesh_x_gap(p1.x));
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 ex.start.x = p1.x - size;
                 ex.start.y = p1.y - size;
                 
@@ -254,6 +257,7 @@ void openems_model_gen::add_lumped_port(const std::string& fp_name, float R, boo
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 ex.start.y = p1.y - size;
                 ex.end.y = p1.y + size;
             }
@@ -268,6 +272,7 @@ void openems_model_gen::add_lumped_port(const std::string& fp_name, float R, boo
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_x_gap(p1.x));
                 ex.start.x = p1.x - size;
                 ex.end.x = p1.x + size;
             }
@@ -328,6 +333,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 element.start.y = p1.y - size;
                 element.end.y = p1.y + size;
             }
@@ -342,6 +348,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_x_gap(p1.x));
                 element.start.x = p1.x - size;
                 element.end.x = p1.x + size;
             }
@@ -361,6 +368,8 @@ void openems_model_gen::add_lumped_element(const std::string& fp1, const std::st
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_x_gap(p1.x));
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 element.start.x = p1.x - size;
                 element.start.y = p1.y - size;
                 
@@ -442,6 +451,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_y_gap(p1.y));
                 element.start.y = p1.y - size;
                 element.end.y = p1.y + size;
             }
@@ -456,6 +466,7 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
             else
             {
                 float size = std::min(std::min(pad1.size_w, pad1.size_h), std::min(pad2.size_w, pad2.size_h)) / 2;
+                size = std::min(size, _get_mesh_x_gap(p1.x));
                 element.start.x = p1.x - size;
                 element.end.x = p1.x + size;
             }
@@ -2101,6 +2112,37 @@ return;
     fprintf(fp, "end\n\n\n");
 }
 
+float openems_model_gen::_get_mesh_x_gap(float x)
+{
+    return _get_mesh_gap(x, _mesh.x_range);
+}
+
+float openems_model_gen::_get_mesh_y_gap(float y)
+{
+    return _get_mesh_gap(y, _mesh.y_range);
+}
+
+float openems_model_gen::_get_mesh_gap(float v, const std::multiset<mesh::line_range>& mesh_line_range)
+{
+    float min_gap = 100000;
+    for (auto it = mesh_line_range.begin(); it != mesh_line_range.end(); it++)
+    {
+        float start = it->start;
+        float end = it->end;
+        float gap = it->gap;
+        
+        if (v >= start && v <= end)
+        {
+            if (min_gap > gap)
+            {
+                min_gap = gap;
+            }
+        }
+    }
+    
+    return min_gap;
+}
+    
 void openems_model_gen::_apply_mesh_line_range(mesh& mesh)
 {
     _apply_mesh_line_range(mesh.x, mesh.x_range);

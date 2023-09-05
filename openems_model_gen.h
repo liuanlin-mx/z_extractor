@@ -273,6 +273,11 @@ private:
     void _add_plot_far_field(FILE *fp);
     void _add_write_snp(FILE *fp);
     
+    
+    /* return 100000 失败 */
+    float _get_mesh_x_gap(float x);
+    float _get_mesh_y_gap(float y);
+    float _get_mesh_gap(float v, const std::multiset<mesh::line_range>& mesh_line_range);
     void _apply_mesh_line_range(mesh& mesh);
     void _apply_mesh_line_range(std::set<mesh::line>& mesh_line, const std::multiset<mesh::line_range>& mesh_line_range);
     void _clean_mesh_line(std::set<mesh::line>& mesh_line, float min_gap = 0.01);

@@ -491,6 +491,22 @@ static int main_sparameter(int argc, char **argv)
         return 0;
     }
     
+    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
+    if (mesh_range.empty() && mesh_net.empty())
+    {
+        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
+        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
+    }
+    
+    for (const auto& range: mesh_range)
+    {
+        std::vector<std::string> arg_v = _string_split(range, ":");
+        if (4 == arg_v.size())
+        {
+            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
+        }
+    }
+    
     bool no_port = true;
     for (const auto& port: ports)
     {
@@ -532,22 +548,6 @@ static int main_sparameter(int argc, char **argv)
         return 0;
     }
     
-    
-    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
-    if (mesh_range.empty() && mesh_net.empty())
-    {
-        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
-        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
-    }
-    
-    for (const auto& range: mesh_range)
-    {
-        std::vector<std::string> arg_v = _string_split(range, ":");
-        if (4 == arg_v.size())
-        {
-            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
-        }
-    }
     ems.gen_sparameter_scripts(prefix);
     return 0;
 }
@@ -657,6 +657,22 @@ static int main_antenna(int argc, char **argv)
         ems.set_nf2ff_footprint(nf2ff_fp);
     }
     
+    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
+    if (mesh_range.empty())
+    {
+        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
+        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
+    }
+    
+    for (const auto& range: mesh_range)
+    {
+        std::vector<std::string> arg_v = _string_split(range, ":");
+        if (4 == arg_v.size())
+        {
+            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
+        }
+    }
+    
     bool no_excitation = true;
     for (const auto& port: ports)
     {
@@ -698,21 +714,6 @@ static int main_antenna(int argc, char **argv)
         return 0;
     }
     
-    ems.set_mesh_min_gap(0.01, 0.01, 0.01);
-    if (mesh_range.empty())
-    {
-        ems.add_mesh_range(pcb_->get_edge_left(), pcb_->get_edge_right(), 0.1, openems_model_gen::mesh::DIR_X);
-        ems.add_mesh_range(pcb_->get_edge_top(), pcb_->get_edge_bottom(), 0.1, openems_model_gen::mesh::DIR_Y);
-    }
-    
-    for (const auto& range: mesh_range)
-    {
-        std::vector<std::string> arg_v = _string_split(range, ":");
-        if (4 == arg_v.size())
-        {
-            ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
-        }
-    }
     ems.gen_antenna_simulation_scripts(prefix);
     return 0;
 }
