@@ -436,7 +436,8 @@ void openems_model_gen::add_lumped_element(const std::string& fp_name, bool gen_
         element.dir = dir;
         
         element.start.z = _pcb->get_layer_z_axis(footprint.layer);
-        element.end.z = element.start.z;
+        //element.end.z = element.start.z;
+        element.end.z = element.start.z + (_pcb->get_all_cu_layer().front() == footprint.layer)? -0.4: 0.4;
         
         if (dir == lumped_element::DIR_X)
         {
@@ -1576,7 +1577,7 @@ void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
         }
         else if (element.type == lumped_element::TYPE_L)
         {
-            type = "'LEtype', 0, 'R', 1e15, 'C', 1e-15, 'L'";
+            type = "'LEtype', 0, 'R', 0, 'C', 0, 'L'";
         }
         else if (element.type == lumped_element::TYPE_C)
         {
