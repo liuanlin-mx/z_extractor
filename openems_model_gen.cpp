@@ -1571,18 +1571,20 @@ void openems_model_gen::_add_lumped_element(FILE *fp, std::uint32_t mesh_prio)
         std::string type = "R";
         if (element.type == lumped_element::TYPE_R)
         {
-            type = "R";
+            //type = "'LEtype', 0, 'L', 0, 'C', 0, 'R'";
+            type = "'R'";
         }
         else if (element.type == lumped_element::TYPE_L)
         {
-            type = "L";
+            type = "'LEtype', 0, 'R', 1e15, 'C', 1e-15, 'L'";
         }
         else if (element.type == lumped_element::TYPE_C)
         {
-            type = "C";
+            //type = "'LEtype', 0, 'R', 1e15, 'L', 1e15, 'C'";
+            type = "'C'";
         }
         
-        fprintf(fp, "[CSX] = AddLumpedElement(CSX, '%s', %d, 'Caps', 1, '%s', %g);\n", element.name.c_str(), dir, type.c_str(), element.v);
+        fprintf(fp, "[CSX] = AddLumpedElement(CSX, '%s', %d, 'Caps', 1, %s, %g);\n", element.name.c_str(), dir, type.c_str(), element.v);
         fprintf(fp, "[CSX] = AddBox(CSX, '%s', 0, [%f %f %f], [%f %f %f]);\n",
                     element.name.c_str(),
                     element.start.x, element.start.y, element.start.z,

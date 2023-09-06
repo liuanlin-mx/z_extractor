@@ -796,7 +796,7 @@ class antenna_gui(antenna_base):
         for m in self.board.GetFootprints():
             footprint = m.GetReference()
             if footprint in self.cur_cfg.fp:
-                if footprint[0].lower() == 'r' or footprint[0].lower() == 'c':
+                if footprint[0].lower() == 'r' or footprint[0].lower() == 'l' or footprint[0].lower() == 'c':
                     choices.append(footprint)
         
         
