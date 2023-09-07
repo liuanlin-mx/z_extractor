@@ -949,12 +949,14 @@ void openems_model_gen::_add_dielectric(FILE *fp)
             layer.name.c_str(), _pcb->get_layer_epsilon_r(layer.name),
             _pcb->get_layer_loss_tangent(layer.name), freq, _pcb->get_layer_epsilon_r(layer.name));
         
-        if (grs.size() == 1)
+        if (grs.size() == 1 &&
+            (grs[0].gr_type == pcb::gr::GR_POLY))
         {
             range_det range;
             pcb::point at(0, 0);
             pcb::gr gr = grs[0];
             gr.layer_name = layer.name;
+            gr.fill_type = pcb::gr::FILL_SOLID;
             _add_gr(gr, at, 0, layer.name, fp, range, 0, false);
         }
         else

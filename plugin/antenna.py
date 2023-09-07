@@ -216,7 +216,7 @@ class antenna_base ( wx.Dialog ):
 
 		bSizer81.Add( sbSizer21, 2, wx.EXPAND, 5 )
 
-		sbSizer10 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"lumped element" ), wx.VERTICAL )
+		sbSizer10 = wx.StaticBoxSizer( wx.StaticBox( self, wx.ID_ANY, u"Lumped Element" ), wx.VERTICAL )
 
 		self.m_gridLE = wx.grid.Grid( sbSizer10.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
 

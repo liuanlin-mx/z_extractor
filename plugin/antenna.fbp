@@ -1816,9 +1816,9 @@
                             <property name="border">5</property>
                             <property name="flag">wxEXPAND</property>
                             <property name="proportion">1</property>
-                            <object class="wxStaticBoxSizer" expanded="1">
+                            <object class="wxStaticBoxSizer" expanded="0">
                                 <property name="id">wxID_ANY</property>
-                                <property name="label">lumped element</property>
+                                <property name="label">Lumped Element</property>
                                 <property name="minimum_size"></property>
                                 <property name="name">sbSizer10</property>
                                 <property name="orient">wxVERTICAL</property>

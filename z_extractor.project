@@ -154,7 +154,7 @@
         <Library Value="z"/>
       </Linker>
       <ResourceCompiler Options="" Required="no"/>
-      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments=" -pcb /home/mx/work/pcba/pcb/esp32s3_core/esp32s3_core.kicad_pcb -sp -net &quot;Net-(U1-LNA_IN),GND&quot; -fp U1 -fp L2 -port U1:1:F.Cu:U1:1:gnd.Cu:z:50.0:1 -port L2:1:F.Cu:L2:1:gnd.Cu:z:50.0:0 -mesh_net Net-(U1-LNA_IN):0.05  -max_freq 5e9 -criteria -50 -bc MUR -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="$(ConfigurationName)" Command="$(OutputFile)" CommandArguments="-pcb /home/mx/work/pcba/pcb/test_sp/test_sp.kicad_pcb -sp -net &quot;GND,/S,/T&quot; -fp C1 -fp R1 -fp R2 -fp R3 -port &quot;R1:1:F.Cu:R1:1:B.Cu:z:50.0:1&quot; -port &quot;R2:1:F.Cu:R2:1:B.Cu:z:50.0:0&quot; -le &quot;R3&quot; -le &quot;C1&quot; -mesh_range 139.0:146.0:0.1:x -mesh_range 99.0:100.0:0.1:y  -max_freq 5e9 -criteria -30 -bc MUR -o newcfg" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
       <BuildSystem Name="Default"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[]]>

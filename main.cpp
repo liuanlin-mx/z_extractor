@@ -388,6 +388,7 @@ static int main_sparameter(int argc, char **argv)
     std::list<std::string> nets;
     std::vector<std::string> footprints;
     std::vector<std::string> ports;
+    std::vector<std::string> lumped_elements;
     std::vector<std::string> mesh_range;
     std::map<std::string, float> mesh_net;
     std::vector<std::string> freq;
@@ -419,6 +420,10 @@ static int main_sparameter(int argc, char **argv)
         else if (std::string(arg) == "-port" && i < argc)
         {
             ports.push_back(arg_next);
+        }
+        else if (std::string(arg) == "-le" && i < argc)
+        {
+            lumped_elements.push_back(arg_next);
         }
         else if (std::string(arg) == "-mesh_range" && i < argc)
         {
@@ -506,6 +511,17 @@ static int main_sparameter(int argc, char **argv)
             ems.add_mesh_range(atof(arg_v[0].c_str()), atof(arg_v[1].c_str()), atof(arg_v[2].c_str()), arg_v[3] == "x"? openems_model_gen::mesh::DIR_X: openems_model_gen::mesh::DIR_Y);
         }
     }
+    
+    
+    for (const auto& le: lumped_elements)
+    {
+        std::vector<std::string> arg_v = _string_split(le, ":");
+        if (1 == arg_v.size())
+        {
+            ems.add_lumped_element(arg_v[0], false);
+        }
+    }
+    
     
     bool no_port = true;
     for (const auto& port: ports)
