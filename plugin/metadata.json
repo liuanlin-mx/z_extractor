@@ -2,8 +2,8 @@
     "$schema": "https://go.kicad.org/pcm/schemas/v1",
     "name": "z extractor",
     "description": "Transmission Line Impedance Extraction",
-    "description_full": "Transmission Line Impedance Extraction",
-    "identifier": "com.github.liuanlin-mx.z-extractor",
+    "description_full": "Transmission Line Impedance Extraction \nAntenna simulation and S-parameter simulation, It needs openEMS, download it from https://www.openems.de/",
+    "identifier": "com.github.liuanlin-mx.z_extractor",
     "type": "plugin",
     "author": {
         "name": "LiuAnLin",
@@ -20,7 +20,7 @@
     ],
     "versions": [
         {
-            "version": "0.2.0",
+            "version": "0.2.1",
             "status": "testing",
             "kicad_version": "6.0",
             "platforms": [
