@@ -70,7 +70,8 @@ private:
     const char *_parse_string2(const char *str, std::string& text);
     const char *_skip_space(const char *str);
     void _print_object(std::shared_ptr<pcb_object> obj, std::int32_t tabs = 0);
-    
+    void _update_pcb_version();
+    void _update_tstamp_label();
     
     void _add_to_pcb();
     void _add_layers();
@@ -92,6 +93,9 @@ private:
     float _pcb_left;
     float _pcb_right;
     std::uint32_t _layers;
+    std::uint32_t _pcb_version;
+    /* 兼容kicad 8.x 和6.x pcb格式 */
+    std::string _uuid_label;
 };
 
 #endif

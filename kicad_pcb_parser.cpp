@@ -25,6 +25,8 @@ kicad_pcb_parser::kicad_pcb_parser()
     , _pcb_left(10000.)
     , _pcb_right(0)
     , _layers(0)
+    , _pcb_version(20221018)
+    , _uuid_label("tstamp")
 {
 }
 
@@ -70,6 +72,8 @@ bool kicad_pcb_parser::parse(const char * filepath, std::shared_ptr<pcb> pcb)
     free(buf);
     if (ret)
     {
+        _update_pcb_version();
+        _update_tstamp_label();
         _add_to_pcb();
         _pcb->set_edge(_pcb_top, _pcb_bottom, _pcb_left, _pcb_right);
     }
@@ -155,7 +159,7 @@ const char *kicad_pcb_parser::_parse_string2(const char *str, std::string& text)
     
 const char *kicad_pcb_parser::_skip_space(const char *str)
 {
-    while (*str == ' ' || *str == '\r' || *str == '\n')
+    while (*str == ' ' || *str == '\r' || *str == '\n' || *str == '\t')
     {
         str++;
     }
@@ -188,7 +192,26 @@ void kicad_pcb_parser::_print_object(std::shared_ptr<pcb_object> obj, std::int32
     }
     printf(")\n");
 }
+    
 
+void kicad_pcb_parser::_update_pcb_version()
+{
+    std::shared_ptr<pcb_object> version = _root->find_child("version");
+    if (version && version->params.size())
+    {
+        _pcb_version = atol(version->params[0].c_str());
+    }
+}
+
+void kicad_pcb_parser::_update_tstamp_label()
+{
+    if (_pcb_version >= 20240108)
+    {
+        _uuid_label = "uuid";
+    }
+}
+
+    
 void kicad_pcb_parser::_add_to_pcb()
 {
     _add_layers();
@@ -325,7 +348,7 @@ void kicad_pcb_parser::_add_segment_to_pcb()
             std::shared_ptr<pcb_object> width = segment->find_child("width");
             std::shared_ptr<pcb_object> layer = segment->find_child("layer");
             std::shared_ptr<pcb_object> net = segment->find_child("net");
-            std::shared_ptr<pcb_object> tstamp = segment->find_child("tstamp");
+            std::shared_ptr<pcb_object> tstamp = segment->find_child(_uuid_label);
             if (start && start->params.size() == 2
                 && end && end->params.size() == 2
                 && width && width->params.size() == 1
@@ -369,7 +392,7 @@ void kicad_pcb_parser::_add_via_to_pcb()
             std::shared_ptr<pcb_object> drill = child->find_child("drill");
             std::shared_ptr<pcb_object> layers = child->find_child("layers");
             std::shared_ptr<pcb_object> net = child->find_child("net");
-            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            std::shared_ptr<pcb_object> tstamp = child->find_child(_uuid_label);
             if (at && at->params.size() == 2
                 && size && size->params.size() == 1
                 && drill && drill->params.size() == 1
@@ -404,7 +427,7 @@ void kicad_pcb_parser::_add_zone_to_pcb()
     for (const auto& child: _root->find_childs("zone"))
     {
         std::shared_ptr<pcb_object> net = child->find_child("net");
-        std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+        std::shared_ptr<pcb_object> tstamp = child->find_child(_uuid_label);
         
         if (net && net->params.size() == 1
                 && tstamp && tstamp->params.size())
@@ -443,7 +466,7 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
     for (const auto& child: _root->find_childs("footprint"))
     {
         std::shared_ptr<pcb_object> layer = child->find_child("layer");
-        std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+        std::shared_ptr<pcb_object> tstamp = child->find_child(_uuid_label);
         std::shared_ptr<pcb_object> at = child->find_child("at");
         
         pcb::footprint footprint;
@@ -460,23 +483,44 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 footprint.at_angle = atof(at->params[2].c_str());
             }
             
-            for (const auto& fp_text: child->find_childs("fp_text"))
+            if (_pcb_version >= 20240108)
             {
-                if (fp_text->params.size() < 2)
+                for (const auto& property: child->find_childs("property"))
                 {
-                    continue;
+                    if (property->params.size() < 2)
+                    {
+                        continue;
+                    }
+                    if (property->params[0] == "Reference")
+                    {
+                        footprint.reference = _strip_string(property->params[1]);
+                    }
+                    if (property->params[0] == "Value")
+                    {
+                        footprint.value = _strip_string(property->params[1]);
+                    }
                 }
-                if (fp_text->params[0] == "reference")
+            }
+            else
+            {
+                for (const auto& fp_text: child->find_childs("fp_text"))
                 {
-                    footprint.reference = _strip_string(fp_text->params[1]);
-                }
-                if (fp_text->params[0] == "value")
-                {
-                    footprint.value = _strip_string(fp_text->params[1]);
+                    if (fp_text->params.size() < 2)
+                    {
+                        continue;
+                    }
+                    if (fp_text->params[0] == "reference")
+                    {
+                        footprint.reference = _strip_string(fp_text->params[1]);
+                    }
+                    if (fp_text->params[0] == "value")
+                    {
+                        footprint.value = _strip_string(fp_text->params[1]);
+                    }
                 }
             }
             
-            
+
             for (const auto& pad: child->find_childs("pad"))
             {
                 if (pad->params.size() < 3)
@@ -487,7 +531,7 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 std::shared_ptr<pcb_object> pad_at = pad->find_child("at");
                 std::shared_ptr<pcb_object> size = pad->find_child("size");
                 std::shared_ptr<pcb_object> drill = pad->find_child("drill");
-                std::shared_ptr<pcb_object> pad_tstamp = pad->find_child("tstamp");
+                std::shared_ptr<pcb_object> pad_uuid = pad->find_child(_uuid_label);
                 std::shared_ptr<pcb_object> net = pad->find_child("net");
                 
                 pcb::pad p;
@@ -526,9 +570,9 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                     p.type = pcb::pad::TYPE_SMD;
                 }
                 
-                if (pad_tstamp && !pad_tstamp->params.empty())
+                if (pad_uuid && !pad_uuid->params.empty())
                 {
-                    p.tstamp = pad_tstamp->params[0];
+                    p.tstamp = pad_uuid->params[0];
                 }
                 
                 if (layers && !layers->params.empty())
@@ -597,7 +641,7 @@ void kicad_pcb_parser::_add_gr_to_footprint(std::shared_ptr<pcb_object> fp_obj, 
             std::shared_ptr<pcb_object> layer = child->find_child("layer");
             std::shared_ptr<pcb_object> fill = child->find_child("fill");
             std::shared_ptr<pcb_object> stroke = child->find_child("stroke");
-            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            std::shared_ptr<pcb_object> tstamp = child->find_child(_uuid_label);
             std::shared_ptr<pcb_object> pts = child->find_child("pts");
             
             if (layer && layer->params.size() == 1
@@ -724,7 +768,7 @@ void kicad_pcb_parser::_add_gr_to_pcb()
             std::shared_ptr<pcb_object> layer = child->find_child("layer");
             std::shared_ptr<pcb_object> fill = child->find_child("fill");
             std::shared_ptr<pcb_object> stroke = child->find_child("stroke");
-            std::shared_ptr<pcb_object> tstamp = child->find_child("tstamp");
+            std::shared_ptr<pcb_object> tstamp = child->find_child(_uuid_label);
             std::shared_ptr<pcb_object> pts = child->find_child("pts");
             
             if (layer && layer->params.size() == 1
