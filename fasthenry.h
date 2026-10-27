@@ -20,6 +20,7 @@
 #define __FASTHENRY_H__
 #include <list>
 #include <string>
+#include <cstdint>
 #include <vector>
 
 class fasthenry

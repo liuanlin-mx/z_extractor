@@ -27,6 +27,8 @@ kicad_pcb_parser::kicad_pcb_parser()
     , _layers(0)
     , _pcb_version(20221018)
     , _uuid_label("tstamp")
+    , _net_str2id_map()
+    , _net_id(1)
 {
 }
 
@@ -327,6 +329,7 @@ void kicad_pcb_parser::_add_layers()
 
 void kicad_pcb_parser::_add_net_to_pcb()
 {
+    /* kicad 10开始没有这部分格式了 */
     for (const auto& child: _root->childs)
     {
         if (child->label == "net" && child->params.size() >= 2)
@@ -366,7 +369,8 @@ void kicad_pcb_parser::_add_segment_to_pcb()
                 s.width = atof(width->params[0].c_str());
                 
                 s.layer_name = _strip_string(layer->params[0]);
-                s.net = atoi(net->params[0].c_str());
+                s.net = _net_str2id(net->params[0]);
+                
                 s.tstamp = tstamp->params[0];
                 
                 if (segment->label == "arc" && mid && mid->params.size() == 2)
@@ -412,7 +416,7 @@ void kicad_pcb_parser::_add_via_to_pcb()
                 {
                     v.layers.push_back(_strip_string(layer_name));
                 }
-                v.net = atoi(net->params[0].c_str());
+                v.net = _net_str2id(net->params[0]);
                 v.tstamp = tstamp->params[0];
                 
                 _pcb->add_via(v);
@@ -441,7 +445,7 @@ void kicad_pcb_parser::_add_zone_to_pcb()
                 if (layer && layer->params.size() >= 1 && pts)
                 {
                     z.layer_name = _strip_string(layer->params[0]);
-                    z.net = atoi(net->params[0].c_str());
+                    z.net = _net_str2id(net->params[0]);
                     z.tstamp = tstamp->params[0];
                     for (const auto& xy: pts->find_childs("xy"))
                     {
@@ -605,7 +609,7 @@ void kicad_pcb_parser::_add_footprint_to_pcb()
                 
                 if (net && net->params.size() > 0)
                 {
-                    p.net = atoi(net->params[0].c_str());
+                    p.net = _net_str2id(net->params[0]);
                 }
                 
                 if (net && net->params.size() > 1)
@@ -990,4 +994,26 @@ std::string kicad_pcb_parser::_strip_string(const std::string& str)
         tmp.pop_back();
     }
     return tmp;
+}
+
+
+std::uint32_t kicad_pcb_parser::_net_str2id(const std::string& net_str)
+{
+    if (_pcb_version >= 20260206)
+    {
+        std::uint32_t id = 0;
+        if (_net_str2id_map.count(net_str))
+        {
+            id = _net_str2id_map[net_str];
+        }
+        else
+        {
+            id = _net_id;
+            _net_str2id_map[net_str] = _net_id;
+            _pcb->add_net(id, net_str);
+            _net_id++;
+        }
+        return id;
+    }
+    return atoi(net_str.c_str());
 }

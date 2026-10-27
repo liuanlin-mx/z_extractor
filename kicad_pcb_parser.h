@@ -19,6 +19,7 @@
 #ifndef __KICAD_PCB_PARSER_H__
 #define __KICAD_PCB_PARSER_H__
 #include <memory>
+#include <map>
 #include "pcb.h"
 
 class kicad_pcb_parser
@@ -85,6 +86,8 @@ private:
     void _update_edge(const pcb::gr& g);
     
     std::string _strip_string(const std::string& str);
+    std::uint32_t _net_str2id(const std::string& net_str);
+    
 private:
     std::shared_ptr<pcb> _pcb;
     std::shared_ptr<pcb_object> _root;
@@ -96,6 +99,10 @@ private:
     std::uint32_t _pcb_version;
     /* 兼容kicad 8.x 和6.x pcb格式 */
     std::string _uuid_label;
+    
+    /* 兼容 kicad 10.x */
+    std::map<std::string, std::uint32_t> _net_str2id_map;
+    std::uint32_t _net_id;
 };
 
 #endif

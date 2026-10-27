@@ -166,13 +166,14 @@
       </Debugger>
       <PreBuild/>
       <PostBuild>
-        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/10.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
+        <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
         <Command Enabled="yes">cp $(IntermediateDirectory)/$(ProjectName) ~/.local/share/kicad/8.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/linux</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/antenna.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/s_parameter.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
-        <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/7.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/z_extractor.py ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/rl_extractor.py ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/antenna.py ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/s_parameter.py ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
+        <Command Enabled="yes">cp $(WorkspacePath)/plugin/__init__.py ~/.local/share/kicad/9.0/3rdparty/plugins/com_github_liuanlin-mx_z-extractor/</Command>
       </PostBuild>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
